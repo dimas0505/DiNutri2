@@ -63,7 +63,10 @@ app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'ok', 
     timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development'
+    environment: process.env.NODE_ENV || 'development',
+    vercel: !!process.env.VERCEL,
+    database: !!process.env.DATABASE_URL,
+    auth0: !!(process.env.AUTH0_DOMAIN && process.env.AUTH0_CLIENT_ID)
   });
 });
 

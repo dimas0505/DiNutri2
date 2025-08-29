@@ -3,7 +3,8 @@
     "api/index.ts": {
       "runtime": "@vercel/node@3",
       "maxDuration": 30,
-      "memory": 1024
+      "memory": 1024,
+      "regions": ["cle1"]
     }
   },
   "routes": [
