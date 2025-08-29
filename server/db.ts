@@ -1,10 +1,10 @@
 // ARQUIVO: ./server/db.ts
 import { Pool, neonConfig } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-serverless';
-import ws from 'ws';
 import * as schema from '../shared/schema.js';
 
-neonConfig.webSocketConstructor = ws;
+// Configure Neon for serverless environments
+neonConfig.fetchConnectionCache = true;
 
 if (!process.env.DATABASE_URL) {
   throw new Error(
@@ -12,5 +12,13 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
-export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+// Use connection pooling optimized for serverless
+export const pool = new Pool({ 
+  connectionString: process.env.DATABASE_URL,
+  // Optimized for serverless functions
+  max: 1,
+  idleTimeoutMillis: 0,
+  connectionTimeoutMillis: 5000,
+});
+
 export const db = drizzle({ client: pool, schema });

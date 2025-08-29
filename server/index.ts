@@ -1,8 +1,12 @@
 import "dotenv/config";
 import express, { type Request, Response, NextFunction, type Express } from "express";
 import { registerRoutes } from "./routes.js";
+import { createServer } from "http";
 import path from "path";
 import fs from "fs";
+import { fileURLToPath } from "url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // --- Funções movidas de vite.ts para cá ---
 export function log(message: string, source = "express") {
@@ -16,8 +20,7 @@ export function log(message: string, source = "express") {
 }
 
 export function serveStatic(app: Express) {
-  // @ts-ignore
-  const distPath = path.resolve(import.meta.dirname, "..", "dist", "public");
+  const distPath = path.resolve(__dirname, "..", "dist", "public");
 
   if (!fs.existsSync(distPath)) {
     log(`A pasta de build não foi encontrada em: ${distPath}. Servindo placeholder.`);
@@ -52,7 +55,9 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  const server = await registerRoutes(app);
+  await registerRoutes(app);
+  
+  const server = createServer(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;

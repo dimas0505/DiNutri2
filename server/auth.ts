@@ -11,6 +11,23 @@ import type { User } from "../shared/schema.js";
 // Função para configurar a sessão, reutilizada do código anterior
 export function getSession() {
   const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
+  
+  // Check if we have the required environment variables
+  if (!process.env.DATABASE_URL || !process.env.SESSION_SECRET) {
+    console.warn('Missing session configuration, using memory store (not recommended for production)');
+    // Fallback to memory store for development or when DB is not available
+    return session({
+      secret: process.env.SESSION_SECRET || 'fallback-secret-key-dev-only',
+      resave: false,
+      saveUninitialized: false,
+      cookie: {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: sessionTtl,
+      },
+    });
+  }
+
   const pgStore = connectPg(session);
   const sessionStore = new pgStore({
     conString: process.env.DATABASE_URL,
@@ -18,14 +35,15 @@ export function getSession() {
     ttl: sessionTtl,
     tableName: "sessions",
   });
+  
   return session({
-    secret: process.env.SESSION_SECRET!,
+    secret: process.env.SESSION_SECRET,
     store: sessionStore,
     resave: false,
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production', // Usar cookies seguros em produção
+      secure: process.env.NODE_ENV === 'production',
       maxAge: sessionTtl,
     },
   });
@@ -43,8 +61,29 @@ export const isAuthenticated: RequestHandler = (req, res, next) => {
 // Função principal que configura toda a autenticação
 export async function setupAuth(app: Express) {
   // Validação das variáveis de ambiente do Auth0
-  if (!process.env.AUTH0_DOMAIN || !process.env.AUTH0_CLIENT_ID || !process.env.AUTH0_CLIENT_SECRET || !process.env.BASE_URL) {
-    throw new Error("Auth0 environment variables are not fully configured.");
+  const requiredVars = ['AUTH0_DOMAIN', 'AUTH0_CLIENT_ID', 'AUTH0_CLIENT_SECRET', 'BASE_URL'];
+  const missingVars = requiredVars.filter(varName => !process.env[varName]);
+  
+  if (missingVars.length > 0) {
+    console.error(`Missing required environment variables: ${missingVars.join(', ')}`);
+    
+    // In development, we can provide fallback routes
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('Setting up development auth fallback...');
+      // Add basic development auth routes
+      app.get('/api/login', (req, res) => {
+        res.status(501).json({ message: 'Auth0 not configured. Please set environment variables.' });
+      });
+      app.get('/api/logout', (req, res) => {
+        res.status(501).json({ message: 'Auth0 not configured. Please set environment variables.' });
+      });
+      app.get('/api/callback', (req, res) => {
+        res.status(501).json({ message: 'Auth0 not configured. Please set environment variables.' });
+      });
+      return;
+    } else {
+      throw new Error(`Auth0 environment variables are not fully configured: ${missingVars.join(', ')}`);
+    }
   }
 
   // Função de verificação que o Passport-Auth0 usará
@@ -83,11 +122,10 @@ export async function setupAuth(app: Express) {
   // Configuração da estratégia de autenticação do Auth0
   const strategy = new Auth0Strategy(
     {
-      domain: process.env.AUTH0_DOMAIN,
-      clientID: process.env.AUTH0_CLIENT_ID,
-      clientSecret: process.env.AUTH0_CLIENT_SECRET,
+      domain: process.env.AUTH0_DOMAIN!,
+      clientID: process.env.AUTH0_CLIENT_ID!,
+      clientSecret: process.env.AUTH0_CLIENT_SECRET!,
       callbackURL: `${process.env.BASE_URL}/api/callback`,
-      // A propriedade 'scope' foi removida daqui
     },
     verify
   );

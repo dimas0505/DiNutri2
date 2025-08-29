@@ -1,13 +1,12 @@
 // Arquivo: server/routes.ts
 
 import type { Express } from "express";
-import { createServer, type Server } from "http";
 import { storage } from "./storage.js";
 import { setupAuth, isAuthenticated } from "./auth.js";
 import { insertPatientSchema, insertPrescriptionSchema, updatePrescriptionSchema } from "../shared/schema.js";
 import { z } from "zod";
 
-export async function registerRoutes(app: Express): Promise<Server> {
+export async function registerRoutes(app: Express): Promise<void> {
   // Auth middleware
   await setupAuth(app);
 
@@ -165,7 +164,4 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to fetch latest prescription" });
     }
   });
-
-  const httpServer = createServer(app);
-  return httpServer;
 }
