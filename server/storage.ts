@@ -46,7 +46,7 @@ export class DatabaseStorage implements IStorage {
       .insert(users)
       .values(userData)
       .onConflictDoUpdate({
-        target: users.id,
+        target: users.email,
         set: {
           ...userData,
           updatedAt: new Date(),
@@ -119,7 +119,10 @@ export class DatabaseStorage implements IStorage {
   async createPrescription(prescription: InsertPrescription): Promise<Prescription> {
     const [newPrescription] = await db
       .insert(prescriptions)
-      .values(prescription)
+      .values({
+        ...prescription,
+        meals: prescription.meals as any, // Type assertion for JSONB field
+      })
       .returning();
     return newPrescription;
   }

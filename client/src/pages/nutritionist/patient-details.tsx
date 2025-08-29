@@ -34,7 +34,8 @@ export default function PatientDetailsPage({ params }: PatientDetailsPageProps) 
         meals: [],
         generalNotes: "",
       };
-      return await apiRequest("POST", "/api/prescriptions", newPrescription);
+      const response = await apiRequest("POST", "/api/prescriptions", newPrescription);
+      return await response.json();
     },
     onSuccess: (prescription) => {
       queryClient.invalidateQueries({ queryKey: ["/api/patients", params.id, "prescriptions"] });
@@ -52,7 +53,8 @@ export default function PatientDetailsPage({ params }: PatientDetailsPageProps) 
   const duplicatePrescriptionMutation = useMutation({
     mutationFn: async (prescriptionId: string) => {
       const title = `Cópia - ${new Date().toLocaleDateString('pt-BR')}`;
-      return await apiRequest("POST", `/api/prescriptions/${prescriptionId}/duplicate`, { title });
+      const response = await apiRequest("POST", `/api/prescriptions/${prescriptionId}/duplicate`, { title });
+      return await response.json();
     },
     onSuccess: (prescription) => {
       queryClient.invalidateQueries({ queryKey: ["/api/patients", params.id, "prescriptions"] });
