@@ -9,7 +9,7 @@ import {
   type Prescription,
   type InsertPrescription,
   type UpdatePrescription,
-} from "@shared/schema";
+} from "../shared/schema.js";
 import { db } from "./db.js";
 import { eq, desc, and } from "drizzle-orm";
 

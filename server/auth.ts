@@ -6,7 +6,7 @@ import session from "express-session";
 import type { Express, RequestHandler } from "express";
 import connectPg from "connect-pg-simple";
 import { storage } from "./storage.js";
-import type { User } from "@shared/schema";
+import type { User } from "../shared/schema.js";
 
 // Função para configurar a sessão, reutilizada do código anterior
 export function getSession() {
