@@ -1,0 +1,1094 @@
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebDiet - Sistema de Prescrição Nutricional</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+    tailwind.config = {
+        theme: {
+            extend: {
+                borderRadius: {
+                    lg: "var(--radius)",
+                    md: "calc(var(--radius) - 2px)",
+                    sm: "calc(var(--radius) - 4px)",
+                },
+                colors: {
+                    background: "var(--background)",
+                    foreground: "var(--foreground)",
+                    card: {
+                        DEFAULT: "var(--card)",
+                        foreground: "var(--card-foreground)",
+                    },
+                    popover: {
+                        DEFAULT: "var(--popover)",
+                        foreground: "var(--popover-foreground)",
+                    },
+                    primary: {
+                        DEFAULT: "var(--primary)",
+                        foreground: "var(--primary-foreground)",
+                    },
+                    secondary: {
+                        DEFAULT: "var(--secondary)",
+                        foreground: "var(--secondary-foreground)",
+                    },
+                    muted: {
+                        DEFAULT: "var(--muted)",
+                        foreground: "var(--muted-foreground)",
+                    },
+                    accent: {
+                        DEFAULT: "var(--accent)",
+                        foreground: "var(--accent-foreground)",
+                    },
+                    destructive: {
+                        DEFAULT: "var(--destructive)",
+                        foreground: "var(--destructive-foreground)",
+                    },
+                    border: "var(--border)",
+                    input: "var(--input)",
+                    ring: "var(--ring)",
+                },
+                fontFamily: {
+                    sans: ["Inter", "sans-serif"],
+                }
+            },
+        }
+    };
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --background: hsl(0 0% 100%);
+            --foreground: hsl(222.2 84% 4.9%);
+            --card: hsl(0 0% 100%);
+            --card-foreground: hsl(222.2 84% 4.9%);
+            --popover: hsl(0 0% 100%);
+            --popover-foreground: hsl(222.2 84% 4.9%);
+            --primary: hsl(221.2 83.2% 53.3%);
+            --primary-foreground: hsl(210 40% 98%);
+            --secondary: hsl(210 40% 96%);
+            --secondary-foreground: hsl(222.2 84% 4.9%);
+            --muted: hsl(210 40% 96%);
+            --muted-foreground: hsl(215.4 16.3% 46.9%);
+            --accent: hsl(142.1 76.2% 36.3%);
+            --accent-foreground: hsl(355.7 100% 97.3%);
+            --destructive: hsl(0 84.2% 60.2%);
+            --destructive-foreground: hsl(210 40% 98%);
+            --border: hsl(214.3 31.8% 91.4%);
+            --input: hsl(214.3 31.8% 91.4%);
+            --ring: hsl(221.2 83.2% 53.3%);
+            --radius: 0.5rem;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        
+        .screen {
+            min-height: 100vh;
+            display: none;
+        }
+        
+        .screen.active {
+            display: block;
+        }
+        
+        .drag-handle {
+            cursor: grab;
+        }
+        
+        .drag-handle:active {
+            cursor: grabbing;
+        }
+
+        @media print {
+            .no-print {
+                display: none;
+            }
+            .print-only {
+                display: block;
+            }
+        }
+    </style>
+</head>
+<body class="bg-background text-foreground">
+
+    <!-- @COMPONENT: LoginScreen -->
+    <!-- Login Screen -->
+    <div id="loginScreen" class="screen active">
+        <div class="min-h-screen bg-gradient-to-br from-primary/10 to-accent/10 flex items-center justify-center p-4">
+            <div class="w-full max-w-md">
+                <div class="bg-card p-8 rounded-lg shadow-lg border border-border">
+                    <div class="text-center mb-8">
+                        <h1 class="text-3xl font-bold text-primary mb-2">WebDiet</h1>
+                        <p class="text-muted-foreground">Sistema de Prescrição Nutricional</p>
+                    </div>
+                    
+                    <form class="space-y-6" data-event="submit:handleLogin">
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Tipo de Usuário</label>
+                            <select class="w-full p-3 border border-input rounded-md focus:ring-2 focus:ring-ring focus:border-transparent" data-bind="userType">
+                                <option value="nutritionist">Nutricionista</option>
+                                <option value="patient">Paciente</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Email</label>
+                            <input type="email" class="w-full p-3 border border-input rounded-md focus:ring-2 focus:ring-ring focus:border-transparent" 
+                                   placeholder="seu@email.com" data-bind="email" data-mock="true" />
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Senha</label>
+                            <input type="password" class="w-full p-3 border border-input rounded-md focus:ring-2 focus:ring-ring focus:border-transparent" 
+                                   placeholder="••••••••" data-bind="password" data-mock="true" />
+                        </div>
+                        
+                        <button type="submit" class="w-full bg-primary text-primary-foreground py-3 rounded-md hover:bg-primary/90 transition-colors font-medium" 
+                                data-implementation="Should authenticate user and redirect to appropriate dashboard">
+                            Entrar
+                        </button>
+                    </form>
+                    
+                    <div class="mt-6 text-center">
+                        <a href="#" class="text-primary hover:underline text-sm">Esqueci minha senha</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- @END_COMPONENT: LoginScreen -->
+
+    <!-- @COMPONENT: NutritionistDashboard -->
+    <!-- Nutritionist Dashboard - Patient List -->
+    <div id="nutritionistDashboard" class="screen">
+        <div class="min-h-screen bg-background">
+            <!-- Header -->
+            <header class="bg-card border-b border-border px-4 py-3">
+                <div class="max-w-7xl mx-auto flex items-center justify-between">
+                    <div class="flex items-center space-x-4">
+                        <h1 class="text-xl font-bold text-primary">WebDiet</h1>
+                        <span class="text-muted-foreground">|</span>
+                        <span class="text-foreground font-medium">Meus Pacientes</span>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <span class="text-sm text-muted-foreground" data-bind="nutritionist.name">Dr. Ana Silva</span>
+                        <button class="text-muted-foreground hover:text-foreground" data-event="click:logout">
+                            <i class="fas fa-sign-out-alt"></i>
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            <main class="max-w-7xl mx-auto p-4 lg:p-6">
+                <!-- Search and Add Patient -->
+                <div class="mb-6 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+                    <div class="flex-1">
+                        <div class="relative">
+                            <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground"></i>
+                            <input type="search" placeholder="Buscar pacientes por nome ou email..." 
+                                   class="w-full pl-10 pr-4 py-2 border border-input rounded-md focus:ring-2 focus:ring-ring focus:border-transparent"
+                                   data-bind="searchQuery" data-mock="true" />
+                        </div>
+                    </div>
+                    <button class="bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90 transition-colors font-medium flex items-center space-x-2"
+                            onclick="showScreen('newPatientForm')" data-event="click:showNewPatientForm">
+                        <i class="fas fa-plus"></i>
+                        <span>Novo Paciente</span>
+                    </button>
+                </div>
+
+                <!-- Patients List -->
+                <div class="bg-card rounded-lg border border-border shadow-sm">
+                    <div class="overflow-x-auto">
+                        <table class="w-full">
+                            <thead class="bg-muted/50">
+                                <tr>
+                                    <th class="text-left p-4 font-medium text-muted-foreground">Paciente</th>
+                                    <th class="text-left p-4 font-medium text-muted-foreground hidden sm:table-cell">Idade</th>
+                                    <th class="text-left p-4 font-medium text-muted-foreground hidden md:table-cell">Última Prescrição</th>
+                                    <th class="text-left p-4 font-medium text-muted-foreground">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-border">
+                                <!-- @MAP: patients.map(patient => ( -->
+                                <tr class="hover:bg-muted/20 transition-colors">
+                                    <td class="p-4">
+                                        <div>
+                                            <div class="font-medium" data-bind="patient.name" data-mock="true">Maria Silva</div>
+                                            <div class="text-sm text-muted-foreground" data-bind="patient.email" data-mock="true">maria@exemplo.com</div>
+                                        </div>
+                                    </td>
+                                    <td class="p-4 hidden sm:table-cell text-muted-foreground" data-bind="patient.age" data-mock="true">34 anos</td>
+                                    <td class="p-4 hidden md:table-cell">
+                                        <span class="text-sm text-muted-foreground" data-bind="patient.lastPrescription" data-mock="true">28/08/2025</span>
+                                        <div class="text-xs text-accent">Publicado</div>
+                                    </td>
+                                    <td class="p-4">
+                                        <div class="flex items-center space-x-2">
+                                            <button class="text-primary hover:text-primary/80 p-1" onclick="showScreen('patientDetails')" 
+                                                    data-event="click:viewPatient" title="Ver detalhes">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                            <button class="text-accent hover:text-accent/80 p-1" onclick="showScreen('prescriptionEditor')"
+                                                    data-event="click:newPrescription" title="Nova prescrição">
+                                                <i class="fas fa-plus"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr class="hover:bg-muted/20 transition-colors">
+                                    <td class="p-4">
+                                        <div>
+                                            <div class="font-medium" data-mock="true">João Santos</div>
+                                            <div class="text-sm text-muted-foreground" data-mock="true">joao@exemplo.com</div>
+                                        </div>
+                                    </td>
+                                    <td class="p-4 hidden sm:table-cell text-muted-foreground" data-mock="true">28 anos</td>
+                                    <td class="p-4 hidden md:table-cell">
+                                        <span class="text-sm text-muted-foreground" data-mock="true">25/08/2025</span>
+                                        <div class="text-xs text-yellow-600">Rascunho</div>
+                                    </td>
+                                    <td class="p-4">
+                                        <div class="flex items-center space-x-2">
+                                            <button class="text-primary hover:text-primary/80 p-1" title="Ver detalhes">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                            <button class="text-accent hover:text-accent/80 p-1" title="Nova prescrição">
+                                                <i class="fas fa-plus"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <!-- @END_MAP -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+    <!-- @END_COMPONENT: NutritionistDashboard -->
+
+    <!-- @COMPONENT: NewPatientForm -->
+    <!-- New Patient Form -->
+    <div id="newPatientForm" class="screen">
+        <div class="min-h-screen bg-background">
+            <!-- Header -->
+            <header class="bg-card border-b border-border px-4 py-3">
+                <div class="max-w-7xl mx-auto flex items-center justify-between">
+                    <div class="flex items-center space-x-4">
+                        <button class="text-muted-foreground hover:text-foreground" onclick="showScreen('nutritionistDashboard')">
+                            <i class="fas fa-arrow-left"></i>
+                        </button>
+                        <h1 class="text-xl font-bold text-primary">Novo Paciente</h1>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <span class="text-sm text-muted-foreground" data-bind="nutritionist.name" data-mock="true">Dr. Ana Silva</span>
+                        <button class="text-muted-foreground hover:text-foreground">
+                            <i class="fas fa-sign-out-alt"></i>
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            <main class="max-w-2xl mx-auto p-4 lg:p-6">
+                <div class="bg-card rounded-lg border border-border shadow-sm p-6">
+                    <form class="space-y-6" data-event="submit:createPatient">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="md:col-span-2">
+                                <label class="block text-sm font-medium mb-2">Nome Completo</label>
+                                <input type="text" class="w-full p-3 border border-input rounded-md focus:ring-2 focus:ring-ring focus:border-transparent" 
+                                       placeholder="Nome do paciente" data-bind="patient.name" data-mock="true" />
+                            </div>
+                            
+                            <div class="md:col-span-2">
+                                <label class="block text-sm font-medium mb-2">Email</label>
+                                <input type="email" class="w-full p-3 border border-input rounded-md focus:ring-2 focus:ring-ring focus:border-transparent" 
+                                       placeholder="email@exemplo.com" data-bind="patient.email" data-mock="true" />
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium mb-2">Data de Nascimento</label>
+                                <input type="date" class="w-full p-3 border border-input rounded-md focus:ring-2 focus:ring-ring focus:border-transparent" 
+                                       data-bind="patient.birthDate" data-mock="true" />
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium mb-2">Sexo</label>
+                                <select class="w-full p-3 border border-input rounded-md focus:ring-2 focus:ring-ring focus:border-transparent" data-bind="patient.sex">
+                                    <option value="">Selecionar</option>
+                                    <option value="F">Feminino</option>
+                                    <option value="M">Masculino</option>
+                                    <option value="Outro">Outro</option>
+                                </select>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium mb-2">Altura (cm)</label>
+                                <input type="number" class="w-full p-3 border border-input rounded-md focus:ring-2 focus:ring-ring focus:border-transparent" 
+                                       placeholder="165" data-bind="patient.heightCm" data-mock="true" />
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium mb-2">Peso (kg) - Opcional</label>
+                                <input type="number" step="0.1" class="w-full p-3 border border-input rounded-md focus:ring-2 focus:ring-ring focus:border-transparent" 
+                                       placeholder="64.5" data-bind="patient.weightKg" data-mock="true" />
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Observações</label>
+                            <textarea class="w-full p-3 border border-input rounded-md focus:ring-2 focus:ring-ring focus:border-transparent h-24" 
+                                      placeholder="Observações adicionais sobre o paciente..." data-bind="patient.notes" data-mock="true"></textarea>
+                        </div>
+                        
+                        <div class="flex flex-col sm:flex-row gap-3">
+                            <button type="button" class="flex-1 bg-secondary text-secondary-foreground py-3 rounded-md hover:bg-secondary/80 transition-colors font-medium"
+                                    onclick="showScreen('nutritionistDashboard')">
+                                Cancelar
+                            </button>
+                            <button type="submit" class="flex-1 bg-primary text-primary-foreground py-3 rounded-md hover:bg-primary/90 transition-colors font-medium"
+                                    data-implementation="Should create patient and redirect to patient details">
+                                Cadastrar Paciente
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </main>
+        </div>
+    </div>
+    <!-- @END_COMPONENT: NewPatientForm -->
+
+    <!-- @COMPONENT: PatientDetailsScreen -->
+    <!-- Patient Details Screen -->
+    <div id="patientDetails" class="screen">
+        <div class="min-h-screen bg-background">
+            <!-- Header -->
+            <header class="bg-card border-b border-border px-4 py-3">
+                <div class="max-w-7xl mx-auto flex items-center justify-between">
+                    <div class="flex items-center space-x-4">
+                        <button class="text-muted-foreground hover:text-foreground" onclick="showScreen('nutritionistDashboard')">
+                            <i class="fas fa-arrow-left"></i>
+                        </button>
+                        <div>
+                            <h1 class="text-xl font-bold" data-bind="patient.name" data-mock="true">Maria Silva</h1>
+                            <p class="text-sm text-muted-foreground" data-bind="patient.email" data-mock="true">maria@exemplo.com</p>
+                        </div>
+                    </div>
+                    <button class="bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90 transition-colors font-medium"
+                            onclick="showScreen('prescriptionEditor')" data-event="click:newPrescription">
+                        Nova Prescrição
+                    </button>
+                </div>
+            </header>
+
+            <main class="max-w-7xl mx-auto p-4 lg:p-6">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Patient Info -->
+                    <div class="lg:col-span-1">
+                        <div class="bg-card rounded-lg border border-border p-6">
+                            <h2 class="text-lg font-semibold mb-4">Informações do Paciente</h2>
+                            <div class="space-y-3 text-sm">
+                                <div class="flex justify-between">
+                                    <span class="text-muted-foreground">Idade:</span>
+                                    <span data-bind="patient.age" data-mock="true">34 anos</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-muted-foreground">Sexo:</span>
+                                    <span data-bind="patient.sex" data-mock="true">Feminino</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-muted-foreground">Altura:</span>
+                                    <span data-bind="patient.height" data-mock="true">165 cm</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-muted-foreground">Peso:</span>
+                                    <span data-bind="patient.weight" data-mock="true">64 kg</span>
+                                </div>
+                            </div>
+                            <div class="mt-4 pt-4 border-t border-border">
+                                <p class="text-sm text-muted-foreground" data-bind="patient.notes" data-mock="true">Paciente vegetariana. Intolerância à lactose.</p>
+                            </div>
+                            <button class="mt-4 w-full bg-secondary text-secondary-foreground py-2 rounded-md hover:bg-secondary/80 transition-colors text-sm">
+                                Editar Dados
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Prescriptions History -->
+                    <div class="lg:col-span-2">
+                        <div class="bg-card rounded-lg border border-border">
+                            <div class="p-6 border-b border-border">
+                                <h2 class="text-lg font-semibold">Prescrições</h2>
+                            </div>
+                            <div class="p-6">
+                                <!-- @MAP: prescriptions.map(prescription => ( -->
+                                <div class="space-y-4">
+                                    <div class="border border-border rounded-lg p-4 hover:bg-muted/20 transition-colors">
+                                        <div class="flex items-center justify-between mb-2">
+                                            <h3 class="font-medium" data-bind="prescription.title" data-mock="true">Plano Semanal 28/08/2025</h3>
+                                            <div class="flex items-center space-x-2">
+                                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-accent/10 text-accent">
+                                                    Publicado
+                                                </span>
+                                                <div class="flex space-x-1">
+                                                    <button class="text-muted-foreground hover:text-foreground p-1" title="Visualizar">
+                                                        <i class="fas fa-eye"></i>
+                                                    </button>
+                                                    <button class="text-muted-foreground hover:text-foreground p-1" 
+                                                            onclick="showScreen('prescriptionEditor')" title="Editar">
+                                                        <i class="fas fa-edit"></i>
+                                                    </button>
+                                                    <button class="text-muted-foreground hover:text-foreground p-1" title="Duplicar">
+                                                        <i class="fas fa-copy"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <p class="text-sm text-muted-foreground" data-mock="true">6 refeições configuradas • Publicado em 28/08/2025</p>
+                                    </div>
+                                    
+                                    <div class="border border-border rounded-lg p-4 hover:bg-muted/20 transition-colors">
+                                        <div class="flex items-center justify-between mb-2">
+                                            <h3 class="font-medium" data-mock="true">Plano Inicial 20/08/2025</h3>
+                                            <div class="flex items-center space-x-2">
+                                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                                    Rascunho
+                                                </span>
+                                                <div class="flex space-x-1">
+                                                    <button class="text-muted-foreground hover:text-foreground p-1" title="Visualizar">
+                                                        <i class="fas fa-eye"></i>
+                                                    </button>
+                                                    <button class="text-muted-foreground hover:text-foreground p-1" title="Editar">
+                                                        <i class="fas fa-edit"></i>
+                                                    </button>
+                                                    <button class="text-muted-foreground hover:text-foreground p-1" title="Duplicar">
+                                                        <i class="fas fa-copy"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <p class="text-sm text-muted-foreground" data-mock="true">4 refeições configuradas • Última edição em 22/08/2025</p>
+                                    </div>
+                                </div>
+                                <!-- @END_MAP -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+    <!-- @END_COMPONENT: PatientDetailsScreen -->
+
+    <!-- @COMPONENT: PrescriptionEditor -->
+    <!-- Prescription Editor -->
+    <div id="prescriptionEditor" class="screen">
+        <div class="min-h-screen bg-background">
+            <!-- Header -->
+            <header class="bg-card border-b border-border px-4 py-3">
+                <div class="max-w-7xl mx-auto flex items-center justify-between">
+                    <div class="flex items-center space-x-4">
+                        <button class="text-muted-foreground hover:text-foreground" onclick="showScreen('patientDetails')">
+                            <i class="fas fa-arrow-left"></i>
+                        </button>
+                        <div>
+                            <input type="text" class="text-xl font-bold border-none outline-none bg-transparent" 
+                                   value="Plano Semanal 28/08/2025" data-bind="prescription.title" />
+                            <p class="text-sm text-muted-foreground">
+                                <span data-bind="patient.name" data-mock="true">Maria Silva</span> • 
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                    Rascunho
+                                </span>
+                            </p>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-3">
+                        <button class="bg-secondary text-secondary-foreground px-4 py-2 rounded-md hover:bg-secondary/80 transition-colors"
+                                data-event="click:saveDraft" data-implementation="Should save prescription as draft">
+                            Salvar Rascunho
+                        </button>
+                        <button class="bg-accent text-accent-foreground px-4 py-2 rounded-md hover:bg-accent/90 transition-colors font-medium"
+                                data-event="click:publish" data-implementation="Should publish prescription and make it visible to patient">
+                            Publicar
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            <main class="max-w-4xl mx-auto p-4 lg:p-6">
+                <!-- Prescription Tools -->
+                <div class="mb-6 flex flex-wrap gap-3">
+                    <button class="bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90 transition-colors flex items-center space-x-2"
+                            data-event="click:addMeal" data-implementation="Should add new meal to prescription">
+                        <i class="fas fa-plus"></i>
+                        <span>Adicionar Refeição</span>
+                    </button>
+                    <button class="bg-muted text-muted-foreground px-4 py-2 rounded-md hover:bg-muted/80 transition-colors flex items-center space-x-2"
+                            data-event="click:duplicatePrescription">
+                        <i class="fas fa-copy"></i>
+                        <span>Duplicar Prescrição Anterior</span>
+                    </button>
+                </div>
+
+                <!-- Meals List -->
+                <!-- @STATE: meals: array = [] -->
+                <div class="space-y-6" data-implementation="Should be sortable via drag and drop">
+                    <!-- @MAP: meals.map(meal => ( -->
+                    <!-- Meal Card 1 -->
+                    <div class="bg-card rounded-lg border border-border shadow-sm">
+                        <div class="p-4 border-b border-border bg-muted/20">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center space-x-3">
+                                    <div class="drag-handle text-muted-foreground">
+                                        <i class="fas fa-grip-vertical"></i>
+                                    </div>
+                                    <input type="text" class="text-lg font-medium bg-transparent border-none outline-none focus:ring-2 focus:ring-ring rounded px-2 py-1" 
+                                           value="Café da manhã" data-bind="meal.name" />
+                                </div>
+                                <button class="text-destructive hover:text-destructive/80 p-1" data-event="click:deleteMeal">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="p-4">
+                            <!-- Meal Items -->
+                            <div class="space-y-3 mb-4" data-implementation="Should be sortable via drag and drop">
+                                <!-- @MAP: meal.items.map(item => ( -->
+                                <div class="flex items-center space-x-3 bg-background border border-border rounded-md p-3">
+                                    <div class="drag-handle text-muted-foreground">
+                                        <i class="fas fa-grip-vertical text-xs"></i>
+                                    </div>
+                                    <div class="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        <input type="text" placeholder="Ex: Pão francês" 
+                                               class="w-full p-2 border border-input rounded focus:ring-2 focus:ring-ring focus:border-transparent text-sm"
+                                               value="Pão francês" data-bind="item.description" data-mock="true" />
+                                        <input type="text" placeholder="Ex: 1 unidade (50g)" 
+                                               class="w-full p-2 border border-input rounded focus:ring-2 focus:ring-ring focus:border-transparent text-sm"
+                                               value="1 unidade (50g)" data-bind="item.amount" data-mock="true" />
+                                    </div>
+                                    <button class="text-destructive hover:text-destructive/80 p-1" data-event="click:deleteItem">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                                
+                                <div class="flex items-center space-x-3 bg-background border border-border rounded-md p-3">
+                                    <div class="drag-handle text-muted-foreground">
+                                        <i class="fas fa-grip-vertical text-xs"></i>
+                                    </div>
+                                    <div class="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        <input type="text" placeholder="Ex: Pão francês" 
+                                               class="w-full p-2 border border-input rounded focus:ring-2 focus:ring-ring focus:border-transparent text-sm"
+                                               value="Ovos mexidos" data-mock="true" />
+                                        <input type="text" placeholder="Ex: 1 unidade (50g)" 
+                                               class="w-full p-2 border border-input rounded focus:ring-2 focus:ring-ring focus:border-transparent text-sm"
+                                               value="2 unidades" data-mock="true" />
+                                    </div>
+                                    <button class="text-destructive hover:text-destructive/80 p-1">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+
+                                <div class="flex items-center space-x-3 bg-background border border-border rounded-md p-3">
+                                    <div class="drag-handle text-muted-foreground">
+                                        <i class="fas fa-grip-vertical text-xs"></i>
+                                    </div>
+                                    <div class="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        <input type="text" placeholder="Ex: Pão francês" 
+                                               class="w-full p-2 border border-input rounded focus:ring-2 focus:ring-ring focus:border-transparent text-sm"
+                                               value="Suco de laranja" data-mock="true" />
+                                        <input type="text" placeholder="Ex: 1 unidade (50g)" 
+                                               class="w-full p-2 border border-input rounded focus:ring-2 focus:ring-ring focus:border-transparent text-sm"
+                                               value="200 ml" data-mock="true" />
+                                    </div>
+                                    <button class="text-destructive hover:text-destructive/80 p-1">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                                <!-- @END_MAP -->
+                            </div>
+                            
+                            <button class="w-full bg-muted text-muted-foreground py-2 rounded-md hover:bg-muted/80 transition-colors text-sm mb-4 flex items-center justify-center space-x-2"
+                                    data-event="click:addItem" data-implementation="Should add new item to meal">
+                                <i class="fas fa-plus"></i>
+                                <span>Adicionar Item</span>
+                            </button>
+                            
+                            <div>
+                                <label class="block text-sm font-medium mb-2">Observações da Refeição</label>
+                                <textarea class="w-full p-2 border border-input rounded-md focus:ring-2 focus:ring-ring focus:border-transparent text-sm h-20" 
+                                          placeholder="Observações específicas desta refeição..."
+                                          data-bind="meal.notes" data-mock="true">Beber água ao acordar.</textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Meal Card 2 -->
+                    <div class="bg-card rounded-lg border border-border shadow-sm">
+                        <div class="p-4 border-b border-border bg-muted/20">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center space-x-3">
+                                    <div class="drag-handle text-muted-foreground">
+                                        <i class="fas fa-grip-vertical"></i>
+                                    </div>
+                                    <input type="text" class="text-lg font-medium bg-transparent border-none outline-none focus:ring-2 focus:ring-ring rounded px-2 py-1" 
+                                           value="Almoço" data-mock="true" />
+                                </div>
+                                <button class="text-destructive hover:text-destructive/80 p-1">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="p-4">
+                            <div class="space-y-3 mb-4">
+                                <div class="flex items-center space-x-3 bg-background border border-border rounded-md p-3">
+                                    <div class="drag-handle text-muted-foreground">
+                                        <i class="fas fa-grip-vertical text-xs"></i>
+                                    </div>
+                                    <div class="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        <input type="text" class="w-full p-2 border border-input rounded focus:ring-2 focus:ring-ring focus:border-transparent text-sm"
+                                               value="Arroz integral" data-mock="true" />
+                                        <input type="text" class="w-full p-2 border border-input rounded focus:ring-2 focus:ring-ring focus:border-transparent text-sm"
+                                               value="4 colheres (120g)" data-mock="true" />
+                                    </div>
+                                    <button class="text-destructive hover:text-destructive/80 p-1">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                                
+                                <div class="flex items-center space-x-3 bg-background border border-border rounded-md p-3">
+                                    <div class="drag-handle text-muted-foreground">
+                                        <i class="fas fa-grip-vertical text-xs"></i>
+                                    </div>
+                                    <div class="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        <input type="text" class="w-full p-2 border border-input rounded focus:ring-2 focus:ring-ring focus:border-transparent text-sm"
+                                               value="Feijão preto" data-mock="true" />
+                                        <input type="text" class="w-full p-2 border border-input rounded focus:ring-2 focus:ring-ring focus:border-transparent text-sm"
+                                               value="1 concha (100g)" data-mock="true" />
+                                    </div>
+                                    <button class="text-destructive hover:text-destructive/80 p-1">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+
+                                <div class="flex items-center space-x-3 bg-background border border-border rounded-md p-3">
+                                    <div class="drag-handle text-muted-foreground">
+                                        <i class="fas fa-grip-vertical text-xs"></i>
+                                    </div>
+                                    <div class="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        <input type="text" class="w-full p-2 border border-input rounded focus:ring-2 focus:ring-ring focus:border-transparent text-sm"
+                                               value="Frango grelhado" data-mock="true" />
+                                        <input type="text" class="w-full p-2 border border-input rounded focus:ring-2 focus:ring-ring focus:border-transparent text-sm"
+                                               value="120g" data-mock="true" />
+                                    </div>
+                                    <button class="text-destructive hover:text-destructive/80 p-1">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <button class="w-full bg-muted text-muted-foreground py-2 rounded-md hover:bg-muted/80 transition-colors text-sm mb-4 flex items-center justify-center space-x-2">
+                                <i class="fas fa-plus"></i>
+                                <span>Adicionar Item</span>
+                            </button>
+                            
+                            <div>
+                                <label class="block text-sm font-medium mb-2">Observações da Refeição</label>
+                                <textarea class="w-full p-2 border border-input rounded-md focus:ring-2 focus:ring-ring focus:border-transparent text-sm h-20" 
+                                          placeholder="Observações específicas desta refeição..."
+                                          data-mock="true">Preferir pouco óleo no preparo.</textarea>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- @END_MAP -->
+                </div>
+
+                <!-- General Notes -->
+                <div class="mt-8 bg-card rounded-lg border border-border p-6">
+                    <label class="block text-lg font-medium mb-3">Observações Gerais</label>
+                    <textarea class="w-full p-3 border border-input rounded-md focus:ring-2 focus:ring-ring focus:border-transparent h-24" 
+                              placeholder="Observações gerais sobre a prescrição..."
+                              data-bind="prescription.generalNotes" data-mock="true">Ajustes semanais conforme retorno do paciente. Manter hidratação adequada.</textarea>
+                </div>
+            </main>
+        </div>
+    </div>
+    <!-- @END_COMPONENT: PrescriptionEditor -->
+
+    <!-- @COMPONENT: PatientDashboard -->
+    <!-- Patient Dashboard -->
+    <div id="patientDashboard" class="screen">
+        <div class="min-h-screen bg-background">
+            <!-- Header -->
+            <header class="bg-card border-b border-border px-4 py-3">
+                <div class="max-w-7xl mx-auto flex items-center justify-between">
+                    <div class="flex items-center space-x-4">
+                        <h1 class="text-xl font-bold text-primary">WebDiet</h1>
+                        <span class="text-muted-foreground">|</span>
+                        <span class="text-foreground font-medium">Minha Prescrição</span>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <span class="text-sm text-muted-foreground" data-bind="patient.name" data-mock="true">Maria Silva</span>
+                        <button class="text-muted-foreground hover:text-foreground" data-event="click:logout">
+                            <i class="fas fa-sign-out-alt"></i>
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            <main class="max-w-4xl mx-auto p-4 lg:p-6">
+                <!-- Prescription Header -->
+                <div class="mb-6 bg-card rounded-lg border border-border p-6">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-4">
+                        <div>
+                            <h2 class="text-2xl font-bold mb-2" data-bind="prescription.title" data-mock="true">Plano Semanal 28/08/2025</h2>
+                            <p class="text-muted-foreground">
+                                Publicado em <span data-bind="prescription.publishedAt" data-mock="true">28 de agosto de 2025</span> por 
+                                <span data-bind="nutritionist.name" data-mock="true">Dr. Ana Silva</span>
+                            </p>
+                        </div>
+                        <button class="bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90 transition-colors flex items-center space-x-2"
+                                onclick="showScreen('prescriptionPrint')" data-event="click:printPrescription">
+                            <i class="fas fa-print"></i>
+                            <span>Imprimir</span>
+                        </button>
+                    </div>
+                    
+                    <div class="bg-muted/30 p-4 rounded-md">
+                        <p class="text-sm" data-bind="prescription.generalNotes" data-mock="true">
+                            Ajustes semanais conforme retorno do paciente. Manter hidratação adequada.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Meals Display -->
+                <div class="space-y-6">
+                    <!-- @MAP: meals.map(meal => ( -->
+                    <div class="bg-card rounded-lg border border-border shadow-sm">
+                        <div class="p-4 border-b border-border bg-accent/5">
+                            <h3 class="text-lg font-semibold" data-bind="meal.name" data-mock="true">Café da manhã</h3>
+                        </div>
+                        <div class="p-4">
+                            <div class="grid gap-3 mb-4">
+                                <!-- @MAP: meal.items.map(item => ( -->
+                                <div class="flex items-center justify-between bg-background border border-border rounded-md p-3">
+                                    <div class="flex-1">
+                                        <span class="font-medium" data-bind="item.description" data-mock="true">Pão francês</span>
+                                    </div>
+                                    <div class="text-muted-foreground" data-bind="item.amount" data-mock="true">1 unidade (50g)</div>
+                                </div>
+                                <div class="flex items-center justify-between bg-background border border-border rounded-md p-3">
+                                    <div class="flex-1">
+                                        <span class="font-medium" data-mock="true">Ovos mexidos</span>
+                                    </div>
+                                    <div class="text-muted-foreground" data-mock="true">2 unidades</div>
+                                </div>
+                                <div class="flex items-center justify-between bg-background border border-border rounded-md p-3">
+                                    <div class="flex-1">
+                                        <span class="font-medium" data-mock="true">Suco de laranja</span>
+                                    </div>
+                                    <div class="text-muted-foreground" data-mock="true">200 ml</div>
+                                </div>
+                                <!-- @END_MAP -->
+                            </div>
+                            
+                            <div class="bg-muted/30 p-3 rounded-md">
+                                <p class="text-sm text-muted-foreground" data-bind="meal.notes" data-mock="true">
+                                    <i class="fas fa-info-circle mr-2"></i>
+                                    Beber água ao acordar.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-card rounded-lg border border-border shadow-sm">
+                        <div class="p-4 border-b border-border bg-accent/5">
+                            <h3 class="text-lg font-semibold" data-mock="true">Almoço</h3>
+                        </div>
+                        <div class="p-4">
+                            <div class="grid gap-3 mb-4">
+                                <div class="flex items-center justify-between bg-background border border-border rounded-md p-3">
+                                    <div class="flex-1">
+                                        <span class="font-medium" data-mock="true">Arroz integral</span>
+                                    </div>
+                                    <div class="text-muted-foreground" data-mock="true">4 colheres (120g)</div>
+                                </div>
+                                <div class="flex items-center justify-between bg-background border border-border rounded-md p-3">
+                                    <div class="flex-1">
+                                        <span class="font-medium" data-mock="true">Feijão preto</span>
+                                    </div>
+                                    <div class="text-muted-foreground" data-mock="true">1 concha (100g)</div>
+                                </div>
+                                <div class="flex items-center justify-between bg-background border border-border rounded-md p-3">
+                                    <div class="flex-1">
+                                        <span class="font-medium" data-mock="true">Frango grelhado</span>
+                                    </div>
+                                    <div class="text-muted-foreground" data-mock="true">120g</div>
+                                </div>
+                                <div class="flex items-center justify-between bg-background border border-border rounded-md p-3">
+                                    <div class="flex-1">
+                                        <span class="font-medium" data-mock="true">Salada verde</span>
+                                    </div>
+                                    <div class="text-muted-foreground" data-mock="true">à vontade</div>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-muted/30 p-3 rounded-md">
+                                <p class="text-sm text-muted-foreground" data-mock="true">
+                                    <i class="fas fa-info-circle mr-2"></i>
+                                    Preferir pouco óleo no preparo.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- @END_MAP -->
+                </div>
+            </main>
+        </div>
+    </div>
+    <!-- @END_COMPONENT: PatientDashboard -->
+
+    <!-- @COMPONENT: PrescriptionPrint -->
+    <!-- Prescription Print View -->
+    <div id="prescriptionPrint" class="screen">
+        <div class="min-h-screen bg-white text-gray-900">
+            <!-- Print Header (No Print Controls) -->
+            <header class="no-print bg-card border-b border-border px-4 py-3">
+                <div class="max-w-7xl mx-auto flex items-center justify-between">
+                    <div class="flex items-center space-x-4">
+                        <button class="text-muted-foreground hover:text-foreground" onclick="showScreen('patientDashboard')">
+                            <i class="fas fa-arrow-left"></i>
+                        </button>
+                        <h1 class="text-xl font-bold">Visualização para Impressão</h1>
+                    </div>
+                    <div class="flex items-center space-x-3">
+                        <button class="bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90 transition-colors"
+                                onclick="window.print()" data-event="click:print">
+                            <i class="fas fa-print mr-2"></i>
+                            Imprimir
+                        </button>
+                        <button class="bg-secondary text-secondary-foreground px-4 py-2 rounded-md hover:bg-secondary/80 transition-colors"
+                                data-event="click:exportPDF" data-implementation="Should generate and download PDF">
+                            <i class="fas fa-file-pdf mr-2"></i>
+                            Salvar PDF
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            <main class="max-w-4xl mx-auto p-8">
+                <!-- Print Document -->
+                <div class="bg-white">
+                    <!-- Document Header -->
+                    <div class="text-center mb-8 border-b-2 border-gray-200 pb-6">
+                        <h1 class="text-3xl font-bold text-gray-800 mb-2">PRESCRIÇÃO NUTRICIONAL</h1>
+                        <div class="text-lg text-gray-600">
+                            <div data-bind="nutritionist.name" data-mock="true">Dr. Ana Silva</div>
+                            <div class="text-sm" data-mock="true">CRN: 12345 • Nutricionista</div>
+                        </div>
+                    </div>
+
+                    <!-- Patient Info -->
+                    <div class="mb-8 bg-gray-50 p-6 rounded">
+                        <h2 class="text-xl font-semibold mb-4">Dados do Paciente</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                            <div><strong>Nome:</strong> <span data-bind="patient.name" data-mock="true">Maria Silva</span></div>
+                            <div><strong>Email:</strong> <span data-bind="patient.email" data-mock="true">maria@exemplo.com</span></div>
+                            <div><strong>Idade:</strong> <span data-bind="patient.age" data-mock="true">34 anos</span></div>
+                            <div><strong>Sexo:</strong> <span data-bind="patient.sex" data-mock="true">Feminino</span></div>
+                            <div><strong>Altura:</strong> <span data-bind="patient.height" data-mock="true">165 cm</span></div>
+                            <div><strong>Peso:</strong> <span data-bind="patient.weight" data-mock="true">64 kg</span></div>
+                        </div>
+                    </div>
+
+                    <!-- Prescription Title -->
+                    <div class="mb-8 text-center">
+                        <h2 class="text-2xl font-bold text-gray-800" data-bind="prescription.title" data-mock="true">Plano Semanal 28/08/2025</h2>
+                        <p class="text-gray-600 mt-2">Publicado em <span data-bind="prescription.publishedAt" data-mock="true">28 de agosto de 2025</span></p>
+                    </div>
+
+                    <!-- Meals -->
+                    <div class="space-y-8">
+                        <!-- @MAP: meals.map(meal => ( -->
+                        <div class="break-inside-avoid">
+                            <div class="bg-blue-50 p-4 rounded-t-lg border-l-4 border-blue-500">
+                                <h3 class="text-xl font-semibold text-gray-800" data-bind="meal.name" data-mock="true">Café da manhã</h3>
+                            </div>
+                            <div class="border border-t-0 border-gray-200 rounded-b-lg p-4">
+                                <ul class="space-y-3">
+                                    <!-- @MAP: meal.items.map(item => ( -->
+                                    <li class="flex justify-between items-center py-2 border-b border-gray-100 last:border-b-0">
+                                        <span class="font-medium" data-bind="item.description" data-mock="true">Pão francês</span>
+                                        <span class="text-gray-600" data-bind="item.amount" data-mock="true">1 unidade (50g)</span>
+                                    </li>
+                                    <li class="flex justify-between items-center py-2 border-b border-gray-100 last:border-b-0">
+                                        <span class="font-medium" data-mock="true">Ovos mexidos</span>
+                                        <span class="text-gray-600" data-mock="true">2 unidades</span>
+                                    </li>
+                                    <li class="flex justify-between items-center py-2 border-b border-gray-100 last:border-b-0">
+                                        <span class="font-medium" data-mock="true">Suco de laranja</span>
+                                        <span class="text-gray-600" data-mock="true">200 ml</span>
+                                    </li>
+                                    <!-- @END_MAP -->
+                                </ul>
+                                <div class="mt-4 p-3 bg-yellow-50 rounded border-l-4 border-yellow-400">
+                                    <p class="text-sm text-gray-700" data-bind="meal.notes" data-mock="true">
+                                        <strong>Observação:</strong> Beber água ao acordar.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="break-inside-avoid">
+                            <div class="bg-blue-50 p-4 rounded-t-lg border-l-4 border-blue-500">
+                                <h3 class="text-xl font-semibold text-gray-800" data-mock="true">Almoço</h3>
+                            </div>
+                            <div class="border border-t-0 border-gray-200 rounded-b-lg p-4">
+                                <ul class="space-y-3">
+                                    <li class="flex justify-between items-center py-2 border-b border-gray-100">
+                                        <span class="font-medium" data-mock="true">Arroz integral</span>
+                                        <span class="text-gray-600" data-mock="true">4 colheres (120g)</span>
+                                    </li>
+                                    <li class="flex justify-between items-center py-2 border-b border-gray-100">
+                                        <span class="font-medium" data-mock="true">Feijão preto</span>
+                                        <span class="text-gray-600" data-mock="true">1 concha (100g)</span>
+                                    </li>
+                                    <li class="flex justify-between items-center py-2 border-b border-gray-100">
+                                        <span class="font-medium" data-mock="true">Frango grelhado</span>
+                                        <span class="text-gray-600" data-mock="true">120g</span>
+                                    </li>
+                                    <li class="flex justify-between items-center py-2">
+                                        <span class="font-medium" data-mock="true">Salada verde</span>
+                                        <span class="text-gray-600" data-mock="true">à vontade</span>
+                                    </li>
+                                </ul>
+                                <div class="mt-4 p-3 bg-yellow-50 rounded border-l-4 border-yellow-400">
+                                    <p class="text-sm text-gray-700" data-mock="true">
+                                        <strong>Observação:</strong> Preferir pouco óleo no preparo.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- @END_MAP -->
+                    </div>
+
+                    <!-- General Notes -->
+                    <div class="mt-8 p-6 bg-gray-50 rounded-lg border border-gray-200">
+                        <h3 class="text-lg font-semibold mb-3">Observações Gerais</h3>
+                        <p class="text-gray-700" data-bind="prescription.generalNotes" data-mock="true">
+                            Ajustes semanais conforme retorno do paciente. Manter hidratação adequada.
+                        </p>
+                    </div>
+
+                    <!-- Footer -->
+                    <div class="mt-12 pt-6 border-t-2 border-gray-200 text-center text-sm text-gray-600">
+                        <p data-mock="true">Esta prescrição foi elaborada especificamente para Maria Silva.</p>
+                        <p class="mt-2">Em caso de dúvidas, entre em contato com seu nutricionista.</p>
+                        <p class="mt-4 font-semibold">Dr. Ana Silva - CRN: 12345</p>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+    <!-- @END_COMPONENT: PatientDashboard -->
+
+    <!-- Navigation Script -->
+    <script>
+        // TODO: Implement proper authentication, routing, and data management
+        // This is just for demo navigation between screens
+        
+        (function() {
+            function showScreen(screenId) {
+                // Hide all screens
+                document.querySelectorAll('.screen').forEach(screen => {
+                    screen.classList.remove('active');
+                });
+                
+                // Show selected screen
+                const targetScreen = document.getElementById(screenId);
+                if (targetScreen) {
+                    targetScreen.classList.add('active');
+                }
+            }
+            
+            // Make showScreen globally available
+            window.showScreen = showScreen;
+            
+            // Demo navigation buttons
+            const navButtons = document.querySelectorAll('[data-event]');
+            navButtons.forEach(button => {
+                button.addEventListener('click', function(e) {
+                    const event = this.getAttribute('data-event');
+                    console.log('Event triggered:', event);
+                    // TODO: Implement actual event handling based on data-event attribute
+                });
+            });
+            
+            // Demo form submissions
+            const forms = document.querySelectorAll('form');
+            forms.forEach(form => {
+                form.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    console.log('Form submitted:', this);
+                    // TODO: Implement actual form submission logic
+                });
+            });
+            
+            // Demo search functionality
+            const searchInputs = document.querySelectorAll('input[type="search"]');
+            searchInputs.forEach(input => {
+                input.addEventListener('input', function(e) {
+                    console.log('Search query:', e.target.value);
+                    // TODO: Implement actual search filtering
+                });
+            });
+            
+            // Demo drag and drop setup (visual feedback only)
+            const dragHandles = document.querySelectorAll('.drag-handle');
+            dragHandles.forEach(handle => {
+                handle.addEventListener('mousedown', function() {
+                    console.log('Drag started');
+                    // TODO: Implement actual drag and drop functionality using a library like react-beautiful-dnd
+                });
+            });
+            
+        })();
+    </script>
+
+    <!-- Demo Screen Navigation Panel (Development Only) -->
+    <div class="fixed bottom-4 right-4 bg-card border border-border rounded-lg shadow-lg p-4 no-print z-50">
+        <div class="text-xs font-semibold mb-3 text-muted-foreground">DEMO NAVIGATION</div>
+        <div class="space-y-2 text-sm">
+            <button onclick="showScreen('loginScreen')" class="block w-full text-left px-3 py-1 rounded hover:bg-muted/50 transition-colors">
+                Login
+            </button>
+            <button onclick="showScreen('nutritionistDashboard')" class="block w-full text-left px-3 py-1 rounded hover:bg-muted/50 transition-colors">
+                Lista Pacientes
+            </button>
+            <button onclick="showScreen('newPatientForm')" class="block w-full text-left px-3 py-1 rounded hover:bg-muted/50 transition-colors">
+                Novo Paciente
+            </button>
+            <button onclick="showScreen('patientDetails')" class="block w-full text-left px-3 py-1 rounded hover:bg-muted/50 transition-colors">
+                Detalhes Paciente
+            </button>
+            <button onclick="showScreen('prescriptionEditor')" class="block w-full text-left px-3 py-1 rounded hover:bg-muted/50 transition-colors">
+                Editor Prescrição
+            </button>
+            <button onclick="showScreen('patientDashboard')" class="block w-full text-left px-3 py-1 rounded hover:bg-muted/50 transition-colors">
+                Visão Paciente
+            </button>
+            <button onclick="showScreen('prescriptionPrint')" class="block w-full text-left px-3 py-1 rounded hover:bg-muted/50 transition-colors">
+                Impressão
+            </button>
+        </div>
+    </div>
+
+</body>
+</html>

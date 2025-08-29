@@ -1,6 +1,2 @@
+git add ..env\nnode_modules/\ndist/
 node_modules
-dist
-.DS_Store
-server/public
-vite.config.ts.*
-*.tar.gz

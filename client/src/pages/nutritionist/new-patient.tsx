@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useForm } from "react-hook-form";
@@ -11,14 +10,21 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
-import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { insertPatientSchema } from "@shared/schema";
 
+// O schema do formulário agora corresponde exatamente ao schema do backend.
+// A conversão de tipos será feita pelo Zod.
 const formSchema = insertPatientSchema.omit({ ownerId: true }).extend({
-  heightCm: z.coerce.number().positive().optional(),
-  weightKg: z.coerce.number().positive().optional(),
+  // Pré-processa o campo de altura: se for uma string vazia, transforma em 'undefined'.
+  heightCm: z.preprocess(
+    (val) => (val === "" ? undefined : val),
+    z.coerce.number().optional()
+  ),
+  // O campo de peso (decimal) é tratado como string, mas validamos seu formato.
+  weightKg: z.string().regex(/^\d+(\.\d{1,2})?$/, "Peso inválido. Ex: 65.50").optional().or(z.literal('')),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -36,14 +42,19 @@ export default function NewPatientPage() {
       birthDate: "",
       sex: undefined,
       heightCm: undefined,
-      weightKg: undefined,
+      weightKg: "", // Inicia como string vazia
       notes: "",
     },
   });
 
   const createPatientMutation = useMutation({
     mutationFn: async (data: FormData) => {
-      return await apiRequest("POST", "/api/patients", data);
+      // Limpa os campos opcionais que não foram preenchidos
+      const payload = { ...data };
+      if (payload.weightKg === "") {
+        delete payload.weightKg;
+      }
+      return await apiRequest("POST", "/api/patients", payload);
     },
     onSuccess: () => {
       toast({
@@ -54,9 +65,10 @@ export default function NewPatientPage() {
       setLocation("/patients");
     },
     onError: (error) => {
+      console.error("Erro ao criar paciente:", error);
       toast({
         title: "Erro",
-        description: "Falha ao cadastrar paciente. Tente novamente.",
+        description: "Falha ao cadastrar paciente. Verifique os dados e tente novamente.",
         variant: "destructive",
       });
     },
@@ -88,6 +100,7 @@ export default function NewPatientPage() {
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Campos Name, Email, BirthDate, Sex (sem alterações) */}
                   <div className="md:col-span-2">
                     <FormField
                       control={form.control}
@@ -96,17 +109,13 @@ export default function NewPatientPage() {
                         <FormItem>
                           <FormLabel>Nome Completo</FormLabel>
                           <FormControl>
-                            <Input 
-                              placeholder="Nome do paciente" 
-                              {...field} 
-                              data-testid="input-patient-name"
-                            />
+                            <Input placeholder="Nome do paciente" {...field} />
                           </FormControl>
+                          <FormMessage />
                         </FormItem>
                       )}
                     />
                   </div>
-                  
                   <div className="md:col-span-2">
                     <FormField
                       control={form.control}
@@ -115,18 +124,13 @@ export default function NewPatientPage() {
                         <FormItem>
                           <FormLabel>Email</FormLabel>
                           <FormControl>
-                            <Input 
-                              type="email" 
-                              placeholder="email@exemplo.com" 
-                              {...field} 
-                              data-testid="input-patient-email"
-                            />
+                            <Input type="email" placeholder="email@exemplo.com" {...field} />
                           </FormControl>
+                          <FormMessage />
                         </FormItem>
                       )}
                     />
                   </div>
-                  
                   <div>
                     <FormField
                       control={form.control}
@@ -135,18 +139,13 @@ export default function NewPatientPage() {
                         <FormItem>
                           <FormLabel>Data de Nascimento</FormLabel>
                           <FormControl>
-                            <Input 
-                              type="date" 
-                              {...field} 
-                              value={field.value || ""}
-                              data-testid="input-patient-birthdate"
-                            />
+                            <Input type="date" {...field} value={field.value || ""} />
                           </FormControl>
+                          <FormMessage />
                         </FormItem>
                       )}
                     />
                   </div>
-                  
                   <div>
                     <FormField
                       control={form.control}
@@ -154,11 +153,9 @@ export default function NewPatientPage() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Sexo</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value || undefined}>
+                          <Select onValueChange={field.onChange} value={field.value || ""}>
                             <FormControl>
-                              <SelectTrigger data-testid="select-patient-sex">
-                                <SelectValue placeholder="Selecionar" />
-                              </SelectTrigger>
+                              <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
                             </FormControl>
                             <SelectContent>
                               <SelectItem value="F">Feminino</SelectItem>
@@ -166,11 +163,13 @@ export default function NewPatientPage() {
                               <SelectItem value="Outro">Outro</SelectItem>
                             </SelectContent>
                           </Select>
+                          <FormMessage />
                         </FormItem>
                       )}
                     />
                   </div>
                   
+                  {/* Campo Height (Altura) */}
                   <div>
                     <FormField
                       control={form.control}
@@ -181,16 +180,20 @@ export default function NewPatientPage() {
                           <FormControl>
                             <Input 
                               type="number" 
-                              placeholder="165" 
-                              {...field} 
-                              data-testid="input-patient-height"
+                              placeholder="165"
+                              // Mostra string vazia se o valor for undefined
+                              value={field.value ?? ''}
+                              // Passa o valor como string para o Zod processar
+                              onChange={(e) => field.onChange(e.target.value)}
                             />
                           </FormControl>
+                          <FormMessage />
                         </FormItem>
                       )}
                     />
                   </div>
                   
+                  {/* Campo Weight (Peso) */}
                   <div>
                     <FormField
                       control={form.control}
@@ -201,18 +204,20 @@ export default function NewPatientPage() {
                           <FormControl>
                             <Input 
                               type="number" 
-                              step="0.1" 
-                              placeholder="64.5" 
-                              {...field} 
-                              data-testid="input-patient-weight"
+                              step="0.01" 
+                              placeholder="64.50"
+                              // O valor do campo é tratado como string
+                              {...field}
                             />
                           </FormControl>
+                          <FormMessage />
                         </FormItem>
                       )}
                     />
                   </div>
                 </div>
                 
+                {/* Campo Notes (Observações) */}
                 <FormField
                   control={form.control}
                   name="notes"
@@ -220,34 +225,18 @@ export default function NewPatientPage() {
                     <FormItem>
                       <FormLabel>Observações</FormLabel>
                       <FormControl>
-                        <Textarea 
-                          placeholder="Observações adicionais sobre o paciente..." 
-                          className="h-24" 
-                          {...field} 
-                          value={field.value || ""}
-                          data-testid="textarea-patient-notes"
-                        />
+                        <Textarea placeholder="Observações..." className="h-24" {...field} value={field.value || ""} />
                       </FormControl>
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
                 
                 <div className="flex flex-col sm:flex-row gap-3">
-                  <Button 
-                    type="button" 
-                    variant="secondary" 
-                    className="flex-1"
-                    onClick={() => setLocation("/patients")}
-                    data-testid="button-cancel"
-                  >
+                  <Button type="button" variant="secondary" className="flex-1" onClick={() => setLocation("/patients")}>
                     Cancelar
                   </Button>
-                  <Button 
-                    type="submit" 
-                    className="flex-1"
-                    disabled={createPatientMutation.isPending}
-                    data-testid="button-create-patient"
-                  >
+                  <Button type="submit" className="flex-1" disabled={createPatientMutation.isPending}>
                     {createPatientMutation.isPending ? "Cadastrando..." : "Cadastrar Paciente"}
                   </Button>
                 </div>

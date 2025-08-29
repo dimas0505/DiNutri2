@@ -1,8 +1,11 @@
+// Arquivo: server/routes.ts
+
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./replitAuth";
+import { setupAuth, isAuthenticated } from "./auth";
 import { insertPatientSchema, insertPrescriptionSchema, updatePrescriptionSchema } from "@shared/schema";
+import { z } from "zod"; // <-- ADICIONADO AQUI
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
@@ -11,8 +14,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth routes
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = req.user;
       res.json(user);
     } catch (error) {
       console.error("Error fetching user:", error);
@@ -23,7 +25,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Patient routes
   app.get('/api/patients', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const patients = await storage.getPatientsByOwner(userId);
       res.json(patients);
     } catch (error) {
@@ -34,7 +36,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/patients', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const validatedData = insertPatientSchema.parse({
         ...req.body,
         ownerId: userId,
@@ -42,8 +44,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const patient = await storage.createPatient(validatedData);
       res.json(patient);
     } catch (error) {
+      // --- BLOCO DE ERRO MELHORADO ---
+      if (error instanceof z.ZodError) {
+        console.error("Zod validation error:", error.flatten());
+        return res.status(400).json({ message: "Dados inválidos.", errors: error.flatten() });
+      }
       console.error("Error creating patient:", error);
       res.status(400).json({ message: "Failed to create patient" });
+      // --- FIM DA MELHORIA ---
     }
   });
 
@@ -71,7 +79,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Prescription routes
+  // Prescription routes (sem alterações)
   app.get('/api/patients/:patientId/prescriptions', isAuthenticated, async (req, res) => {
     try {
       const prescriptions = await storage.getPrescriptionsByPatient(req.params.patientId);
@@ -84,7 +92,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/prescriptions', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const validatedData = insertPrescriptionSchema.parse({
         ...req.body,
         nutritionistId: userId,
@@ -145,26 +153,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Promote user to nutritionist (for demo purposes)
-  app.post('/api/auth/promote-to-nutritionist', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      await storage.upsertUser({
-        email: req.user.claims.email,
-        firstName: req.user.claims.first_name,
-        lastName: req.user.claims.last_name,
-        profileImageUrl: req.user.claims.profile_image_url,
-        role: "nutritionist",
-      });
-      res.json({ message: "User promoted to nutritionist" });
-    } catch (error) {
-      console.error("Error promoting user:", error);
-      res.status(500).json({ message: "Failed to promote user" });
-    }
-  });
-
-  // Patient access to latest prescription
-  app.get('/api/patients/:patientId/latest-prescription', async (req, res) => {
+  app.get('/api/patients/:patientId/latest-prescription', isAuthenticated, async (req, res) => {
     try {
       const prescription = await storage.getLatestPublishedPrescription(req.params.patientId);
       if (!prescription) {
