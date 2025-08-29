@@ -40,6 +40,19 @@ export const isAuthenticated: RequestHandler = (req, res, next) => {
   res.status(401).json({ message: "Unauthorized" });
 };
 
+// Middleware que verifica se o usuário é nutricionista
+export const requireNutritionist: RequestHandler = (req: any, res, next) => {
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+  
+  if (req.user.role !== "nutritionist") {
+    return res.status(403).json({ message: "Access denied: Nutritionist role required" });
+  }
+  
+  return next();
+};
+
 // Função principal que configura toda a autenticação
 export async function setupAuth(app: Express) {
   // Validação das variáveis de ambiente do Auth0
@@ -56,19 +69,30 @@ export async function setupAuth(app: Express) {
     done: (error: any, user?: any) => void
   ) => {
     try {
-      // Extraímos os dados do perfil do Auth0
-      const userData = {
-        email: profile.emails?.[0]?.value,
-        firstName: profile.name?.givenName || profile.displayName,
-        lastName: profile.name?.familyName,
-        profileImageUrl: profile.photos?.[0]?.value, // CORREÇÃO: Usando profile.photos
-        // Vamos atribuir o papel de nutricionista por padrão para testes.
-        role: "nutritionist" as const,
-      };
-
-      if (!userData.email) {
+      const email = profile.emails?.[0]?.value;
+      
+      if (!email) {
         return done(new Error("Email not found in Auth0 profile"));
       }
+
+      // Check if this email is authorized to be a nutritionist
+      const isAuthorized = await storage.isAuthorizedNutritionist(email);
+      
+      if (!isAuthorized) {
+        // For now, deny access to unauthorized users
+        // TODO: Later implement patient invitation flow
+        return done(new Error("Access denied: You are not authorized to access this platform"));
+      }
+
+      // Extraímos os dados do perfil do Auth0
+      const userData = {
+        email: email,
+        firstName: profile.name?.givenName || profile.displayName,
+        lastName: profile.name?.familyName,
+        profileImageUrl: profile.photos?.[0]?.value,
+        // Only assign nutritionist role if authorized
+        role: "nutritionist" as const,
+      };
 
       // Salvamos ou atualizamos o usuário no nosso banco de dados
       const user = await storage.upsertUser(userData);

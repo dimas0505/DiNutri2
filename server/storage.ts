@@ -2,6 +2,8 @@ import {
   users,
   patients,
   prescriptions,
+  authorizedNutritionists,
+  patientInvitations,
   type User,
   type UpsertUser,
   type Patient,
@@ -9,6 +11,10 @@ import {
   type Prescription,
   type InsertPrescription,
   type UpdatePrescription,
+  type AuthorizedNutritionist,
+  type InsertAuthorizedNutritionist,
+  type PatientInvitation,
+  type InsertPatientInvitation,
 } from "../shared/schema.js";
 import { db } from "./db.js";
 import { eq, desc, and } from "drizzle-orm";
@@ -17,6 +23,15 @@ export interface IStorage {
   // User operations (required for Replit Auth)
   getUser(id: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
+  
+  // Authorized nutritionist operations
+  isAuthorizedNutritionist(email: string): Promise<boolean>;
+  createAuthorizedNutritionist(data: InsertAuthorizedNutritionist): Promise<AuthorizedNutritionist>;
+  
+  // Patient invitation operations
+  createPatientInvitation(data: InsertPatientInvitation): Promise<PatientInvitation>;
+  getPatientInvitationByToken(token: string): Promise<PatientInvitation | undefined>;
+  markInvitationAsUsed(token: string): Promise<PatientInvitation>;
   
   // Patient operations
   getPatientsByOwner(ownerId: string): Promise<Patient[]>;
@@ -54,6 +69,49 @@ export class DatabaseStorage implements IStorage {
       })
       .returning();
     return user;
+  }
+
+  // Authorized nutritionist operations
+  async isAuthorizedNutritionist(email: string): Promise<boolean> {
+    const [result] = await db
+      .select()
+      .from(authorizedNutritionists)
+      .where(eq(authorizedNutritionists.email, email));
+    return !!result;
+  }
+
+  async createAuthorizedNutritionist(data: InsertAuthorizedNutritionist): Promise<AuthorizedNutritionist> {
+    const [nutritionist] = await db
+      .insert(authorizedNutritionists)
+      .values(data)
+      .returning();
+    return nutritionist;
+  }
+
+  // Patient invitation operations
+  async createPatientInvitation(data: InsertPatientInvitation): Promise<PatientInvitation> {
+    const [invitation] = await db
+      .insert(patientInvitations)
+      .values(data)
+      .returning();
+    return invitation;
+  }
+
+  async getPatientInvitationByToken(token: string): Promise<PatientInvitation | undefined> {
+    const [invitation] = await db
+      .select()
+      .from(patientInvitations)
+      .where(eq(patientInvitations.token, token));
+    return invitation;
+  }
+
+  async markInvitationAsUsed(token: string): Promise<PatientInvitation> {
+    const [invitation] = await db
+      .update(patientInvitations)
+      .set({ usedAt: new Date() })
+      .where(eq(patientInvitations.token, token))
+      .returning();
+    return invitation;
   }
 
   // Patient operations

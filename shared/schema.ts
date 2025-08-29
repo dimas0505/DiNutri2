@@ -52,6 +52,24 @@ export const patients = pgTable("patients", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Authorized nutritionists table
+export const authorizedNutritionists = pgTable("authorized_nutritionists", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  email: varchar("email").unique().notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Patient invitations table
+export const patientInvitations = pgTable("patient_invitations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  nutritionistId: varchar("nutritionist_id").references(() => users.id).notNull(),
+  email: varchar("email").notNull(),
+  token: varchar("token").unique().notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  usedAt: timestamp("used_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Prescriptions table
 export const prescriptions = pgTable("prescriptions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -87,6 +105,20 @@ export const prescriptionsRelations = relations(prescriptions, ({ one }) => ({
   }),
   nutritionist: one(users, {
     fields: [prescriptions.nutritionistId],
+    references: [users.id],
+  }),
+}));
+
+export const authorizedNutritionistsRelations = relations(authorizedNutritionists, ({ one }) => ({
+  user: one(users, {
+    fields: [authorizedNutritionists.email],
+    references: [users.email],
+  }),
+}));
+
+export const patientInvitationsRelations = relations(patientInvitations, ({ one }) => ({
+  nutritionist: one(users, {
+    fields: [patientInvitations.nutritionistId],
     references: [users.id],
   }),
 }));
@@ -134,6 +166,16 @@ export const updatePrescriptionSchema = createInsertSchema(prescriptions).omit({
   updatedAt: true,
 }).partial();
 
+export const insertAuthorizedNutritionistSchema = createInsertSchema(authorizedNutritionists).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertPatientInvitationSchema = createInsertSchema(patientInvitations).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Types
 export type UpsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
@@ -142,3 +184,7 @@ export type Patient = typeof patients.$inferSelect;
 export type InsertPrescription = z.infer<typeof insertPrescriptionSchema>;
 export type UpdatePrescription = z.infer<typeof updatePrescriptionSchema>;
 export type Prescription = typeof prescriptions.$inferSelect;
+export type AuthorizedNutritionist = typeof authorizedNutritionists.$inferSelect;
+export type InsertAuthorizedNutritionist = z.infer<typeof insertAuthorizedNutritionistSchema>;
+export type PatientInvitation = typeof patientInvitations.$inferSelect;
+export type InsertPatientInvitation = z.infer<typeof insertPatientInvitationSchema>;
