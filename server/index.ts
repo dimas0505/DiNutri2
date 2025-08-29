@@ -4,6 +4,9 @@ import { registerRoutes } from "./routes.js";
 import { createServer } from "http";
 import path from "path";
 import fs from "fs";
+import { fileURLToPath } from "url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // --- Funções movidas de vite.ts para cá ---
 export function log(message: string, source = "express") {
@@ -17,8 +20,7 @@ export function log(message: string, source = "express") {
 }
 
 export function serveStatic(app: Express) {
-  // @ts-ignore
-  const distPath = path.resolve(import.meta.dirname, "..", "dist", "public");
+  const distPath = path.resolve(__dirname, "..", "dist", "public");
 
   if (!fs.existsSync(distPath)) {
     log(`A pasta de build não foi encontrada em: ${distPath}. Servindo placeholder.`);
