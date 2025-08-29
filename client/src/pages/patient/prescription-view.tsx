@@ -34,8 +34,8 @@ export default function PatientPrescriptionView() {
   // For now, we'll assume patient ID is the same as user ID
   // In a real app, you'd have a proper patient lookup system
   const { data: prescription, isLoading: prescriptionLoading, error } = useQuery<Prescription>({
-    queryKey: ["/api/patients", user?.id, "latest-prescription"],
-    enabled: !!user?.id,
+    queryKey: ["/api/patients", (user as any)?.id, "latest-prescription"],
+    enabled: !!(user as any)?.id,
     retry: false,
   });
 
@@ -121,7 +121,7 @@ export default function PatientPrescriptionView() {
                   {prescription.title}
                 </h2>
                 <p className="text-muted-foreground">
-                  Publicado em {prescription.publishedAt && formatDate(prescription.publishedAt)}
+                  Publicado em {prescription.publishedAt && formatDate(prescription.publishedAt.toString())}
                 </p>
               </div>
             </div>

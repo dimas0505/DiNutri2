@@ -127,7 +127,11 @@ export class DatabaseStorage implements IStorage {
   async updatePrescription(id: string, prescription: UpdatePrescription): Promise<Prescription> {
     const [updatedPrescription] = await db
       .update(prescriptions)
-      .set({ ...prescription, updatedAt: new Date() })
+      .set({ 
+        ...prescription, 
+        updatedAt: new Date(),
+        meals: prescription.meals as any // Type assertion for JSONB field
+      })
       .where(eq(prescriptions.id, id))
       .returning();
     return updatedPrescription;
@@ -159,7 +163,7 @@ export class DatabaseStorage implements IStorage {
         nutritionistId: original.nutritionistId,
         title,
         status: "draft",
-        meals: original.meals,
+        meals: original.meals as any, // Type assertion for JSONB field
         generalNotes: original.generalNotes,
       })
       .returning();

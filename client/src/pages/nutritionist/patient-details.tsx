@@ -36,8 +36,7 @@ export default function PatientDetailsPage({ params }: PatientDetailsPageProps) 
       };
       return await apiRequest("POST", "/api/prescriptions", newPrescription);
     },
-    onSuccess: (response) => {
-      const prescription = response.json();
+    onSuccess: (prescription) => {
       queryClient.invalidateQueries({ queryKey: ["/api/patients", params.id, "prescriptions"] });
       setLocation(`/prescriptions/${prescription.id}/edit`);
     },
@@ -55,8 +54,7 @@ export default function PatientDetailsPage({ params }: PatientDetailsPageProps) 
       const title = `Cópia - ${new Date().toLocaleDateString('pt-BR')}`;
       return await apiRequest("POST", `/api/prescriptions/${prescriptionId}/duplicate`, { title });
     },
-    onSuccess: (response) => {
-      const prescription = response.json();
+    onSuccess: (prescription) => {
       queryClient.invalidateQueries({ queryKey: ["/api/patients", params.id, "prescriptions"] });
       setLocation(`/prescriptions/${prescription.id}/edit`);
     },
@@ -249,8 +247,8 @@ export default function PatientDetailsPage({ params }: PatientDetailsPageProps) 
                         <p className="text-sm text-muted-foreground">
                           {prescription.meals.length} refeições configuradas • 
                           {prescription.status === 'published' && prescription.publishedAt
-                            ? ` Publicado em ${formatDate(prescription.publishedAt)}`
-                            : ` Última edição em ${formatDate(prescription.updatedAt)}`
+                            ? ` Publicado em ${formatDate(prescription.publishedAt.toString())}`
+                            : ` Última edição em ${formatDate(prescription.updatedAt?.toString() || '')}`
                           }
                         </p>
                       </div>

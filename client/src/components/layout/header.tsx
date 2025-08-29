@@ -44,7 +44,7 @@ export default function Header({ title, subtitle, leftElement, rightElement, chi
         <div className="flex items-center space-x-4">
           {rightElement}
           <span className="text-sm text-muted-foreground" data-testid="text-user-name">
-            {user?.firstName || user?.email}
+            {(user as any)?.firstName || (user as any)?.email}
           </span>
           <Button
             variant="ghost"

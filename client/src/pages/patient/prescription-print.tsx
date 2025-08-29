@@ -157,7 +157,7 @@ export default function PrescriptionPrintPage({ params }: PrescriptionPrintPageP
               {prescription.title}
             </h2>
             <p className="text-gray-600 mt-2">
-              Publicado em {prescription.publishedAt && formatDate(prescription.publishedAt)}
+              Publicado em {prescription.publishedAt && formatDate(prescription.publishedAt.toString())}
             </p>
           </div>
 

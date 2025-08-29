@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { ArrowLeft, Plus, Copy } from "lucide-react";
@@ -29,12 +29,16 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
 
   const { data: prescription, isLoading } = useQuery<Prescription>({
     queryKey: ["/api/prescriptions", params.id],
-    onSuccess: (data) => {
-      setTitle(data.title);
-      setGeneralNotes(data.generalNotes || "");
-      setMeals(data.meals || []);
-    },
   });
+
+  // Update state when prescription data changes
+  useEffect(() => {
+    if (prescription) {
+      setTitle(prescription.title);
+      setGeneralNotes(prescription.generalNotes || "");
+      setMeals(prescription.meals || []);
+    }
+  }, [prescription]);
 
   const { data: patient } = useQuery<Patient>({
     queryKey: ["/api/patients", prescription?.patientId],

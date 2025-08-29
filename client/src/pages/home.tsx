@@ -8,9 +8,9 @@ export default function Home() {
   const [, setLocation] = useLocation();
 
   useEffect(() => {
-    if (user?.role === "nutritionist") {
+    if ((user as any)?.role === "nutritionist") {
       setLocation("/patients");
-    } else if (user?.role === "patient") {
+    } else if ((user as any)?.role === "patient") {
       setLocation("/patient/prescription");
     }
   }, [user, setLocation]);

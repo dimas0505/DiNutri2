@@ -138,6 +138,7 @@ export default function NewPatientPage() {
                             <Input 
                               type="date" 
                               {...field} 
+                              value={field.value || ""}
                               data-testid="input-patient-birthdate"
                             />
                           </FormControl>
@@ -153,7 +154,7 @@ export default function NewPatientPage() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Sexo</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <Select onValueChange={field.onChange} defaultValue={field.value || undefined}>
                             <FormControl>
                               <SelectTrigger data-testid="select-patient-sex">
                                 <SelectValue placeholder="Selecionar" />
@@ -223,6 +224,7 @@ export default function NewPatientPage() {
                           placeholder="Observações adicionais sobre o paciente..." 
                           className="h-24" 
                           {...field} 
+                          value={field.value || ""}
                           data-testid="textarea-patient-notes"
                         />
                       </FormControl>

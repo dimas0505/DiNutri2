@@ -145,6 +145,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Promote user to nutritionist (for demo purposes)
+  app.post('/api/auth/promote-to-nutritionist', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      await storage.upsertUser({
+        email: req.user.claims.email,
+        firstName: req.user.claims.first_name,
+        lastName: req.user.claims.last_name,
+        profileImageUrl: req.user.claims.profile_image_url,
+        role: "nutritionist",
+      });
+      res.json({ message: "User promoted to nutritionist" });
+    } catch (error) {
+      console.error("Error promoting user:", error);
+      res.status(500).json({ message: "Failed to promote user" });
+    }
+  });
+
   // Patient access to latest prescription
   app.get('/api/patients/:patientId/latest-prescription', async (req, res) => {
     try {
