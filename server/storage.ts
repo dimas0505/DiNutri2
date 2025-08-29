@@ -17,7 +17,7 @@ import {
   type InsertPatientInvitation,
 } from "../shared/schema.js";
 import { db } from "./db.js";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, isNull } from "drizzle-orm";
 
 export interface IStorage {
   // User operations (required for Replit Auth)
@@ -31,11 +31,13 @@ export interface IStorage {
   // Patient invitation operations
   createPatientInvitation(data: InsertPatientInvitation): Promise<PatientInvitation>;
   getPatientInvitationByToken(token: string): Promise<PatientInvitation | undefined>;
+  getValidInvitationByEmail(email: string): Promise<PatientInvitation | undefined>;
   markInvitationAsUsed(token: string): Promise<PatientInvitation>;
   
   // Patient operations
   getPatientsByOwner(ownerId: string): Promise<Patient[]>;
   getPatient(id: string): Promise<Patient | undefined>;
+  getPatientByEmail(email: string): Promise<Patient | undefined>;
   createPatient(patient: InsertPatient): Promise<Patient>;
   updatePatient(id: string, patient: Partial<InsertPatient>): Promise<Patient>;
   
@@ -105,6 +107,25 @@ export class DatabaseStorage implements IStorage {
     return invitation;
   }
 
+  async getValidInvitationByEmail(email: string): Promise<PatientInvitation | undefined> {
+    const [invitation] = await db
+      .select()
+      .from(patientInvitations)
+      .where(
+        and(
+          eq(patientInvitations.email, email),
+          isNull(patientInvitations.usedAt) // Not used yet
+        )
+      );
+    
+    // Check if invitation is not expired
+    if (invitation && new Date() <= invitation.expiresAt) {
+      return invitation;
+    }
+    
+    return undefined;
+  }
+
   async markInvitationAsUsed(token: string): Promise<PatientInvitation> {
     const [invitation] = await db
       .update(patientInvitations)
@@ -125,6 +146,11 @@ export class DatabaseStorage implements IStorage {
 
   async getPatient(id: string): Promise<Patient | undefined> {
     const [patient] = await db.select().from(patients).where(eq(patients.id, id));
+    return patient;
+  }
+
+  async getPatientByEmail(email: string): Promise<Patient | undefined> {
+    const [patient] = await db.select().from(patients).where(eq(patients.email, email));
     return patient;
   }
 

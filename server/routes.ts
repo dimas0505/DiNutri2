@@ -3,7 +3,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage.js";
-import { setupAuth, isAuthenticated, requireNutritionist } from "./auth.js";
+import { setupAuth, isAuthenticated, requireNutritionist, requirePatient } from "./auth.js";
 import { insertPatientSchema, insertPrescriptionSchema, updatePrescriptionSchema } from "../shared/schema.js";
 import { z } from "zod";
 import { nanoid } from "nanoid";
@@ -170,6 +170,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error accepting invitation:", error);
       res.status(500).json({ message: "Failed to accept invitation" });
+    }
+  });
+
+  // Patient portal routes - for patients to view their own data
+  app.get('/api/patient/profile', requirePatient, async (req: any, res) => {
+    try {
+      const userEmail = req.user.email;
+      const patient = await storage.getPatientByEmail(userEmail);
+      
+      if (!patient) {
+        return res.status(404).json({ message: "Patient profile not found" });
+      }
+      
+      res.json(patient);
+    } catch (error) {
+      console.error("Error fetching patient profile:", error);
+      res.status(500).json({ message: "Failed to fetch patient profile" });
+    }
+  });
+
+  app.get('/api/patient/prescriptions', requirePatient, async (req: any, res) => {
+    try {
+      const userEmail = req.user.email;
+      const patient = await storage.getPatientByEmail(userEmail);
+      
+      if (!patient) {
+        return res.status(404).json({ message: "Patient profile not found" });
+      }
+      
+      const prescriptions = await storage.getPrescriptionsByPatient(patient.id);
+      res.json(prescriptions);
+    } catch (error) {
+      console.error("Error fetching patient prescriptions:", error);
+      res.status(500).json({ message: "Failed to fetch prescriptions" });
+    }
+  });
+
+  app.get('/api/patient/latest-prescription', requirePatient, async (req: any, res) => {
+    try {
+      const userEmail = req.user.email;
+      const patient = await storage.getPatientByEmail(userEmail);
+      
+      if (!patient) {
+        return res.status(404).json({ message: "Patient profile not found" });
+      }
+      
+      const prescription = await storage.getLatestPublishedPrescription(patient.id);
+      if (!prescription) {
+        return res.status(404).json({ message: "No published prescription found" });
+      }
+      
+      res.json(prescription);
+    } catch (error) {
+      console.error("Error fetching latest prescription:", error);
+      res.status(500).json({ message: "Failed to fetch latest prescription" });
     }
   });
 

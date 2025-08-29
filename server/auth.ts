@@ -53,6 +53,19 @@ export const requireNutritionist: RequestHandler = (req: any, res, next) => {
   return next();
 };
 
+// Middleware que verifica se o usuário é paciente
+export const requirePatient: RequestHandler = (req: any, res, next) => {
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+  
+  if (req.user.role !== "patient") {
+    return res.status(403).json({ message: "Access denied: Patient role required" });
+  }
+  
+  return next();
+};
+
 // Função principal que configura toda a autenticação
 export async function setupAuth(app: Express) {
   // Validação das variáveis de ambiente do Auth0
@@ -78,27 +91,44 @@ export async function setupAuth(app: Express) {
       // Check if this email is authorized to be a nutritionist
       const isAuthorized = await storage.isAuthorizedNutritionist(email);
       
-      if (!isAuthorized) {
-        // For now, deny access to unauthorized users
-        // TODO: Later implement patient invitation flow
-        return done(new Error("Access denied: You are not authorized to access this platform"));
+      if (isAuthorized) {
+        // Authorized nutritionist login
+        const userData = {
+          email: email,
+          firstName: profile.name?.givenName || profile.displayName,
+          lastName: profile.name?.familyName,
+          profileImageUrl: profile.photos?.[0]?.value,
+          role: "nutritionist" as const,
+        };
+
+        const user = await storage.upsertUser(userData);
+        return done(null, user);
       }
 
-      // Extraímos os dados do perfil do Auth0
-      const userData = {
-        email: email,
-        firstName: profile.name?.givenName || profile.displayName,
-        lastName: profile.name?.familyName,
-        profileImageUrl: profile.photos?.[0]?.value,
-        // Only assign nutritionist role if authorized
-        role: "nutritionist" as const,
-      };
-
-      // Salvamos ou atualizamos o usuário no nosso banco de dados
-      const user = await storage.upsertUser(userData);
+      // Check if there's a valid invitation for this email
+      const validInvitation = await storage.getValidInvitationByEmail(email);
       
-      // Passamos o usuário para o Passport, que o salvará na sessão
-      return done(null, user);
+      if (validInvitation) {
+        // Patient login via invitation
+        const userData = {
+          email: email,
+          firstName: profile.name?.givenName || profile.displayName,
+          lastName: profile.name?.familyName,
+          profileImageUrl: profile.photos?.[0]?.value,
+          role: "patient" as const,
+        };
+
+        const user = await storage.upsertUser(userData);
+        
+        // Mark invitation as used
+        await storage.markInvitationAsUsed(validInvitation.token);
+        
+        return done(null, user);
+      }
+
+      // No authorization found
+      return done(new Error("Access denied: You need a valid invitation to access this platform"));
+      
     } catch (error) {
       return done(error as Error);
     }
