@@ -51,32 +51,50 @@ app.use((req, res, next) => {
   next();
 });
 
-(async () => {
-  const server = await registerRoutes(app);
+// A função serverless do Vercel espera uma exportação padrão (default export) que seja uma função ou um servidor.
+// Removemos o app.listen() e exportamos o app diretamente.
+export default async function handler(req: Request, res: Response) {
+  // Registra as rotas no aplicativo Express
+  await registerRoutes(app);
 
+  // Middleware de tratamento de erros
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
     res.status(status).json({ message });
   });
 
-  // --- CORREÇÃO PRINCIPAL ---
-  // Apenas importa e usa o Vite em ambiente de desenvolvimento
-  if (process.env.NODE_ENV === 'development') {
-    const { setupVite } = await import("./vite.js");
-    await setupVite(app, server);
-  } else {
-    // Em produção, serve os arquivos estáticos do build
+  // Em produção, serve os arquivos estáticos do build
+  if (process.env.NODE_ENV !== 'development') {
     serveStatic(app);
   }
-  // --- FIM DA CORREÇÃO ---
 
-  const port = parseInt(process.env.PORT || '5000', 10);
-  server.listen({
-    port,
-    host: "0.0.0.0",
-    reusePort: true,
-  }, () => {
-    log(`serving on port ${port}`);
-  });
-})();
+  // Retorna o aplicativo Express para ser usado como uma função serverless
+  app(req, res);
+}
+
+// Em ambiente de desenvolvimento, iniciamos o servidor normalmente
+if (process.env.NODE_ENV === 'development') {
+  (async () => {
+    const server = await registerRoutes(app);
+
+    app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+      const status = err.status || err.statusCode || 500;
+      const message = err.message || "Internal Server Error";
+      res.status(status).json({ message });
+    });
+
+    const { setupVite } = await import("./vite.js");
+    await setupVite(app, server);
+
+    const port = parseInt(process.env.PORT || '5000', 10);
+    server.listen({
+      port,
+      host: "0.0.0.0",
+      reusePort: true,
+    }, () => {
+      log(`serving on port ${port}`);
+    });
+  })();
+}
+
