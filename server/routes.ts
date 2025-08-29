@@ -2,10 +2,10 @@
 
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./auth";
+import { storage } from "./storage.js";
+import { setupAuth, isAuthenticated } from "./auth.js";
 import { insertPatientSchema, insertPrescriptionSchema, updatePrescriptionSchema } from "@shared/schema";
-import { z } from "zod"; // <-- ADICIONADO AQUI
+import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
