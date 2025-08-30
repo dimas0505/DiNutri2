@@ -1,4 +1,5 @@
 import * as React from "react"
+import { getBreakpoint, isMobileBreakpoint, isTouchDevice, debounce, MOBILE_BREAKPOINTS } from "@/utils/mobile"
 
 const MOBILE_BREAKPOINT = 768
 
@@ -16,4 +17,52 @@ export function useIsMobile() {
   }, [])
 
   return !!isMobile
+}
+
+export function useBreakpoint() {
+  const [breakpoint, setBreakpoint] = React.useState<keyof typeof MOBILE_BREAKPOINTS>(() => getBreakpoint())
+
+  React.useEffect(() => {
+    const handleResize = debounce(() => {
+      setBreakpoint(getBreakpoint())
+    }, 100)
+
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
+
+  return breakpoint
+}
+
+export function useIsTouch() {
+  const [isTouch, setIsTouch] = React.useState<boolean>(() => isTouchDevice())
+
+  React.useEffect(() => {
+    setIsTouch(isTouchDevice())
+  }, [])
+
+  return isTouch
+}
+
+export function useMobileOrientation() {
+  const [orientation, setOrientation] = React.useState<'portrait' | 'landscape'>(() => {
+    if (typeof window === 'undefined') return 'portrait'
+    return window.innerHeight > window.innerWidth ? 'portrait' : 'landscape'
+  })
+
+  React.useEffect(() => {
+    const handleOrientationChange = debounce(() => {
+      setOrientation(window.innerHeight > window.innerWidth ? 'portrait' : 'landscape')
+    }, 100)
+
+    window.addEventListener('resize', handleOrientationChange)
+    window.addEventListener('orientationchange', handleOrientationChange)
+
+    return () => {
+      window.removeEventListener('resize', handleOrientationChange)
+      window.removeEventListener('orientationchange', handleOrientationChange)
+    }
+  }, [])
+
+  return orientation
 }

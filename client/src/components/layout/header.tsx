@@ -1,6 +1,9 @@
 import { LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { MobileHeader } from "@/components/mobile";
+import { cn } from "@/lib/utils";
 
 interface HeaderProps {
   title?: string;
@@ -8,17 +11,51 @@ interface HeaderProps {
   leftElement?: React.ReactNode;
   rightElement?: React.ReactNode;
   children?: React.ReactNode;
+  showBack?: boolean;
+  onBack?: () => void;
+  drawerContent?: React.ReactNode;
+  className?: string;
 }
 
-export default function Header({ title, subtitle, leftElement, rightElement, children }: HeaderProps) {
+export default function Header({ 
+  title, 
+  subtitle, 
+  leftElement, 
+  rightElement, 
+  children, 
+  showBack,
+  onBack,
+  drawerContent,
+  className
+}: HeaderProps) {
   const { user } = useAuth();
+  const isMobile = useIsMobile();
 
   const handleLogout = () => {
     window.location.href = "/api/logout";
   };
 
+  // On mobile, use the MobileHeader component
+  if (isMobile) {
+    return (
+      <MobileHeader
+        title={title}
+        subtitle={subtitle}
+        leftElement={leftElement}
+        rightElement={rightElement}
+        showBack={showBack}
+        onBack={onBack}
+        drawerContent={drawerContent}
+        className={className}
+      >
+        {children}
+      </MobileHeader>
+    );
+  }
+
+  // Desktop header
   return (
-    <header className="bg-card border-b border-border px-4 py-3">
+    <header className={cn("bg-card border-b border-border px-4 py-3", className)}>
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         <div className="flex items-center space-x-4">
           {leftElement}
