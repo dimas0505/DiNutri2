@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { MobileHeader } from "@/components/mobile";
+import { DiNutriLogo } from "@/components/ui/dinutri-logo";
 import { cn } from "@/lib/utils";
 
 interface HeaderProps {
@@ -63,7 +64,7 @@ export default function Header({
             children
           ) : (
             <div className="flex items-center space-x-4">
-              <h1 className="text-xl font-bold text-primary">WebDiet</h1>
+              <DiNutriLogo size="sm" variant="full" />
               {title && (
                 <>
                   <span className="text-muted-foreground">|</span>
