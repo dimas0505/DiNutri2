@@ -3,6 +3,7 @@ import { LogOut, Menu, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { DiNutriLogo } from "@/components/ui/dinutri-logo";
 import { cn } from "@/lib/utils";
 import { MobileDrawer } from "./drawer";
 
@@ -78,7 +79,7 @@ export function MobileHeader({
             children
           ) : (
             <div className="flex items-center space-x-3">
-              <h1 className="text-lg font-bold text-primary">WebDiet</h1>
+              <DiNutriLogo size="sm" variant="full" />
               {title && (
                 <>
                   <span className="text-muted-foreground text-sm">|</span>
