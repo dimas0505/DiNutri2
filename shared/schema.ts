@@ -41,6 +41,7 @@ export const users = pgTable("users", {
 export const patients = pgTable("patients", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   ownerId: varchar("owner_id").references(() => users.id).notNull(), // nutritionist
+  userId: varchar("user_id").references(() => users.id).unique(), // Link to the patient's own user account
   name: text("name").notNull(),
   email: varchar("email").notNull(),
   birthDate: varchar("birth_date"), // YYYY-MM-DD format
@@ -48,8 +49,18 @@ export const patients = pgTable("patients", {
   heightCm: integer("height_cm"),
   weightKg: decimal("weight_kg", { precision: 5, scale: 2 }),
   notes: text("notes"),
+  // invitationToken was removed from here
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// NEW: Invitations table
+export const invitations = pgTable("invitations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  nutritionistId: varchar("nutritionist_id").references(() => users.id).notNull(),
+  token: text("token").unique().notNull(),
+  status: varchar("status", { enum: ["pending", "accepted"] }).notNull().default("pending"),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 // Prescriptions table
@@ -67,17 +78,34 @@ export const prescriptions = pgTable("prescriptions", {
 });
 
 // Relations
-export const usersRelations = relations(users, ({ many }) => ({
-  patients: many(patients),
+export const usersRelations = relations(users, ({ one, many }) => ({
+  patientProfile: one(patients, { // A user might have a patient profile
+    fields: [users.id],
+    references: [patients.userId],
+  }),
+  ownedPatients: many(patients, { relationName: 'ownedPatients' }), // Nutritionist's patients
   prescriptions: many(prescriptions),
+  invitations: many(invitations), // Nutritionist's invitations
 }));
 
 export const patientsRelations = relations(patients, ({ one, many }) => ({
   owner: one(users, {
     fields: [patients.ownerId],
     references: [users.id],
+    relationName: 'ownedPatients'
+  }),
+  user: one(users, { // The patient's user account
+    fields: [patients.userId],
+    references: [users.id],
   }),
   prescriptions: many(prescriptions),
+}));
+
+export const invitationsRelations = relations(invitations, ({ one }) => ({
+  nutritionist: one(users, {
+    fields: [invitations.nutritionistId],
+    references: [users.id],
+  }),
 }));
 
 export const prescriptionsRelations = relations(prescriptions, ({ one }) => ({

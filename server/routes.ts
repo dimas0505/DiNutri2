@@ -22,7 +22,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Patient routes
+  // --- INVITATION ROUTES (NEW FLOW) ---
+  app.post('/api/invitations', isAuthenticated, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'nutritionist') {
+        return res.status(403).json({ message: "Only nutritionists can create invitations." });
+      }
+      const invitation = await storage.createInvitation(req.user.id);
+      res.json(invitation);
+    } catch (error) {
+      console.error("Error creating invitation:", error);
+      res.status(500).json({ message: "Failed to create invitation" });
+    }
+  });
+
+  app.get('/api/invitations/validate', isAuthenticated, async (req: any, res) => {
+    try {
+      const token = (req.session as any).invitationToken;
+      if (!token) {
+        return res.status(400).json({ message: "No invitation token found in session." });
+      }
+      const invitation = await storage.getInvitationByToken(token);
+      if (!invitation) {
+        return res.status(404).json({ message: "Invalid or expired invitation token." });
+      }
+      res.status(200).json({ valid: true });
+    } catch (error) {
+      console.error("Error validating invitation:", error);
+      res.status(500).json({ message: "Failed to validate invitation" });
+    }
+  });
+
+  // --- PATIENT SELF-REGISTRATION ROUTE ---
+  app.post('/api/patient/register', isAuthenticated, async (req: any, res) => {
+    const token = (req.session as any).invitationToken;
+    if (!token) {
+      return res.status(400).json({ message: "Missing invitation token." });
+    }
+    
+    try {
+      const invitation = await storage.getInvitationByToken(token);
+      if (!invitation) {
+        return res.status(404).json({ message: "Invalid or expired invitation." });
+      }
+
+      const validatedData = insertPatientSchema.parse({
+        ...req.body,
+        ownerId: invitation.nutritionistId,
+        userId: req.user.id,
+      });
+
+      const patient = await storage.createPatient(validatedData);
+      await storage.updateInvitationStatus(token, 'accepted');
+
+      delete (req.session as any).invitationToken; // Clean up session
+
+      res.status(201).json(patient);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data.", errors: error.flatten() });
+      }
+      console.error("Error during patient registration:", error);
+      res.status(500).json({ message: "Failed to register patient." });
+    }
+  });
+
+  // Patient routes (managed by nutritionist)
   app.get('/api/patients', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
@@ -31,27 +96,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching patients:", error);
       res.status(500).json({ message: "Failed to fetch patients" });
-    }
-  });
-
-  app.post('/api/patients', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.id;
-      const validatedData = insertPatientSchema.parse({
-        ...req.body,
-        ownerId: userId,
-      });
-      const patient = await storage.createPatient(validatedData);
-      res.json(patient);
-    } catch (error) {
-      // --- BLOCO DE ERRO MELHORADO ---
-      if (error instanceof z.ZodError) {
-        console.error("Zod validation error:", error.flatten());
-        return res.status(400).json({ message: "Dados inválidos.", errors: error.flatten() });
-      }
-      console.error("Error creating patient:", error);
-      res.status(400).json({ message: "Failed to create patient" });
-      // --- FIM DA MELHORIA ---
     }
   });
 
@@ -70,7 +114,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put('/api/patients/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const validatedData = insertPatientSchema.omit({ ownerId: true }).parse(req.body);
+      const validatedData = insertPatientSchema.omit({ ownerId: true, userId: true }).partial().parse(req.body);
       const patient = await storage.updatePatient(req.params.id, validatedData);
       res.json(patient);
     } catch (error) {
@@ -78,8 +122,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(400).json({ message: "Failed to update patient" });
     }
   });
-
-  // Prescription routes (sem alterações)
+  
+  // Prescription routes
   app.get('/api/patients/:patientId/prescriptions', isAuthenticated, async (req, res) => {
     try {
       const prescriptions = await storage.getPrescriptionsByPatient(req.params.patientId);
@@ -153,15 +197,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/patients/:patientId/latest-prescription', isAuthenticated, async (req, res) => {
+  app.get('/api/patient/my-prescription', isAuthenticated, async (req: any, res) => {
     try {
-      const prescription = await storage.getLatestPublishedPrescription(req.params.patientId);
+      const prescription = await storage.getLatestPublishedPrescriptionForUser(req.user.id);
       if (!prescription) {
         return res.status(404).json({ message: "No published prescription found" });
       }
       res.json(prescription);
     } catch (error) {
-      console.error("Error fetching latest prescription:", error);
+      console.error("Error fetching latest prescription for user:", error);
       res.status(500).json({ message: "Failed to fetch latest prescription" });
     }
   });

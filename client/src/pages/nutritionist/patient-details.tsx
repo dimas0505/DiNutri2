@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { ArrowLeft, FileText, Eye, Edit, Copy } from "lucide-react";
+import { ArrowLeft, FileText, Eye, Edit, Copy, CheckCircle } from "lucide-react";
 import Header from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -106,6 +106,8 @@ export default function PatientDetailsPage({ params }: PatientDetailsPageProps) 
       </div>
     );
   }
+  
+  const hasAccountLinked = !!patient.userId;
 
   return (
     <div className="min-h-screen bg-background">
@@ -125,7 +127,8 @@ export default function PatientDetailsPage({ params }: PatientDetailsPageProps) 
         rightElement={
           <Button
             onClick={() => createPrescriptionMutation.mutate()}
-            disabled={createPrescriptionMutation.isPending}
+            disabled={createPrescriptionMutation.isPending || !hasAccountLinked}
+            title={!hasAccountLinked ? "Paciente precisa ter um login para criar prescrições" : "Nova Prescrição"}
             data-testid="button-new-prescription"
           >
             Nova Prescrição
@@ -136,7 +139,7 @@ export default function PatientDetailsPage({ params }: PatientDetailsPageProps) 
       <main className="max-w-7xl mx-auto p-4 lg:p-6">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Patient Info */}
-          <div className="lg:col-span-1">
+          <div className="lg:col-span-1 space-y-6">
             <Card>
               <CardHeader>
                 <CardTitle>Informações do Paciente</CardTitle>
@@ -178,6 +181,26 @@ export default function PatientDetailsPage({ params }: PatientDetailsPageProps) 
                 </Button>
               </CardContent>
             </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Acesso do Paciente</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {hasAccountLinked ? (
+                  <div className="flex items-center gap-3 text-green-600">
+                    <CheckCircle className="h-5 w-5" />
+                    <p className="text-sm font-medium">Paciente com acesso à plataforma.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <p className="text-sm text-muted-foreground">
+                      Este paciente foi cadastrado manualmente e ainda não possui um login de acesso.
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
 
           {/* Prescriptions History */}
@@ -194,10 +217,12 @@ export default function PatientDetailsPage({ params }: PatientDetailsPageProps) 
                   </div>
                 ) : prescriptions.length === 0 ? (
                   <div className="text-center py-8">
-                    <p className="text-muted-foreground mb-4">Nenhuma prescrição criada ainda.</p>
+                    <p className="text-muted-foreground mb-4">
+                      {hasAccountLinked ? "Nenhuma prescrição criada ainda." : "O paciente precisa ter um login antes que você possa criar uma prescrição."}
+                    </p>
                     <Button 
                       onClick={() => createPrescriptionMutation.mutate()}
-                      disabled={createPrescriptionMutation.isPending}
+                      disabled={createPrescriptionMutation.isPending || !hasAccountLinked}
                       data-testid="button-create-first-prescription"
                     >
                       Criar Primeira Prescrição

@@ -1,4 +1,4 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, Redirect } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -13,9 +13,10 @@ import PatientDetailsPage from "@/pages/nutritionist/patient-details";
 import PrescriptionEditorPage from "@/pages/nutritionist/prescription-editor";
 import PatientPrescriptionView from "@/pages/patient/prescription-view";
 import PrescriptionPrintPage from "@/pages/patient/prescription-print";
+import PatientRegisterPage from "@/pages/patient/patient-register"; // Import the new page
 
 function Router() {
-  const { isAuthenticated, isLoading, user } = useAuth();
+  const { isAuthenticated, isLoading, isNutritionist, isPatient } = useAuth();
 
   if (isLoading) {
     return (
@@ -30,19 +31,38 @@ function Router() {
 
   return (
     <Switch>
-      {!isAuthenticated ? (
-        <Route path="/" component={Landing} />
-      ) : (
+      {/* Rotas Públicas */}
+      <Route path="/" component={isAuthenticated ? Home : Landing} />
+
+      {/* Rota de Registro do Paciente (após login com convite) */}
+      {isAuthenticated && isPatient && (
+        <Route path="/patient/register" component={PatientRegisterPage} />
+      )}
+
+      {/* Rotas de Nutricionista */}
+      {isAuthenticated && isNutritionist && (
         <>
-          <Route path="/" component={Home} />
           <Route path="/patients" component={PatientsPage} />
           <Route path="/patients/new" component={NewPatientPage} />
           <Route path="/patients/:id" component={PatientDetailsPage} />
           <Route path="/prescriptions/:id/edit" component={PrescriptionEditorPage} />
+        </>
+      )}
+
+      {/* Rotas de Paciente (já registrado) */}
+      {isAuthenticated && isPatient && (
+        <>
           <Route path="/patient/prescription" component={PatientPrescriptionView} />
           <Route path="/prescriptions/:id/print" component={PrescriptionPrintPage} />
         </>
       )}
+
+      {/* Redirecionamento se logado mas tentando acessar rota inválida */}
+      {isAuthenticated && (
+        <Redirect to="/" />
+      )}
+      
+      {/* Rota 404 */}
       <Route component={NotFound} />
     </Switch>
   );

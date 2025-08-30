@@ -1,20 +1,48 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { Search, Plus, Eye, FileText } from "lucide-react";
+import { Search, Plus, Eye, FileText, Link as LinkIcon, Copy } from "lucide-react";
 import Header from "@/components/layout/header";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 import type { Patient } from "@shared/schema";
 
 export default function PatientsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [, setLocation] = useLocation();
+  const { toast } = useToast();
+  const [invitationLink, setInvitationLink] = useState<string | null>(null);
 
   const { data: patients = [], isLoading } = useQuery<Patient[]>({
     queryKey: ["/api/patients"],
   });
+
+  const createInvitationMutation = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/invitations"),
+    onSuccess: async (res) => {
+      const { token } = await res.json();
+      const fullUrl = `${window.location.origin}/api/login?token=${token}`;
+      setInvitationLink(fullUrl);
+      toast({ title: "Link de convite gerado!" });
+    },
+    onError: () => {
+      toast({
+        title: "Erro",
+        description: "Não foi possível gerar o link de convite.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleCopyToClipboard = () => {
+    if (!invitationLink) return;
+    navigator.clipboard.writeText(invitationLink);
+    toast({ description: "Link copiado para a área de transferência!" });
+  };
 
   const filteredPatients = patients.filter(patient =>
     patient.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -38,7 +66,6 @@ export default function PatientsPage() {
       <Header title="Meus Pacientes" />
       
       <main className="max-w-7xl mx-auto p-4 lg:p-6">
-        {/* Search and Add Patient */}
         <div className="mb-6 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
@@ -51,17 +78,28 @@ export default function PatientsPage() {
               data-testid="input-search-patients"
             />
           </div>
-          <Button 
-            onClick={() => setLocation("/patients/new")}
-            className="flex items-center space-x-2"
-            data-testid="button-new-patient"
-          >
-            <Plus className="h-4 w-4" />
-            <span>Novo Paciente</span>
-          </Button>
+          <div className="flex gap-3">
+            <Button 
+              variant="outline"
+              onClick={() => createInvitationMutation.mutate()}
+              disabled={createInvitationMutation.isPending}
+              className="flex items-center space-x-2"
+              data-testid="button-invite-patient"
+            >
+              <LinkIcon className="h-4 w-4" />
+              <span>{createInvitationMutation.isPending ? "Gerando..." : "Convidar Paciente"}</span>
+            </Button>
+            <Button 
+              onClick={() => setLocation("/patients/new")}
+              className="flex items-center space-x-2"
+              data-testid="button-new-patient"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Adicionar Manualmente</span>
+            </Button>
+          </div>
         </div>
 
-        {/* Patients List */}
         <Card>
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -69,7 +107,7 @@ export default function PatientsPage() {
                 <tr>
                   <th className="text-left p-4 font-medium text-muted-foreground">Paciente</th>
                   <th className="text-left p-4 font-medium text-muted-foreground hidden sm:table-cell">Idade</th>
-                  <th className="text-left p-4 font-medium text-muted-foreground hidden md:table-cell">Última Prescrição</th>
+                  <th className="text-left p-4 font-medium text-muted-foreground hidden md:table-cell">Acesso</th>
                   <th className="text-left p-4 font-medium text-muted-foreground">Ações</th>
                 </tr>
               </thead>
@@ -106,7 +144,9 @@ export default function PatientsPage() {
                         {patient.birthDate ? `${calculateAge(patient.birthDate)} anos` : "-"}
                       </td>
                       <td className="p-4 hidden md:table-cell">
-                        <span className="text-sm text-muted-foreground">-</span>
+                        <span className={`text-sm ${patient.userId ? 'text-green-600' : 'text-muted-foreground'}`}>
+                          {patient.userId ? "Ativo" : "Pendente"}
+                        </span>
                       </td>
                       <td className="p-4">
                         <div className="flex items-center space-x-2">
@@ -122,11 +162,9 @@ export default function PatientsPage() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => {
-                              // Create new prescription - will be handled in patient details
-                              setLocation(`/patients/${patient.id}`);
-                            }}
-                            title="Nova prescrição"
+                            disabled={!patient.userId}
+                            title={!patient.userId ? "Paciente precisa ter um login" : "Nova prescrição"}
+                            onClick={() => setLocation(`/patients/${patient.id}`)}
                             data-testid={`button-new-prescription-${patient.id}`}
                           >
                             <FileText className="h-4 w-4" />
@@ -141,6 +179,26 @@ export default function PatientsPage() {
           </div>
         </Card>
       </main>
+
+      <Dialog open={!!invitationLink} onOpenChange={(isOpen) => !isOpen && setInvitationLink(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Link de Convite Gerado</DialogTitle>
+            <DialogDescription>
+              Envie este link para o seu paciente. Ele será válido para um único cadastro.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex items-center space-x-2">
+            <Input value={invitationLink || ""} readOnly />
+            <Button variant="outline" onClick={handleCopyToClipboard} size="icon">
+              <Copy className="h-4 w-4" />
+            </Button>
+          </div>
+          <DialogFooter>
+            <Button variant="secondary" onClick={() => setInvitationLink(null)}>Fechar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

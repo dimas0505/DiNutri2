@@ -61,17 +61,26 @@ export async function setupAuth(app: Express) {
         email: profile.emails?.[0]?.value,
         firstName: profile.name?.givenName || profile.displayName,
         lastName: profile.name?.familyName,
-        profileImageUrl: profile.photos?.[0]?.value, // CORREÇÃO: Usando profile.photos
-        // Vamos atribuir o papel de nutricionista por padrão para testes.
-        role: "nutritionist" as const,
+        profileImageUrl: profile.photos?.[0]?.value,
       };
 
       if (!userData.email) {
         return done(new Error("Email not found in Auth0 profile"));
       }
+      
+      // Verifica se já existe um usuário com este e-mail
+      let user = await storage.getUserByEmail(userData.email);
 
-      // Salvamos ou atualizamos o usuário no nosso banco de dados
-      const user = await storage.upsertUser(userData);
+      if (user) {
+        // Se o usuário existe, atualiza seus dados e retorna
+        user = await storage.upsertUser(userData);
+      } else {
+        // Se for um novo usuário, ele é criado com o papel padrão de 'paciente'.
+        user = await storage.upsertUser({
+          ...userData,
+          role: "patient",
+        });
+      }
       
       // Passamos o usuário para o Passport, que o salvará na sessão
       return done(null, user);
@@ -87,7 +96,6 @@ export async function setupAuth(app: Express) {
       clientID: process.env.AUTH0_CLIENT_ID,
       clientSecret: process.env.AUTH0_CLIENT_SECRET,
       callbackURL: `${process.env.BASE_URL}/api/callback`,
-      // A propriedade 'scope' foi removida daqui
     },
     verify
   );
@@ -119,18 +127,32 @@ export async function setupAuth(app: Express) {
   // Rota de Login: redireciona o usuário para a página de login do Auth0
   app.get(
     "/api/login",
+    (req, res, next) => {
+      const { token } = req.query;
+      if (token && typeof token === 'string') {
+        // Armazena o token de convite na sessão para uso após o login
+        (req.session as any).invitationToken = token;
+      }
+      next();
+    },
     passport.authenticate("auth0", {
-      scope: "openid email profile", // CORREÇÃO: 'scope' movido para cá
+      scope: "openid email profile",
     })
   );
 
   // Rota de Callback: o Auth0 redireciona para cá após o login
   app.get(
     "/api/callback",
-    passport.authenticate("auth0", {
-      successRedirect: "/", // Se o login der certo, vai para a home
-      failureRedirect: "/api/login", // Se falhar, tenta logar de novo
-    })
+    passport.authenticate("auth0", { 
+      failureRedirect: "/api/login" 
+    }),
+    (req: any, res) => {
+      const token = (req.session as any).invitationToken;
+      // Se houver um token, redireciona para a página de cadastro do paciente.
+      // Senão, vai para a home padrão.
+      const redirectUrl = token ? "/patient/register" : "/";
+      res.redirect(redirectUrl);
+    }
   );
 
   // Rota de Logout

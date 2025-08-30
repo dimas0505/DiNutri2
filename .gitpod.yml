@@ -1,0 +1,6 @@
+ports:
+  - port: 5000
+    onOpen: open-preview
+    name: Web App Preview
+    description: "Preview of the WebDiet application"
+    visibility: public

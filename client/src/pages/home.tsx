@@ -4,16 +4,16 @@ import { useEffect } from "react";
 import Header from "@/components/layout/header";
 
 export default function Home() {
-  const { user } = useAuth();
+  const { isNutritionist, isPatient } = useAuth();
   const [, setLocation] = useLocation();
 
   useEffect(() => {
-    if ((user as any)?.role === "nutritionist") {
+    if (isNutritionist) {
       setLocation("/patients");
-    } else if ((user as any)?.role === "patient") {
+    } else if (isPatient) {
       setLocation("/patient/prescription");
     }
-  }, [user, setLocation]);
+  }, [isNutritionist, isPatient, setLocation]);
 
   return (
     <div className="min-h-screen bg-background">

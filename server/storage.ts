@@ -2,6 +2,7 @@ import {
   users,
   patients,
   prescriptions,
+  invitations,
   type User,
   type UpsertUser,
   type Patient,
@@ -12,11 +13,13 @@ import {
 } from "../shared/schema.js";
 import { db } from "./db.js";
 import { eq, desc, and } from "drizzle-orm";
+import { randomBytes } from "crypto";
 
 export interface IStorage {
-  // User operations (required for Replit Auth)
+  // User operations
   getUser(id: string): Promise<User | undefined>;
-  upsertUser(user: UpsertUser): Promise<User>;
+  getUserByEmail(email: string): Promise<User | undefined>;
+  upsertUser(user: Partial<UpsertUser>): Promise<User>;
   
   // Patient operations
   getPatientsByOwner(ownerId: string): Promise<Patient[]>;
@@ -24,10 +27,16 @@ export interface IStorage {
   createPatient(patient: InsertPatient): Promise<Patient>;
   updatePatient(id: string, patient: Partial<InsertPatient>): Promise<Patient>;
   
+  // Invitation operations
+  createInvitation(nutritionistId: string): Promise<{ token: string }>;
+  getInvitationByToken(token: string): Promise<{ nutritionistId: string } | undefined>;
+  updateInvitationStatus(token: string, status: 'accepted'): Promise<void>;
+
   // Prescription operations
   getPrescriptionsByPatient(patientId: string): Promise<Prescription[]>;
   getPrescription(id: string): Promise<Prescription | undefined>;
   getLatestPublishedPrescription(patientId: string): Promise<Prescription | undefined>;
+  getLatestPublishedPrescriptionForUser(userId: string): Promise<Prescription | undefined>;
   createPrescription(prescription: InsertPrescription): Promise<Prescription>;
   updatePrescription(id: string, prescription: UpdatePrescription): Promise<Prescription>;
   publishPrescription(id: string): Promise<Prescription>;
@@ -41,7 +50,15 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async upsertUser(userData: UpsertUser): Promise<User> {
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user;
+  }
+
+  async upsertUser(userData: Partial<UpsertUser>): Promise<User> {
+    if (!userData.email) {
+      throw new Error("Email is required to upsert a user.");
+    }
     const [user] = await db
       .insert(users)
       .values(userData)
@@ -83,6 +100,33 @@ export class DatabaseStorage implements IStorage {
       .returning();
     return updatedPatient;
   }
+  
+  // Invitation operations
+  async createInvitation(nutritionistId: string): Promise<{ token: string }> {
+    const token = randomBytes(32).toString("hex");
+    const [newInvitation] = await db
+      .insert(invitations)
+      .values({ nutritionistId, token })
+      .returning({ token: invitations.token });
+    return newInvitation;
+  }
+
+  async getInvitationByToken(token: string): Promise<{ nutritionistId: string } | undefined> {
+    const [invitation] = await db
+      .select({ nutritionistId: invitations.nutritionistId })
+      .from(invitations)
+      .where(and(eq(invitations.token, token), eq(invitations.status, "pending")));
+    
+    return invitation;
+  }
+
+  async updateInvitationStatus(token: string, status: 'accepted'): Promise<void> {
+    await db
+      .update(invitations)
+      .set({ status })
+      .where(eq(invitations.token, token));
+  }
+
 
   // Prescription operations
   async getPrescriptionsByPatient(patientId: string): Promise<Prescription[]> {
@@ -114,6 +158,19 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(prescriptions.publishedAt))
       .limit(1);
     return prescription;
+  }
+
+  async getLatestPublishedPrescriptionForUser(userId: string): Promise<Prescription | undefined> {
+    // 1. Find the patient profile linked to the user ID
+    const [patient] = await db.select({ id: patients.id }).from(patients).where(eq(patients.userId, userId));
+    
+    // 2. If no patient profile is linked, there are no prescriptions
+    if (!patient) {
+      return undefined;
+    }
+    
+    // 3. Use the found patient ID to get the latest prescription
+    return this.getLatestPublishedPrescription(patient.id);
   }
 
   async createPrescription(prescription: InsertPrescription): Promise<Prescription> {
