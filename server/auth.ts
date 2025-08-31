@@ -1,14 +1,15 @@
 // Arquivo: server/auth.ts
 
 import passport from "passport";
-import { Strategy as Auth0Strategy, Profile } from "passport-auth0";
+import { Strategy as LocalStrategy } from "passport-local";
+import bcrypt from "bcrypt";
 import session from "express-session";
 import type { Express, RequestHandler } from "express";
 import connectPg from "connect-pg-simple";
 import { storage } from "./storage.js";
 import type { User } from "../shared/schema.js";
 
-// Função para configurar a sessão, reutilizada do código anterior
+// Função para configurar a sessão (sem alterações)
 export function getSession() {
   const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
   const pgStore = connectPg(session);
@@ -25,79 +26,47 @@ export function getSession() {
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production', // Usar cookies seguros em produção
+      secure: process.env.NODE_ENV === 'production',
       maxAge: sessionTtl,
     },
   });
 }
 
-// Middleware que verifica se o usuário está logado
+// Middleware que verifica se o usuário está logado (sem alterações)
 export const isAuthenticated: RequestHandler = (req, res, next) => {
   if (req.isAuthenticated()) {
     return next();
   }
-  // Se não estiver autenticado, retorna 401 Unauthorized
   res.status(401).json({ message: "Unauthorized" });
 };
 
-// Função principal que configura toda a autenticação
+// Função principal que configura a nova autenticação local
 export async function setupAuth(app: Express) {
-  // Validação das variáveis de ambiente do Auth0
-  if (!process.env.AUTH0_DOMAIN || !process.env.AUTH0_CLIENT_ID || !process.env.AUTH0_CLIENT_SECRET || !process.env.BASE_URL) {
-    throw new Error("Auth0 environment variables are not fully configured.");
-  }
+  // Configuração da estratégia de autenticação local (email/senha)
+  const strategy = new LocalStrategy(
+    { usernameField: 'email' }, // O campo de "usuário" é o email
+    async (email, password, done) => {
+      try {
+        const user = await storage.getUserByEmail(email);
 
-  // Função de verificação que o Passport-Auth0 usará
-  const verify = async (
-    accessToken: string,
-    refreshToken: string,
-    extraParams: any,
-    profile: Profile,
-    done: (error: any, user?: any) => void
-  ) => {
-    try {
-      // Extraímos os dados do perfil do Auth0
-      const userData = {
-        email: profile.emails?.[0]?.value,
-        firstName: profile.name?.givenName || profile.displayName,
-        lastName: profile.name?.familyName,
-        profileImageUrl: profile.photos?.[0]?.value,
-      };
+        // Se o usuário não existe ou não tem senha cadastrada
+        if (!user || !user.hashedPassword) {
+          return done(null, false, { message: 'Credenciais inválidas.' });
+        }
 
-      if (!userData.email) {
-        return done(new Error("Email not found in Auth0 profile"));
+        // Compara a senha fornecida com a senha criptografada no banco
+        const isMatch = await bcrypt.compare(password, user.hashedPassword);
+
+        if (!isMatch) {
+          return done(null, false, { message: 'Credenciais inválidas.' });
+        }
+
+        // Se tudo estiver correto, retorna o usuário
+        return done(null, user);
+      } catch (error) {
+        return done(error);
       }
-      
-      // Verifica se já existe um usuário com este e-mail
-      let user = await storage.getUserByEmail(userData.email);
-
-      if (user) {
-        // Se o usuário existe, atualiza seus dados e retorna
-        user = await storage.upsertUser(userData);
-      } else {
-        // Se for um novo usuário, ele é criado com o papel padrão de 'paciente'.
-        user = await storage.upsertUser({
-          ...userData,
-          role: "patient",
-        });
-      }
-      
-      // Passamos o usuário para o Passport, que o salvará na sessão
-      return done(null, user);
-    } catch (error) {
-      return done(error as Error);
     }
-  };
-
-  // Configuração da estratégia de autenticação do Auth0
-  const strategy = new Auth0Strategy(
-    {
-      domain: process.env.AUTH0_DOMAIN,
-      clientID: process.env.AUTH0_CLIENT_ID,
-      clientSecret: process.env.AUTH0_CLIENT_SECRET,
-      callbackURL: `${process.env.BASE_URL}/api/callback`,
-    },
-    verify
   );
 
   // Usa a estratégia no Passport
@@ -123,47 +92,4 @@ export async function setupAuth(app: Express) {
   app.use(getSession());
   app.use(passport.initialize());
   app.use(passport.session());
-
-  // Rota de Login: redireciona o usuário para a página de login do Auth0
-  app.get(
-    "/api/login",
-    (req, res, next) => {
-      const { token } = req.query;
-      if (token && typeof token === 'string') {
-        // Armazena o token de convite na sessão para uso após o login
-        (req.session as any).invitationToken = token;
-      }
-      next();
-    },
-    passport.authenticate("auth0", {
-      scope: "openid email profile",
-    })
-  );
-
-  // Rota de Callback: o Auth0 redireciona para cá após o login
-  app.get(
-    "/api/callback",
-    passport.authenticate("auth0", { 
-      failureRedirect: "/api/login" 
-    }),
-    (req: any, res) => {
-      const token = (req.session as any).invitationToken;
-      // Se houver um token, redireciona para a página de cadastro do paciente.
-      // Senão, vai para a home padrão.
-      const redirectUrl = token ? "/patient/register" : "/";
-      res.redirect(redirectUrl);
-    }
-  );
-
-  // Rota de Logout
-  app.get("/api/logout", (req, res, next) => {
-    req.logout((err) => {
-      if (err) { return next(err); }
-      // Monta a URL de logout do Auth0 para invalidar a sessão lá também
-      const logoutURL = new URL(`https://${process.env.AUTH0_DOMAIN}/v2/logout`);
-      logoutURL.searchParams.set("client_id", process.env.AUTH0_CLIENT_ID!);
-      logoutURL.searchParams.set("returnTo", process.env.BASE_URL!);
-      res.redirect(logoutURL.toString());
-    });
-  });
 }

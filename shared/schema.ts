@@ -29,6 +29,7 @@ export const sessions = pgTable(
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   email: varchar("email").unique(),
+  hashedPassword: text("hashed_password"), // <-- CAMPO ADICIONADO
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
@@ -140,6 +141,7 @@ export const insertUserSchema = createInsertSchema(users).pick({
   lastName: true,
   profileImageUrl: true,
   role: true,
+  hashedPassword: true, // <-- CAMPO ADICIONADO
 });
 
 export const insertPatientSchema = createInsertSchema(patients).omit({

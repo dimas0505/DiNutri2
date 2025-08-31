@@ -2,16 +2,38 @@
 
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import passport from "passport";
+import bcrypt from "bcrypt";
 import { storage } from "./storage.js";
 import { setupAuth, isAuthenticated } from "./auth.js";
 import { insertPatientSchema, insertPrescriptionSchema, updatePrescriptionSchema } from "../shared/schema.js";
 import { z } from "zod";
 
+const SALT_ROUNDS = 10;
+
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Auth middleware
+  // Configura a nova estratégia de autenticação (passport-local)
   await setupAuth(app);
 
-  // Auth routes
+  // --- NOVAS ROTAS DE AUTENTICAÇÃO ---
+  app.post('/api/login', passport.authenticate('local'), (req, res) => {
+    // Se a autenticação for bem-sucedida, o Passport anexa `req.user`.
+    // Apenas retornamos o usuário para o frontend.
+    res.json(req.user);
+  });
+
+  app.get("/api/logout", (req, res, next) => {
+    req.logout((err) => {
+      if (err) { return next(err); }
+      // Destrói a sessão e limpa o cookie do navegador
+      req.session.destroy(() => {
+        res.clearCookie('connect.sid'); 
+        res.status(200).json({ message: "Logout successful" });
+      });
+    });
+  });
+
+  // Rota para verificar o usuário logado (sem alterações)
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user;
@@ -22,7 +44,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // --- INVITATION ROUTES (NEW FLOW) ---
+  // --- ROTAS DE CONVITE (sem alterações) ---
   app.post('/api/invitations', isAuthenticated, async (req: any, res) => {
     try {
       if (req.user.role !== 'nutritionist') {
@@ -36,13 +58,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/invitations/validate', isAuthenticated, async (req: any, res) => {
+  app.get('/api/invitations/validate', async (req: any, res) => {
+    // Esta rota agora é pública e valida o token da URL
     try {
-      const token = (req.session as any).invitationToken;
+      const { token } = req.query;
       if (!token) {
-        return res.status(400).json({ message: "No invitation token found in session." });
+        return res.status(400).json({ message: "No invitation token found." });
       }
-      const invitation = await storage.getInvitationByToken(token);
+      const invitation = await storage.getInvitationByToken(token as string);
       if (!invitation) {
         return res.status(404).json({ message: "Invalid or expired invitation token." });
       }
@@ -53,41 +76,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // --- PATIENT SELF-REGISTRATION ROUTE ---
-  app.post('/api/patient/register', isAuthenticated, async (req: any, res) => {
-    const token = (req.session as any).invitationToken;
-    if (!token) {
-      return res.status(400).json({ message: "Missing invitation token." });
-    }
-    
+  // --- FLUXO DE CADASTRO DO PACIENTE VIA CONVITE (ATUALIZADO) ---
+  app.post('/api/patient/register', async (req, res, next) => {
+    const registerSchema = insertPatientSchema.extend({
+      password: z.string().min(6, "A senha deve ter pelo menos 6 caracteres."),
+      token: z.string().min(1, "Token de convite é obrigatório."),
+    });
+
     try {
+      const { token, password, ...patientData } = registerSchema.parse(req.body);
+      
       const invitation = await storage.getInvitationByToken(token);
       if (!invitation) {
-        return res.status(404).json({ message: "Invalid or expired invitation." });
+        return res.status(404).json({ message: "Convite inválido ou expirado." });
       }
 
-      const validatedData = insertPatientSchema.parse({
-        ...req.body,
-        ownerId: invitation.nutritionistId,
-        userId: req.user.id,
+      const existingUser = await storage.getUserByEmail(patientData.email);
+      if (existingUser) {
+        return res.status(409).json({ message: "Este email já está em uso." });
+      }
+
+      const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
+      const newUser = await storage.upsertUser({
+        email: patientData.email,
+        firstName: patientData.name.split(' ')[0],
+        hashedPassword: hashedPassword,
+        role: "patient",
       });
 
-      const patient = await storage.createPatient(validatedData);
+      const newPatient = await storage.createPatient({
+        ...patientData,
+        ownerId: invitation.nutritionistId,
+        userId: newUser.id,
+      });
+
       await storage.updateInvitationStatus(token, 'accepted');
 
-      delete (req.session as any).invitationToken; // Clean up session
+      // Faz o login do usuário recém-criado
+      req.login(newUser, (err) => {
+        if (err) { return next(err); }
+        res.status(201).json({ user: newUser, patient: newPatient });
+      });
 
-      res.status(201).json(patient);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid data.", errors: error.flatten() });
+        return res.status(400).json({ message: "Dados inválidos.", errors: error.flatten() });
       }
       console.error("Error during patient registration:", error);
-      res.status(500).json({ message: "Failed to register patient." });
+      res.status(500).json({ message: "Falha ao registrar paciente." });
     }
   });
 
-  // Patient routes (managed by nutritionist)
+  // --- ROTAS DE PACIENTES GERENCIADAS PELO NUTRICIONISTA ---
   app.get('/api/patients', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
@@ -99,7 +139,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/patients/:id', isAuthenticated, async (req: any, res) => {
+  app.get('/api/patients/:id', isAuthenticated, async (req, res) => {
     try {
       const patient = await storage.getPatient(req.params.id);
       if (!patient) {
@@ -112,7 +152,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put('/api/patients/:id', isAuthenticated, async (req: any, res) => {
+  // ROTA DE CRIAÇÃO MANUAL DE PACIENTE (ATUALIZADA)
+  app.post('/api/patients', isAuthenticated, async (req: any, res) => {
+    const createManualSchema = insertPatientSchema.omit({ userId: true }).extend({
+        password: z.string().min(6, "A senha deve ter pelo menos 6 caracteres."),
+    });
+
+    try {
+      if (req.user.role !== 'nutritionist') {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      const { password, ...patientData } = createManualSchema.parse(req.body);
+      
+      const existingUser = await storage.getUserByEmail(patientData.email);
+      if (existingUser) {
+        return res.status(409).json({ message: "Este email já está em uso." });
+      }
+
+      const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
+      const newUser = await storage.upsertUser({
+        email: patientData.email,
+        firstName: patientData.name.split(' ')[0],
+        hashedPassword: hashedPassword,
+        role: "patient",
+      });
+
+      const newPatient = await storage.createPatient({
+        ...patientData,
+        ownerId: req.user.id,
+        userId: newUser.id,
+      });
+      
+      res.status(201).json(newPatient);
+
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid patient data.", errors: error.flatten() });
+      }
+      console.error("Error creating patient:", error);
+      res.status(500).json({ message: "Failed to create patient" });
+    }
+  });
+
+  app.put('/api/patients/:id', isAuthenticated, async (req, res) => {
     try {
       const validatedData = insertPatientSchema.omit({ ownerId: true, userId: true }).partial().parse(req.body);
       const patient = await storage.updatePatient(req.params.id, validatedData);
@@ -123,7 +206,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Prescription routes
+  // --- ROTAS DE PRESCRIÇÃO (sem alterações) ---
   app.get('/api/patients/:patientId/prescriptions', isAuthenticated, async (req, res) => {
     try {
       const prescriptions = await storage.getPrescriptionsByPatient(req.params.patientId);

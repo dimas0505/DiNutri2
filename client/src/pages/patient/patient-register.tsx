@@ -1,59 +1,63 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import Header from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 import { insertPatientSchema } from "@shared/schema";
+import { DiNutriLogo } from "@/components/ui/dinutri-logo";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
 
-// Schema for the patient self-registration form
+// Schema for the patient self-registration form, now with password
 const formSchema = insertPatientSchema.omit({ ownerId: true, userId: true }).extend({
   heightCm: z.preprocess(
     (val) => (val === "" ? undefined : val),
     z.coerce.number().optional()
   ),
   weightKg: z.string().regex(/^\d+(\.\d{1,2})?$/, "Peso inválido. Ex: 65.50").optional().or(z.literal('')),
+  password: z.string().min(6, "A senha deve ter no mínimo 6 caracteres."),
+  confirmPassword: z.string(),
+}).refine(data => data.password === data.confirmPassword, {
+  message: "As senhas não correspondem.",
+  path: ["confirmPassword"], // O erro aparecerá no campo de confirmação
 });
 
 type FormData = z.infer<typeof formSchema>;
 
 export default function PatientRegisterPage() {
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
   const { toast } = useToast();
-  const { user, isLoading: isAuthLoading } = useAuth();
+  
+  // Extrai o token da URL
+  const token = useMemo(() => new URLSearchParams(window.location.search).get("token"), [location]);
 
-  // 1. Validate the invitation token on page load
-  const { data: invitation, isLoading: isValidationLoading, error } = useQuery<{ valid: boolean }>({
-    queryKey: ["/api/invitations/validate"],
+  // Valida o token de convite na montagem da página
+  const { isLoading: isValidationLoading, isError: isTokenInvalid } = useQuery({
+    queryKey: ["/api/invitations/validate", token],
+    queryFn: () => fetch(`/api/invitations/validate?token=${token}`).then(res => {
+      if (!res.ok) throw new Error("Token inválido");
+      return res.json();
+    }),
+    enabled: !!token,
     retry: false,
   });
-
-  useEffect(() => {
-    if (error) {
-      toast({
-        title: "Convite inválido",
-        description: "Este link de convite é inválido ou já foi utilizado. Peça um novo ao seu nutricionista.",
-        variant: "destructive",
-      });
-      setLocation("/");
-    }
-  }, [error, setLocation, toast]);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : "",
-      email: user?.email || "",
+      name: "",
+      email: "",
+      password: "",
+      confirmPassword: "",
       birthDate: "",
       sex: undefined,
       heightCm: undefined,
@@ -61,48 +65,39 @@ export default function PatientRegisterPage() {
       notes: "",
     },
   });
-  
-  // Pre-fill form with user data once authentication is complete
-  useEffect(() => {
-    if (user) {
-      form.reset({
-        name: user.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : "",
-        email: user.email || "",
-      });
-    }
-  }, [user, form]);
-
 
   const registerPatientMutation = useMutation({
-    mutationFn: (data: FormData) => {
-      const payload = { ...data };
-      if (payload.weightKg === "") {
-        delete payload.weightKg;
-      }
-      return apiRequest("POST", "/api/patient/register", payload);
+    mutationFn: (data: Omit<FormData, 'confirmPassword'> & { token: string }) => {
+      return apiRequest("POST", "/api/patient/register", data);
     },
     onSuccess: () => {
       toast({
-        title: "Cadastro concluído!",
-        description: "Seus dados foram enviados ao seu nutricionista.",
+        title: "Cadastro concluído com sucesso!",
+        description: "Você já pode acessar sua conta.",
       });
-      setLocation("/patient/prescription");
+      // Recarrega a página para que o App.tsx redirecione para a home do paciente
+      window.location.href = "/";
     },
-    onError: (err) => {
+    onError: (err: any) => {
       console.error("Erro no registro:", err);
+      const errorMessage = err.message.includes("409")
+        ? "Este email já está cadastrado no sistema."
+        : "Não foi possível concluir seu cadastro. Tente novamente.";
       toast({
         title: "Erro no Cadastro",
-        description: "Não foi possível concluir seu cadastro. Tente novamente.",
+        description: errorMessage,
         variant: "destructive",
       });
     },
   });
 
   const onSubmit = (data: FormData) => {
-    registerPatientMutation.mutate(data);
+    if (!token) return;
+    const { confirmPassword, ...payload } = data;
+    registerPatientMutation.mutate({ ...payload, token });
   };
 
-  if (isAuthLoading || isValidationLoading) {
+  if (isValidationLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -113,15 +108,37 @@ export default function PatientRegisterPage() {
     );
   }
 
+  if (isTokenInvalid || !token) {
+    return (
+       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <Alert variant="destructive" className="max-w-md">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Link de Convite Inválido</AlertTitle>
+          <AlertDescription>
+            Este link é inválido, expirou ou já foi utilizado. Por favor, solicite um novo convite ao seu nutricionista.
+            <div className="mt-4">
+              <Button asChild variant="link" className="p-0">
+                <Link to="/">Voltar para a página de login</Link>
+              </Button>
+            </div>
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
-      <main className="max-w-2xl mx-auto p-4 lg:p-6">
+    <div className="min-h-screen bg-gray-50 py-12 px-4">
+       <div className="flex justify-center mb-6">
+          <DiNutriLogo variant="full" className="h-16" />
+        </div>
+      <main className="max-w-2xl mx-auto">
         <Card>
           <CardHeader>
             <CardTitle>Complete seu Cadastro</CardTitle>
+            <CardDescription>Preencha seus dados para criar sua conta de paciente.</CardDescription>
           </CardHeader>
-          <CardContent className="p-6">
+          <CardContent>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -148,7 +165,37 @@ export default function PatientRegisterPage() {
                         <FormItem>
                           <FormLabel>Email</FormLabel>
                           <FormControl>
-                            <Input type="email" {...field} disabled />
+                            <Input type="email" placeholder="seu@email.com" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                   <div className="md:col-span-1">
+                    <FormField
+                      control={form.control}
+                      name="password"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Crie sua Senha</FormLabel>
+                          <FormControl>
+                            <Input type="password" placeholder="••••••••" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  <div className="md:col-span-1">
+                     <FormField
+                      control={form.control}
+                      name="confirmPassword"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Confirme sua Senha</FormLabel>
+                          <FormControl>
+                            <Input type="password" placeholder="••••••••" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -247,7 +294,7 @@ export default function PatientRegisterPage() {
                   )}
                 />
                 <Button type="submit" className="w-full" disabled={registerPatientMutation.isPending}>
-                  {registerPatientMutation.isPending ? "Enviando..." : "Finalizar Cadastro"}
+                  {registerPatientMutation.isPending ? "Finalizando..." : "Finalizar Cadastro e Entrar"}
                 </Button>
               </form>
             </Form>

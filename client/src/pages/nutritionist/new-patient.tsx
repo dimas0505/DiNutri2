@@ -10,21 +10,19 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { insertPatientSchema } from "@shared/schema";
 
-// O schema do formulário agora corresponde exatamente ao schema do backend.
-// A conversão de tipos será feita pelo Zod.
-const formSchema = insertPatientSchema.omit({ ownerId: true }).extend({
-  // Pré-processa o campo de altura: se for uma string vazia, transforma em 'undefined'.
+// O schema do formulário agora inclui o campo de senha
+const formSchema = insertPatientSchema.omit({ ownerId: true, userId: true }).extend({
   heightCm: z.preprocess(
     (val) => (val === "" ? undefined : val),
     z.coerce.number().optional()
   ),
-  // O campo de peso (decimal) é tratado como string, mas validamos seu formato.
   weightKg: z.string().regex(/^\d+(\.\d{1,2})?$/, "Peso inválido. Ex: 65.50").optional().or(z.literal('')),
+  password: z.string().min(6, "A senha deve ter no mínimo 6 caracteres."),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -39,17 +37,17 @@ export default function NewPatientPage() {
     defaultValues: {
       name: "",
       email: "",
+      password: "", // Valor padrão para o novo campo
       birthDate: "",
       sex: undefined,
       heightCm: undefined,
-      weightKg: "", // Inicia como string vazia
+      weightKg: "",
       notes: "",
     },
   });
 
   const createPatientMutation = useMutation({
     mutationFn: async (data: FormData) => {
-      // Limpa os campos opcionais que não foram preenchidos
       const payload = { ...data };
       if (payload.weightKg === "") {
         delete payload.weightKg;
@@ -59,16 +57,19 @@ export default function NewPatientPage() {
     onSuccess: () => {
       toast({
         title: "Sucesso",
-        description: "Paciente cadastrado com sucesso!",
+        description: "Paciente e seu acesso foram criados com sucesso!",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/patients"] });
       setLocation("/patients");
     },
-    onError: (error) => {
+    onError: (error: any) => {
       console.error("Erro ao criar paciente:", error);
+      const errorMessage = error.message.includes("409")
+        ? "Já existe um usuário com este email."
+        : "Falha ao cadastrar paciente. Verifique os dados e tente novamente.";
       toast({
         title: "Erro",
-        description: "Falha ao cadastrar paciente. Verifique os dados e tente novamente.",
+        description: errorMessage,
         variant: "destructive",
       });
     },
@@ -100,7 +101,6 @@ export default function NewPatientPage() {
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Campos Name, Email, BirthDate, Sex (sem alterações) */}
                   <div className="md:col-span-2">
                     <FormField
                       control={form.control}
@@ -116,7 +116,7 @@ export default function NewPatientPage() {
                       )}
                     />
                   </div>
-                  <div className="md:col-span-2">
+                  <div>
                     <FormField
                       control={form.control}
                       name="email"
@@ -126,6 +126,24 @@ export default function NewPatientPage() {
                           <FormControl>
                             <Input type="email" placeholder="email@exemplo.com" {...field} />
                           </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  <div>
+                    <FormField
+                      control={form.control}
+                      name="password"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Senha Provisória</FormLabel>
+                          <FormControl>
+                            <Input type="password" placeholder="••••••••" {...field} />
+                          </FormControl>
+                           <FormDescription className="text-xs">
+                            O paciente usará esta senha para o primeiro acesso.
+                          </FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -169,7 +187,6 @@ export default function NewPatientPage() {
                     />
                   </div>
                   
-                  {/* Campo Height (Altura) */}
                   <div>
                     <FormField
                       control={form.control}
@@ -181,9 +198,7 @@ export default function NewPatientPage() {
                             <Input 
                               type="number" 
                               placeholder="165"
-                              // Mostra string vazia se o valor for undefined
                               value={field.value ?? ''}
-                              // Passa o valor como string para o Zod processar
                               onChange={(e) => field.onChange(e.target.value)}
                             />
                           </FormControl>
@@ -193,7 +208,6 @@ export default function NewPatientPage() {
                     />
                   </div>
                   
-                  {/* Campo Weight (Peso) */}
                   <div>
                     <FormField
                       control={form.control}
@@ -206,7 +220,6 @@ export default function NewPatientPage() {
                               type="number" 
                               step="0.01" 
                               placeholder="64.50"
-                              // O valor do campo é tratado como string
                               {...field}
                             />
                           </FormControl>
@@ -217,7 +230,6 @@ export default function NewPatientPage() {
                   </div>
                 </div>
                 
-                {/* Campo Notes (Observações) */}
                 <FormField
                   control={form.control}
                   name="notes"
