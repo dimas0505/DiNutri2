@@ -8,12 +8,14 @@ import Header from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import type { Patient, Prescription } from "@shared/schema";
 
 export default function PatientDetails({ params }: { params: { id: string } }) {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [prescriptionToDelete, setPrescriptionToDelete] = useState<string | null>(null);
 
   const { data: patient, isLoading: patientLoading } = useQuery<Patient>({
     queryKey: ["/api/patients", params.id],
@@ -44,7 +46,7 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
     },
     onSuccess: (prescription) => {
       queryClient.invalidateQueries({ queryKey: ["/api/patients", params.id, "prescriptions"] });
-      setLocation(`/prescriptions/${prescription.id}`);
+      setLocation(`/prescriptions/${prescription.id}/edit`);
     },
     onError: () => {
       toast({
@@ -63,7 +65,7 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
     },
     onSuccess: (prescription) => {
       queryClient.invalidateQueries({ queryKey: ["/api/patients", params.id, "prescriptions"] });
-      setLocation(`/prescriptions/${prescription.id}`);
+      setLocation(`/prescriptions/${prescription.id}/edit`);
     },
     onError: () => {
       toast({
@@ -71,6 +73,33 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
         description: "Falha ao duplicar prescrição.",
         variant: "destructive",
       });
+    },
+  });
+
+  const deletePrescriptionMutation = useMutation({
+    mutationFn: async (prescriptionId: string) => {
+      const response = await apiRequest("DELETE", `/api/prescriptions/${prescriptionId}`);
+      return await response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Prescrição excluída",
+        description: "A prescrição foi excluída com sucesso.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/patients", params.id, "prescriptions"] });
+      setPrescriptionToDelete(null);
+    },
+    onError: (error: any) => {
+      console.error("Erro ao excluir prescrição:", error);
+      const errorMessage = error.message.includes("403")
+        ? "Não é possível excluir prescrições publicadas."
+        : "Não foi possível excluir a prescrição. Tente novamente.";
+      toast({
+        title: "Erro",
+        description: errorMessage,
+        variant: "destructive",
+      });
+      setPrescriptionToDelete(null);
     },
   });
 
@@ -88,6 +117,10 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('pt-BR');
+  };
+
+  const handleDeletePrescription = (prescriptionId: string) => {
+    deletePrescriptionMutation.mutate(prescriptionId);
   };
 
   if (patientLoading) {
@@ -118,7 +151,7 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
     <div className="min-h-screen bg-background">
       <Header
         title={patient.name}
-        subtitle={patient.email}
+        subtitle={patient.email || undefined}
         leftElement={
           <Button
             variant="ghost"
@@ -218,16 +251,6 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle>Prescrições</CardTitle>
-                  <Button
-                    size="sm"
-                    onClick={() => createPrescriptionMutation.mutate()}
-                    disabled={createPrescriptionMutation.isPending || !hasAccountLinked}
-                    title={!hasAccountLinked ? "Paciente precisa ter um login" : "Nova prescrição"}
-                    data-testid="button-new-prescription-card"
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Nova
-                  </Button>
                 </div>
               </CardHeader>
               <CardContent>
@@ -252,14 +275,14 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                           </Badge>
                         </div>
                         <p className="text-sm text-muted-foreground mb-3">
-                          Criado em {formatDate(prescription.createdAt)}
-                          {prescription.publishedAt && ` • Publicado em ${formatDate(prescription.publishedAt)}`}
+                          {prescription.createdAt && `Criado em ${formatDate(prescription.createdAt.toString())}`}
+                          {prescription.publishedAt && ` • Publicado em ${formatDate(prescription.publishedAt.toString())}`}
                         </p>
                         <div className="flex items-center space-x-2">
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => setLocation(`/prescriptions/${prescription.id}`)}
+                            onClick={() => setLocation(`/prescriptions/${prescription.id}/edit`)}
                             data-testid={`button-edit-prescription-${prescription.id}`}
                           >
                             <Eye className="h-4 w-4 mr-1" />
@@ -275,6 +298,40 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                             <FileText className="h-4 w-4 mr-1" />
                             Duplicar
                           </Button>
+                          {prescription.status === 'draft' && (
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="text-destructive hover:text-destructive/80"
+                                  data-testid={`button-delete-prescription-${prescription.id}`}
+                                >
+                                  <Trash2 className="h-4 w-4 mr-1" />
+                                  Excluir
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Tem certeza de que deseja excluir a prescrição "{prescription.title}"?
+                                    Esta ação não pode ser desfeita.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => handleDeletePrescription(prescription.id)}
+                                    disabled={deletePrescriptionMutation.isPending}
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                  >
+                                    {deletePrescriptionMutation.isPending ? "Excluindo..." : "Excluir"}
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          )}
                         </div>
                       </div>
                     ))}

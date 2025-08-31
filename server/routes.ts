@@ -482,7 +482,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // --- ROTAS DE PRESCRIÇÃO (sem alterações) ---
+  // --- ROTAS DE PRESCRIÇÃO ---
   app.get('/api/patients/:patientId/prescriptions', isAuthenticated, async (req, res) => {
     try {
       const prescriptions = await storage.getPrescriptionsByPatient(req.params.patientId);
@@ -553,6 +553,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error duplicating prescription:", error);
       res.status(500).json({ message: "Failed to duplicate prescription" });
+    }
+  });
+
+  // Nova rota para excluir prescrição
+  app.delete('/api/prescriptions/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const prescription = await storage.getPrescription(req.params.id);
+      
+      if (!prescription) {
+        return res.status(404).json({ message: "Prescription not found" });
+      }
+
+      // Verificar se o usuário tem permissão para excluir
+      if (prescription.nutritionistId !== req.user.id) {
+        return res.status(403).json({ message: "Permission denied" });
+      }
+
+      // Não permitir exclusão de prescrições publicadas
+      if (prescription.status === 'published') {
+        return res.status(403).json({ message: "Cannot delete published prescriptions" });
+      }
+
+      await storage.deletePrescription(req.params.id);
+      res.json({ message: "Prescription deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting prescription:", error);
+      res.status(500).json({ message: "Failed to delete prescription" });
     }
   });
 

@@ -51,6 +51,7 @@ export interface IStorage {
   updatePrescription(id: string, prescription: UpdatePrescription): Promise<Prescription>;
   publishPrescription(id: string): Promise<Prescription>;
   duplicatePrescription(id: string, title: string): Promise<Prescription>;
+  deletePrescription(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -383,6 +384,10 @@ export class DatabaseStorage implements IStorage {
       .values(duplicatedWithId)
       .returning();
     return duplicated;
+  }
+
+  async deletePrescription(id: string): Promise<void> {
+    await db.delete(prescriptions).where(eq(prescriptions.id, id));
   }
 }
 
