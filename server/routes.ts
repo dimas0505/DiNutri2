@@ -613,12 +613,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/mood-entries/:prescriptionId/:mealId/:date', isAuthenticated, async (req: any, res) => {
     try {
       const { prescriptionId, mealId, date } = req.params;
+      console.log(`Fetching mood entry: prescriptionId=${prescriptionId}, mealId=${mealId}, date=${date}`);
+      
       const moodEntry = await storage.getMoodEntry(prescriptionId, mealId, date);
       
       if (!moodEntry) {
+        console.log(`Mood entry not found for: prescriptionId=${prescriptionId}, mealId=${mealId}, date=${date}`);
         return res.status(404).json({ message: "Mood entry not found" });
       }
       
+      console.log(`Mood entry found: ${moodEntry.id}`);
       res.json(moodEntry);
     } catch (error) {
       console.error("Error fetching mood entry:", error);
@@ -629,7 +633,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Criar novo registro de humor
   app.post('/api/mood-entries', isAuthenticated, async (req: any, res) => {
     try {
+      console.log('Creating mood entry with data:', req.body);
       const validatedData = insertMoodEntrySchema.parse(req.body);
+      console.log('Validated mood entry data:', validatedData);
       
       // Verificar se já existe um registro para este dia
       const existingEntry = await storage.getMoodEntry(
@@ -639,6 +645,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
       
       if (existingEntry) {
+        console.log(`Mood entry already exists: ${existingEntry.id}`);
         return res.status(409).json({ 
           message: "Mood entry already exists for this date",
           existingEntry 
@@ -646,9 +653,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const moodEntry = await storage.createMoodEntry(validatedData);
+      console.log(`Mood entry created successfully: ${moodEntry.id}`);
       res.status(201).json(moodEntry);
     } catch (error) {
       if (error instanceof z.ZodError) {
+        console.error("Validation error creating mood entry:", error.flatten());
         return res.status(400).json({ message: "Invalid mood entry data.", errors: error.flatten() });
       }
       console.error("Error creating mood entry:", error);
@@ -659,11 +668,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Atualizar registro de humor existente
   app.put('/api/mood-entries/:id', isAuthenticated, async (req: any, res) => {
     try {
+      console.log(`Updating mood entry ${req.params.id} with data:`, req.body);
       const updateData = insertMoodEntrySchema.partial().parse(req.body);
+      console.log('Validated update data:', updateData);
+      
       const moodEntry = await storage.updateMoodEntry(req.params.id, updateData);
+      console.log(`Mood entry updated successfully: ${moodEntry.id}`);
       res.json(moodEntry);
     } catch (error) {
       if (error instanceof z.ZodError) {
+        console.error("Validation error updating mood entry:", error.flatten());
         return res.status(400).json({ message: "Invalid mood entry data.", errors: error.flatten() });
       }
       console.error("Error updating mood entry:", error);

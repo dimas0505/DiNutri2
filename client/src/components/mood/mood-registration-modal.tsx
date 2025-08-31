@@ -18,9 +18,9 @@ interface MoodRegistrationModalProps {
 
 interface MoodEntryData {
   id?: string;
-  moodBefore?: MoodType;
-  moodAfter?: MoodType;
-  notes?: string;
+  moodBefore?: MoodType | null;
+  moodAfter?: MoodType | null;
+  notes?: string | null;
 }
 
 export function MoodRegistrationModal({
@@ -49,8 +49,9 @@ export function MoodRegistrationModal({
   // Atualizar estado quando dados existentes chegarem
   useEffect(() => {
     if (existingMoodEntry) {
-      setMoodBefore(existingMoodEntry.moodBefore);
-      setMoodAfter(existingMoodEntry.moodAfter);
+      // Convert null to undefined for component state
+      setMoodBefore(existingMoodEntry.moodBefore || undefined);
+      setMoodAfter(existingMoodEntry.moodAfter || undefined);
       setNotes(existingMoodEntry.notes || "");
     } else {
       // Limpar estado se não houver registro existente
@@ -74,15 +75,22 @@ export function MoodRegistrationModal({
         ...data,
       };
 
+      console.log('Saving mood entry:', payload);
+
       if (existingMoodEntry?.id) {
         // Atualizar registro existente
-        return await apiRequest("PUT", `/api/mood-entries/${existingMoodEntry.id}`, payload);
+        console.log('Updating existing mood entry:', existingMoodEntry.id);
+        const response = await apiRequest("PUT", `/api/mood-entries/${existingMoodEntry.id}`, payload);
+        return await response.json();
       } else {
         // Criar novo registro
-        return await apiRequest("POST", "/api/mood-entries", payload);
+        console.log('Creating new mood entry');
+        const response = await apiRequest("POST", "/api/mood-entries", payload);
+        return await response.json();
       }
     },
     onSuccess: () => {
+      console.log('Mood entry saved successfully');
       toast({
         title: "Humor registrado!",
         description: "Seu humor foi salvo com sucesso.",
@@ -94,9 +102,20 @@ export function MoodRegistrationModal({
     },
     onError: (error: any) => {
       console.error("Error saving mood:", error);
+      
+      // Parse error message for better user feedback
+      let errorMessage = "Não foi possível salvar seu humor. Tente novamente.";
+      if (error.message.includes("409")) {
+        errorMessage = "Já existe um registro para este dia. Tente atualizar a página.";
+      } else if (error.message.includes("400")) {
+        errorMessage = "Dados inválidos. Verifique as informações e tente novamente.";
+      } else if (error.message.includes("401")) {
+        errorMessage = "Sessão expirada. Faça login novamente.";
+      }
+      
       toast({
         title: "Erro",
-        description: "Não foi possível salvar seu humor. Tente novamente.",
+        description: errorMessage,
         variant: "destructive",
       });
     },
