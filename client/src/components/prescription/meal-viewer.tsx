@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import type { MealData } from "@shared/schema";
 
 interface MealViewerProps {
@@ -28,23 +29,6 @@ const moodOptions = [
   { value: 'very_happy', label: '😄', description: 'Muito feliz' }
 ];
 
-// Função para fazer requisições API (temporária, até implementarmos a API completa)
-async function apiRequest(method: string, url: string, data?: any) {
-  const response = await fetch(url, {
-    method,
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: data ? JSON.stringify(data) : undefined,
-  });
-  
-  if (!response.ok) {
-    throw new Error(`API Error: ${response.status}`);
-  }
-  
-  return response.json();
-}
-
 export default function MealViewer({ meal, prescriptionId }: MealViewerProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [moodBefore, setMoodBefore] = useState<string>('');
@@ -58,15 +42,6 @@ export default function MealViewer({ meal, prescriptionId }: MealViewerProps) {
   // Buscar entrada de humor do dia atual para esta refeição
   const { data: moodEntry, isLoading } = useQuery<MoodEntry>({
     queryKey: ["/api/mood-entries", prescriptionId, meal.id, today],
-    queryFn: async () => {
-      if (!prescriptionId) return null;
-      try {
-        return await apiRequest("GET", `/api/mood-entries/${prescriptionId}/${meal.id}/${today}`);
-      } catch (error) {
-        // Se não encontrou entrada, retorna null
-        return null;
-      }
-    },
     enabled: isExpanded && !!prescriptionId,
   });
 
@@ -85,15 +60,17 @@ export default function MealViewer({ meal, prescriptionId }: MealViewerProps) {
       
       if (moodEntry?.id) {
         // Atualizar entrada existente
-        return await apiRequest("PUT", `/api/mood-entries/${moodEntry.id}`, data);
+        const response = await apiRequest("PUT", `/api/mood-entries/${moodEntry.id}`, data);
+        return await response.json();
       } else {
         // Criar nova entrada
-        return await apiRequest("POST", "/api/mood-entries", {
+        const response = await apiRequest("POST", "/api/mood-entries", {
           prescriptionId,
           mealId: meal.id,
           date: today,
           ...data
         });
+        return await response.json();
       }
     },
     onSuccess: () => {
