@@ -6,7 +6,7 @@ import passport from "passport";
 import bcrypt from "bcrypt";
 import { storage } from "./storage.js";
 import { setupAuth, isAuthenticated } from "./auth.js";
-import { insertPatientSchema, insertPrescriptionSchema, updatePrescriptionSchema } from "../shared/schema.js";
+import { insertPatientSchema, insertPrescriptionSchema, updatePrescriptionSchema, insertMoodEntrySchema } from "../shared/schema.js";
 import { z } from "zod";
 
 const SALT_ROUNDS = 10;
@@ -593,6 +593,112 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching latest prescription for user:", error);
       res.status(500).json({ message: "Failed to fetch latest prescription" });
+    }
+  });
+
+  // Novo endpoint para buscar TODAS as prescrições publicadas do paciente
+  app.get('/api/patient/my-prescriptions', isAuthenticated, async (req: any, res) => {
+    try {
+      const prescriptions = await storage.getPublishedPrescriptionsForUser(req.user.id);
+      res.json(prescriptions);
+    } catch (error) {
+      console.error("Error fetching prescriptions for user:", error);
+      res.status(500).json({ message: "Failed to fetch prescriptions" });
+    }
+  });
+
+  // --- ROTAS DE HUMOR (NEW) ---
+  
+  // Buscar registro de humor para um dia específico
+  app.get('/api/mood-entries/:prescriptionId/:mealId/:date', isAuthenticated, async (req: any, res) => {
+    try {
+      const { prescriptionId, mealId, date } = req.params;
+      const moodEntry = await storage.getMoodEntry(prescriptionId, mealId, date);
+      
+      if (!moodEntry) {
+        return res.status(404).json({ message: "Mood entry not found" });
+      }
+      
+      res.json(moodEntry);
+    } catch (error) {
+      console.error("Error fetching mood entry:", error);
+      res.status(500).json({ message: "Failed to fetch mood entry" });
+    }
+  });
+
+  // Criar novo registro de humor
+  app.post('/api/mood-entries', isAuthenticated, async (req: any, res) => {
+    try {
+      const validatedData = insertMoodEntrySchema.parse(req.body);
+      
+      // Verificar se já existe um registro para este dia
+      const existingEntry = await storage.getMoodEntry(
+        validatedData.prescriptionId,
+        validatedData.mealId,
+        validatedData.date
+      );
+      
+      if (existingEntry) {
+        return res.status(409).json({ 
+          message: "Mood entry already exists for this date",
+          existingEntry 
+        });
+      }
+      
+      const moodEntry = await storage.createMoodEntry(validatedData);
+      res.status(201).json(moodEntry);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid mood entry data.", errors: error.flatten() });
+      }
+      console.error("Error creating mood entry:", error);
+      res.status(500).json({ message: "Failed to create mood entry" });
+    }
+  });
+
+  // Atualizar registro de humor existente
+  app.put('/api/mood-entries/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const updateData = insertMoodEntrySchema.partial().parse(req.body);
+      const moodEntry = await storage.updateMoodEntry(req.params.id, updateData);
+      res.json(moodEntry);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid mood entry data.", errors: error.flatten() });
+      }
+      console.error("Error updating mood entry:", error);
+      res.status(500).json({ message: "Failed to update mood entry" });
+    }
+  });
+
+  // Buscar registros de humor de um paciente
+  app.get('/api/patients/:patientId/mood-entries', isAuthenticated, async (req: any, res) => {
+    try {
+      const { patientId } = req.params;
+      const { startDate, endDate } = req.query;
+      
+      const moodEntries = await storage.getMoodEntriesByPatient(
+        patientId,
+        startDate as string,
+        endDate as string
+      );
+      
+      res.json(moodEntries);
+    } catch (error) {
+      console.error("Error fetching mood entries for patient:", error);
+      res.status(500).json({ message: "Failed to fetch mood entries" });
+    }
+  });
+
+  // Buscar registros de humor de uma prescrição
+  app.get('/api/prescriptions/:prescriptionId/mood-entries', isAuthenticated, async (req: any, res) => {
+    try {
+      const { prescriptionId } = req.params;
+      const moodEntries = await storage.getMoodEntriesByPrescription(prescriptionId);
+      res.json(moodEntries);
+    } catch (error) {
+      console.error("Error fetching mood entries for prescription:", error);
+      res.status(500).json({ message: "Failed to fetch mood entries" });
     }
   });
 

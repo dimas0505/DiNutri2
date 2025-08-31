@@ -3,6 +3,7 @@ import {
   patients,
   prescriptions,
   invitations,
+  moodEntries,
   type User,
   type UpsertUser,
   type Patient,
@@ -10,9 +11,11 @@ import {
   type Prescription,
   type InsertPrescription,
   type UpdatePrescription,
+  type MoodEntry,
+  type InsertMoodEntry,
 } from "../shared/schema.js";
 import { db } from "./db.js";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, gte, lte } from "drizzle-orm";
 import { randomBytes } from "crypto";
 import { nanoid } from "nanoid";
 
@@ -47,11 +50,19 @@ export interface IStorage {
   getPrescription(id: string): Promise<Prescription | undefined>;
   getLatestPublishedPrescription(patientId: string): Promise<Prescription | undefined>;
   getLatestPublishedPrescriptionForUser(userId: string): Promise<Prescription | undefined>;
+  getPublishedPrescriptionsForUser(userId: string): Promise<Prescription[]>;
   createPrescription(prescription: InsertPrescription): Promise<Prescription>;
   updatePrescription(id: string, prescription: UpdatePrescription): Promise<Prescription>;
   publishPrescription(id: string): Promise<Prescription>;
   duplicatePrescription(id: string, title: string): Promise<Prescription>;
   deletePrescription(id: string): Promise<void>;
+
+  // Mood operations (NEW)
+  getMoodEntry(prescriptionId: string, mealId: string, date: string): Promise<MoodEntry | undefined>;
+  createMoodEntry(moodEntry: InsertMoodEntry): Promise<MoodEntry>;
+  updateMoodEntry(id: string, moodEntry: Partial<InsertMoodEntry>): Promise<MoodEntry>;
+  getMoodEntriesByPatient(patientId: string, startDate?: string, endDate?: string): Promise<MoodEntry[]>;
+  getMoodEntriesByPrescription(prescriptionId: string): Promise<MoodEntry[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -311,16 +322,21 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getLatestPublishedPrescriptionForUser(userId: string): Promise<Prescription | undefined> {
-    // 1. Find the patient profile linked to the user ID
     const [patient] = await db.select({ id: patients.id }).from(patients).where(eq(patients.userId, userId));
-    
-    // 2. If no patient profile is linked, there are no prescriptions
-    if (!patient) {
-      return undefined;
-    }
-    
-    // 3. Use the found patient ID to get the latest prescription
+    if (!patient) return undefined;
     return this.getLatestPublishedPrescription(patient.id);
+  }
+
+  async getPublishedPrescriptionsForUser(userId: string): Promise<Prescription[]> {
+    const [patient] = await db.select({ id: patients.id }).from(patients).where(eq(patients.userId, userId));
+    if (!patient) {
+      return [];
+    }
+    return await db
+      .select()
+      .from(prescriptions)
+      .where(and(eq(prescriptions.patientId, patient.id), eq(prescriptions.status, "published")))
+      .orderBy(desc(prescriptions.publishedAt));
   }
 
   async createPrescription(prescription: InsertPrescription): Promise<Prescription> {
@@ -388,6 +404,71 @@ export class DatabaseStorage implements IStorage {
 
   async deletePrescription(id: string): Promise<void> {
     await db.delete(prescriptions).where(eq(prescriptions.id, id));
+  }
+
+  // Mood operations (NEW)
+  async getMoodEntry(prescriptionId: string, mealId: string, date: string): Promise<MoodEntry | undefined> {
+    const [moodEntry] = await db
+      .select()
+      .from(moodEntries)
+      .where(
+        and(
+          eq(moodEntries.prescriptionId, prescriptionId),
+          eq(moodEntries.mealId, mealId),
+          eq(moodEntries.date, date)
+        )
+      );
+    return moodEntry;
+  }
+
+  async createMoodEntry(moodEntry: InsertMoodEntry): Promise<MoodEntry> {
+    const moodEntryWithId = {
+      id: nanoid(),
+      ...moodEntry,
+    };
+    
+    const [newMoodEntry] = await db
+      .insert(moodEntries)
+      .values(moodEntryWithId)
+      .returning();
+    return newMoodEntry;
+  }
+
+  async updateMoodEntry(id: string, moodEntry: Partial<InsertMoodEntry>): Promise<MoodEntry> {
+    const [updatedMoodEntry] = await db
+      .update(moodEntries)
+      .set({ 
+        ...moodEntry, 
+        updatedAt: new Date() 
+      })
+      .where(eq(moodEntries.id, id))
+      .returning();
+    return updatedMoodEntry;
+  }
+
+  async getMoodEntriesByPatient(patientId: string, startDate?: string, endDate?: string): Promise<MoodEntry[]> {
+    let whereConditions = [eq(moodEntries.patientId, patientId)];
+
+    if (startDate && endDate) {
+      whereConditions.push(gte(moodEntries.date, startDate));
+      whereConditions.push(lte(moodEntries.date, endDate));
+    } else if (startDate) {
+      whereConditions.push(eq(moodEntries.date, startDate));
+    }
+
+    return await db
+      .select()
+      .from(moodEntries)
+      .where(and(...whereConditions))
+      .orderBy(desc(moodEntries.createdAt));
+  }
+
+  async getMoodEntriesByPrescription(prescriptionId: string): Promise<MoodEntry[]> {
+    return await db
+      .select()
+      .from(moodEntries)
+      .where(eq(moodEntries.prescriptionId, prescriptionId))
+      .orderBy(desc(moodEntries.date), desc(moodEntries.createdAt));
   }
 }
 

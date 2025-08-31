@@ -118,7 +118,7 @@ export default function PatientsPage() {
 
   const filteredPatients = patients.filter(patient =>
     patient.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    patient.email.toLowerCase().includes(searchQuery.toLowerCase())
+    (patient.email && patient.email.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   const calculateAge = (birthDate: string) => {

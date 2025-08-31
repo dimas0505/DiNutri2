@@ -15,7 +15,7 @@ interface MealItemEditorProps {
 }
 
 export default function MealItemEditor({ item, onUpdate, onDelete, onMoveUp, onMoveDown }: MealItemEditorProps) {
-  const [isSubstitutesOpen, setIsSubstitutesOpen] = useState(false);
+  const [isSubstitutesOpen, setIsSubstitutesOpen] = useState(!!item.substitutes && item.substitutes.length > 0);
   const [newSubstitute, setNewSubstitute] = useState("");
 
   const updateDescription = (description: string) => {
@@ -130,8 +130,8 @@ export default function MealItemEditor({ item, onUpdate, onDelete, onMoveUp, onM
             </Button>
           </CollapsibleTrigger>
           
-          {/* Badges dos substitutos (sempre visíveis se existirem) */}
-          {item.substitutes && item.substitutes.length > 0 && (
+          {/* Badges dos substitutos (visíveis quando recolhido) */}
+          {!isSubstitutesOpen && item.substitutes && item.substitutes.length > 0 && (
             <div className="flex flex-wrap gap-1">
               {item.substitutes.slice(0, 3).map((substitute, index) => (
                 <Badge key={index} variant="secondary" className="text-xs">

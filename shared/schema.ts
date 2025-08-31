@@ -59,6 +59,20 @@ export const prescriptions = pgTable("prescriptions", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Mood entries table
+export const moodEntries = pgTable("mood_entries", {
+  id: varchar("id").primaryKey(),
+  patientId: varchar("patient_id").references(() => patients.id).notNull(),
+  prescriptionId: varchar("prescription_id").references(() => prescriptions.id).notNull(),
+  mealId: varchar("meal_id").notNull(), // ID da refeição dentro da prescrição
+  moodBefore: varchar("mood_before", { enum: ["very_sad", "sad", "neutral", "happy", "very_happy"] }),
+  moodAfter: varchar("mood_after", { enum: ["very_sad", "sad", "neutral", "happy", "very_happy"] }),
+  notes: text("notes"),
+  date: varchar("date").notNull(), // Format: YYYY-MM-DD
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ one, many }) => ({
   patientProfile: one(patients, {
@@ -81,6 +95,7 @@ export const patientsRelations = relations(patients, ({ one, many }) => ({
     references: [users.id],
   }),
   prescriptions: many(prescriptions),
+  moodEntries: many(moodEntries),
 }));
 
 export const invitationsRelations = relations(invitations, ({ one }) => ({
@@ -90,7 +105,7 @@ export const invitationsRelations = relations(invitations, ({ one }) => ({
   }),
 }));
 
-export const prescriptionsRelations = relations(prescriptions, ({ one }) => ({
+export const prescriptionsRelations = relations(prescriptions, ({ one, many }) => ({
   patient: one(patients, {
     fields: [prescriptions.patientId],
     references: [patients.id],
@@ -99,6 +114,18 @@ export const prescriptionsRelations = relations(prescriptions, ({ one }) => ({
     fields: [prescriptions.nutritionistId],
     references: [users.id],
   }),
+  moodEntries: many(moodEntries),
+}));
+
+export const moodEntriesRelations = relations(moodEntries, ({ one }) => ({
+  patient: one(patients, {
+    fields: [moodEntries.patientId],
+    references: [patients.id],
+  }),
+  prescription: one(prescriptions, {
+    fields: [moodEntries.prescriptionId],
+    references: [prescriptions.id],
+  }),
 }));
 
 // Types for prescription meals structure
@@ -106,7 +133,7 @@ export interface MealItemData {
   id: string;
   description: string;
   amount: string;
-  substitutes?: string[]; // Nova propriedade para substitutos
+  substitutes?: string[];
 }
 
 export interface MealData {
@@ -115,6 +142,23 @@ export interface MealData {
   items: MealItemData[];
   notes?: string;
 }
+
+// Mood types - ajustado para aceitar null (que é o que o Drizzle retorna)
+export type MoodType = "very_sad" | "sad" | "neutral" | "happy" | "very_happy";
+
+// Type para MoodEntry que aceita null do banco de dados
+export type MoodEntry = {
+  id: string;
+  patientId: string;
+  prescriptionId: string;
+  mealId: string;
+  moodBefore: MoodType | null;
+  moodAfter: MoodType | null;
+  notes: string | null;
+  date: string;
+  createdAt: Date | null;
+  updatedAt: Date | null;
+};
 
 // Zod schemas
 export const insertUserSchema = createInsertSchema(users).pick({
@@ -146,6 +190,12 @@ export const updatePrescriptionSchema = createInsertSchema(prescriptions).omit({
   updatedAt: true,
 }).partial();
 
+export const insertMoodEntrySchema = createInsertSchema(moodEntries).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Types
 export type UpsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
@@ -155,3 +205,4 @@ export type InsertPrescription = z.infer<typeof insertPrescriptionSchema>;
 export type UpdatePrescription = z.infer<typeof updatePrescriptionSchema>;
 export type Prescription = typeof prescriptions.$inferSelect;
 export type Invitation = typeof invitations.$inferSelect;
+export type InsertMoodEntry = z.infer<typeof insertMoodEntrySchema>;
