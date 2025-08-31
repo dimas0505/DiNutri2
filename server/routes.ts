@@ -11,6 +11,14 @@ import { z } from "zod";
 
 const SALT_ROUNDS = 10;
 
+// Middleware para verificar se o usuário é admin
+const isAdmin = (req: any, res: any, next: any) => {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ message: "Acesso negado. Apenas administradores." });
+  }
+  next();
+};
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Configura a nova estratégia de autenticação (passport-local)
   await setupAuth(app);
@@ -22,13 +30,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(req.user);
   });
 
+  // ROTA DE LOGOUT ATUALIZADA
   app.get("/api/logout", (req, res, next) => {
     req.logout((err) => {
       if (err) { return next(err); }
       // Destrói a sessão e limpa o cookie do navegador
       req.session.destroy(() => {
         res.clearCookie('connect.sid'); 
-        res.status(200).json({ message: "Logout successful" });
+        // Redireciona para a página inicial em vez de retornar JSON
+        res.redirect('/');
       });
     });
   });
@@ -41,6 +51,262 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
+
+  // --- ROTAS DE PERFIL DO USUÁRIO ---
+  app.put('/api/auth/change-password', isAuthenticated, async (req: any, res) => {
+    const changePasswordSchema = z.object({
+      currentPassword: z.string().min(1),
+      newPassword: z.string().min(6),
+    });
+
+    try {
+      const { currentPassword, newPassword } = changePasswordSchema.parse(req.body);
+      
+      // Verificar se a senha atual está correta
+      const user = await storage.getUser(req.user.id);
+      if (!user || !user.hashedPassword) {
+        return res.status(401).json({ message: "Usuário não encontrado." });
+      }
+
+      const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.hashedPassword);
+      if (!isCurrentPasswordValid) {
+        return res.status(401).json({ message: "Senha atual incorreta." });
+      }
+
+      // Gerar hash da nova senha
+      const hashedNewPassword = await bcrypt.hash(newPassword, SALT_ROUNDS);
+      
+      // Atualizar a senha no banco
+      await storage.updateUserPassword(req.user.id, hashedNewPassword);
+
+      res.json({ message: "Senha alterada com sucesso." });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Dados inválidos.", errors: error.flatten() });
+      }
+      console.error("Error changing password:", error);
+      res.status(500).json({ message: "Failed to change password" });
+    }
+  });
+
+  app.put('/api/auth/profile', isAuthenticated, async (req: any, res) => {
+    const updateProfileSchema = z.object({
+      firstName: z.string().min(1),
+      lastName: z.string().min(1),
+      email: z.string().email(),
+    });
+
+    try {
+      const profileData = updateProfileSchema.parse(req.body);
+      
+      // Verificar se o email já está em uso por outro usuário
+      if (profileData.email !== req.user.email) {
+        const existingUser = await storage.getUserByEmail(profileData.email);
+        if (existingUser && existingUser.id !== req.user.id) {
+          return res.status(409).json({ message: "Este email já está em uso por outro usuário." });
+        }
+      }
+
+      // Atualizar o perfil
+      const updatedUser = await storage.updateUserProfile(req.user.id, profileData);
+      
+      res.json(updatedUser);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Dados inválidos.", errors: error.flatten() });
+      }
+      console.error("Error updating profile:", error);
+      res.status(500).json({ message: "Failed to update profile" });
+    }
+  });
+
+  // --- ROTAS DE ADMINISTRADOR ---
+  app.get('/api/admin/users', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const users = await storage.getAllUsers();
+      res.json(users);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      res.status(500).json({ message: "Failed to fetch users" });
+    }
+  });
+
+  app.post('/api/admin/users', isAuthenticated, isAdmin, async (req: any, res) => {
+    const createUserSchema = z.object({
+      email: z.string().email(),
+      firstName: z.string().min(1),
+      lastName: z.string().min(1),
+      password: z.string().min(6),
+      role: z.enum(["admin", "nutritionist"]),
+    });
+
+    try {
+      const { password, ...userData } = createUserSchema.parse(req.body);
+      
+      const existingUser = await storage.getUserByEmail(userData.email);
+      if (existingUser) {
+        return res.status(409).json({ message: "Este email já está em uso." });
+      }
+
+      const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
+      const newUser = await storage.upsertUser({
+        ...userData,
+        hashedPassword,
+      });
+
+      res.status(201).json(newUser);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Dados inválidos.", errors: error.flatten() });
+      }
+      console.error("Error creating user:", error);
+      res.status(500).json({ message: "Failed to create user" });
+    }
+  });
+
+  // Buscar usuário específico por ID
+  app.get('/api/admin/users/:id', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.params.id);
+      if (!user) {
+        return res.status(404).json({ message: "Usuário não encontrado." });
+      }
+      res.json(user);
+    } catch (error) {
+      console.error("Error fetching user:", error);
+      res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
+
+  // Atualizar usuário específico
+  app.put('/api/admin/users/:id', isAuthenticated, isAdmin, async (req: any, res) => {
+    const updateUserSchema = z.object({
+      firstName: z.string().min(1),
+      lastName: z.string().min(1),
+      email: z.string().email(),
+      role: z.enum(["admin", "nutritionist", "patient"]),
+    });
+
+    try {
+      const userData = updateUserSchema.parse(req.body);
+      const userId = req.params.id;
+      
+      // Verificar se o usuário existe
+      const existingUser = await storage.getUser(userId);
+      if (!existingUser) {
+        return res.status(404).json({ message: "Usuário não encontrado." });
+      }
+
+      // Verificar se o email já está em uso por outro usuário
+      if (userData.email !== existingUser.email) {
+        const emailUser = await storage.getUserByEmail(userData.email);
+        if (emailUser && emailUser.id !== userId) {
+          return res.status(409).json({ message: "Este email já está em uso por outro usuário." });
+        }
+      }
+
+      // Atualizar o usuário
+      const updatedUser = await storage.updateUserProfile(userId, userData);
+      
+      res.json(updatedUser);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Dados inválidos.", errors: error.flatten() });
+      }
+      console.error("Error updating user:", error);
+      res.status(500).json({ message: "Failed to update user" });
+    }
+  });
+
+  // Alterar senha de usuário específico
+  app.put('/api/admin/users/:id/password', isAuthenticated, isAdmin, async (req: any, res) => {
+    const changePasswordSchema = z.object({
+      newPassword: z.string().min(6),
+    });
+
+    try {
+      const { newPassword } = changePasswordSchema.parse(req.body);
+      const userId = req.params.id;
+      
+      // Verificar se o usuário existe
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "Usuário não encontrado." });
+      }
+
+      // Gerar hash da nova senha
+      const hashedNewPassword = await bcrypt.hash(newPassword, SALT_ROUNDS);
+      
+      // Atualizar a senha no banco
+      await storage.updateUserPassword(userId, hashedNewPassword);
+
+      res.json({ message: "Senha alterada com sucesso." });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Dados inválidos.", errors: error.flatten() });
+      }
+      console.error("Error changing user password:", error);
+      res.status(500).json({ message: "Failed to change password" });
+    }
+  });
+
+  // Verificar dependências do usuário antes da exclusão
+  app.get('/api/admin/users/:id/dependencies', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const userId = req.params.id;
+      
+      const hasPatients = await storage.userHasPatients(userId);
+      const hasPrescriptions = await storage.userHasPrescriptions(userId);
+      const hasInvitations = await storage.userHasInvitations(userId);
+      
+      res.json({
+        hasPatients,
+        hasPrescriptions,
+        hasInvitations,
+        canDelete: !hasPatients && !hasPrescriptions // invitations podem ser excluídos automaticamente
+      });
+    } catch (error) {
+      console.error("Error checking user dependencies:", error);
+      res.status(500).json({ message: "Failed to check dependencies" });
+    }
+  });
+
+  // Excluir usuário específico
+  app.delete('/api/admin/users/:id', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const userId = req.params.id;
+      
+      // Verificar se o usuário existe
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "Usuário não encontrado." });
+      }
+
+      // Não permitir que o usuário delete a si mesmo
+      if (userId === req.user.id) {
+        return res.status(400).json({ message: "Você não pode excluir sua própria conta." });
+      }
+
+      // Não permitir excluir outros administradores (política de segurança)
+      if (user.role === 'admin') {
+        return res.status(400).json({ message: "Não é possível excluir outros administradores." });
+      }
+
+      // Tentar excluir o usuário
+      await storage.deleteUser(userId);
+
+      res.json({ message: "Usuário excluído com sucesso." });
+    } catch (error: any) {
+      console.error("Error deleting user:", error);
+      
+      // Se for erro de dependência, retornar mensagem específica
+      if (error.message.includes("pacientes associados") || error.message.includes("prescrições associadas")) {
+        return res.status(409).json({ message: error.message });
+      }
+      
+      res.status(500).json({ message: "Failed to delete user" });
     }
   });
 

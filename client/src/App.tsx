@@ -13,10 +13,14 @@ import PatientDetailsPage from "@/pages/nutritionist/patient-details";
 import PrescriptionEditorPage from "@/pages/nutritionist/prescription-editor";
 import PatientPrescriptionView from "@/pages/patient/prescription-view";
 import PrescriptionPrintPage from "@/pages/patient/prescription-print";
-import PatientRegisterPage from "@/pages/patient/patient-register"; // Import the new page
+import PatientRegisterPage from "@/pages/patient/patient-register";
+import AdminDashboard from "@/pages/admin/dashboard";
+import CreateUserPage from "@/pages/admin/create-user";
+import AdminProfilePage from "@/pages/admin/profile";
+import EditUserPage from "@/pages/admin/edit-user";
 
 function Router() {
-  const { isAuthenticated, isLoading, isNutritionist, isPatient } = useAuth();
+  const { isAuthenticated, isLoading, isAdmin, isNutritionist, isPatient } = useAuth();
 
   if (isLoading) {
     return (
@@ -37,6 +41,16 @@ function Router() {
       {/* Rota de Registro do Paciente (após login com convite) */}
       {isAuthenticated && isPatient && (
         <Route path="/patient/register" component={PatientRegisterPage} />
+      )}
+
+      {/* Rotas de Administrador */}
+      {isAuthenticated && isAdmin && (
+        <>
+          <Route path="/admin" component={AdminDashboard} />
+          <Route path="/admin/create-user" component={CreateUserPage} />
+          <Route path="/admin/profile" component={AdminProfilePage} />
+          <Route path="/admin/users/:id" component={EditUserPage} />
+        </>
       )}
 
       {/* Rotas de Nutricionista */}

@@ -29,11 +29,11 @@ export const sessions = pgTable(
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   email: varchar("email").unique(),
-  hashedPassword: text("hashed_password"), // <-- CAMPO ADICIONADO
+  hashedPassword: text("hashed_password"),
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
-  role: varchar("role", { enum: ["nutritionist", "patient"] }).notNull().default("patient"),
+  role: varchar("role", { enum: ["admin", "nutritionist", "patient"] }).notNull().default("patient"), // <-- ADICIONADO "admin"
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -50,7 +50,6 @@ export const patients = pgTable("patients", {
   heightCm: integer("height_cm"),
   weightKg: decimal("weight_kg", { precision: 5, scale: 2 }),
   notes: text("notes"),
-  // invitationToken was removed from here
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -141,7 +140,7 @@ export const insertUserSchema = createInsertSchema(users).pick({
   lastName: true,
   profileImageUrl: true,
   role: true,
-  hashedPassword: true, // <-- CAMPO ADICIONADO
+  hashedPassword: true,
 });
 
 export const insertPatientSchema = createInsertSchema(patients).omit({

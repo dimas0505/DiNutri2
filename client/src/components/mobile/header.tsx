@@ -34,6 +34,7 @@ export function MobileHeader({
   const isMobile = useIsMobile();
 
   const handleLogout = () => {
+    // Redireciona diretamente para a rota de logout que fará o redirecionamento
     window.location.href = "/api/logout";
   };
 

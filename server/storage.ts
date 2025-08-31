@@ -19,7 +19,16 @@ export interface IStorage {
   // User operations
   getUser(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
+  getAllUsers(): Promise<User[]>;
   upsertUser(user: Partial<UpsertUser>): Promise<User>;
+  updateUserPassword(id: string, hashedPassword: string): Promise<void>;
+  updateUserProfile(id: string, profileData: { firstName: string; lastName: string; email: string; role?: string }): Promise<User>;
+  deleteUser(id: string): Promise<void>;
+  userHasPatients(userId: string): Promise<boolean>;
+  userHasPrescriptions(userId: string): Promise<boolean>;
+  userHasInvitations(userId: string): Promise<boolean>;
+  deleteUserInvitations(userId: string): Promise<void>;
+  transferPatients(fromUserId: string, toUserId: string): Promise<void>;
   
   // Patient operations
   getPatientsByOwner(ownerId: string): Promise<Patient[]>;
@@ -53,6 +62,113 @@ export class DatabaseStorage implements IStorage {
   async getUserByEmail(email: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.email, email));
     return user;
+  }
+
+  async getAllUsers(): Promise<User[]> {
+    return await db
+      .select()
+      .from(users)
+      .orderBy(desc(users.createdAt));
+  }
+
+  async updateUserPassword(id: string, hashedPassword: string): Promise<void> {
+    await db
+      .update(users)
+      .set({ 
+        hashedPassword, 
+        updatedAt: new Date() 
+      })
+      .where(eq(users.id, id));
+  }
+
+  async updateUserProfile(id: string, profileData: { firstName: string; lastName: string; email: string; role?: string }): Promise<User> {
+    const updateData: any = {
+      firstName: profileData.firstName,
+      lastName: profileData.lastName,
+      email: profileData.email,
+      updatedAt: new Date()
+    };
+
+    // Só inclui role se foi fornecido
+    if (profileData.role) {
+      updateData.role = profileData.role;
+    }
+
+    const [updatedUser] = await db
+      .update(users)
+      .set(updateData)
+      .where(eq(users.id, id))
+      .returning();
+    return updatedUser;
+  }
+
+  async deleteUser(id: string): Promise<void> {
+    try {
+      // Primeiro, verificar se o usuário tem pacientes associados
+      if (await this.userHasPatients(id)) {
+        throw new Error("Não é possível excluir este usuário pois ele possui pacientes associados. Primeiro transfira ou exclua os pacientes.");
+      }
+
+      // Verificar se o usuário tem prescrições associadas
+      if (await this.userHasPrescriptions(id)) {
+        throw new Error("Não é possível excluir este usuário pois ele possui prescrições associadas.");
+      }
+
+      // NOVO: Excluir convites associados ao usuário (se houver)
+      if (await this.userHasInvitations(id)) {
+        await this.deleteUserInvitations(id);
+        console.log(`Deleted invitations for user ${id}`);
+      }
+
+      // Se não há dependências críticas, excluir o usuário
+      await db.delete(users).where(eq(users.id, id));
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      throw error;
+    }
+  }
+
+  async userHasPatients(userId: string): Promise<boolean> {
+    const patientCount = await db
+      .select({ count: patients.id })
+      .from(patients)
+      .where(eq(patients.ownerId, userId));
+    
+    return patientCount.length > 0;
+  }
+
+  async userHasPrescriptions(userId: string): Promise<boolean> {
+    const prescriptionCount = await db
+      .select({ count: prescriptions.id })
+      .from(prescriptions)
+      .where(eq(prescriptions.nutritionistId, userId));
+    
+    return prescriptionCount.length > 0;
+  }
+
+  async userHasInvitations(userId: string): Promise<boolean> {
+    const invitationCount = await db
+      .select({ count: invitations.id })
+      .from(invitations)
+      .where(eq(invitations.nutritionistId, userId));
+    
+    return invitationCount.length > 0;
+  }
+
+  async deleteUserInvitations(userId: string): Promise<void> {
+    await db
+      .delete(invitations)
+      .where(eq(invitations.nutritionistId, userId));
+  }
+
+  async transferPatients(fromUserId: string, toUserId: string): Promise<void> {
+    await db
+      .update(patients)
+      .set({ 
+        ownerId: toUserId,
+        updatedAt: new Date()
+      })
+      .where(eq(patients.ownerId, fromUserId));
   }
 
   async upsertUser(userData: Partial<UpsertUser>): Promise<User> {
@@ -126,7 +242,6 @@ export class DatabaseStorage implements IStorage {
       .set({ status })
       .where(eq(invitations.token, token));
   }
-
 
   // Prescription operations
   async getPrescriptionsByPatient(patientId: string): Promise<Prescription[]> {
