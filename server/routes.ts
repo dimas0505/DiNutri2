@@ -357,15 +357,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Convite inválido ou expirado." });
       }
 
-      const existingUser = await storage.getUserByEmail(patientData.email);
+      const existingUser = await storage.getUserByEmail(patientData.email || "");
       if (existingUser) {
         return res.status(409).json({ message: "Este email já está em uso." });
+      }
+
+      // CORRIGIDO: Garantir que email está definido antes de criar o usuário
+      if (!patientData.email) {
+        return res.status(400).json({ message: "Email é obrigatório." });
       }
 
       const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
       const newUser = await storage.upsertUser({
         email: patientData.email,
-        firstName: patientData.name.split(' ')[0],
+        firstName: patientData.name.split(' ')[0] || "",
         hashedPassword: hashedPassword,
         role: "patient",
       });
@@ -431,6 +436,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const { password, ...patientData } = createManualSchema.parse(req.body);
       
+      // CORRIGIDO: Verificar se email está definido
+      if (!patientData.email) {
+        return res.status(400).json({ message: "Email é obrigatório." });
+      }
+
       const existingUser = await storage.getUserByEmail(patientData.email);
       if (existingUser) {
         return res.status(409).json({ message: "Este email já está em uso." });
@@ -439,7 +449,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
       const newUser = await storage.upsertUser({
         email: patientData.email,
-        firstName: patientData.name.split(' ')[0],
+        firstName: patientData.name.split(' ')[0] || "",
         hashedPassword: hashedPassword,
         role: "patient",
       });

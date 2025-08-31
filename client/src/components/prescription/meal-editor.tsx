@@ -91,23 +91,24 @@ export default function MealEditor({ meal, onUpdate, onDelete, onMoveUp, onMoveD
                   <ChevronDown className="h-4 w-4" />
                 </Button>
               )}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onDelete}
+                className="text-destructive hover:text-destructive/80"
+                title="Excluir refeição"
+                data-testid={`button-delete-meal-${meal.id}`}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
             </div>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onDelete}
-            className="text-destructive hover:text-destructive/80"
-            data-testid={`button-delete-meal-${meal.id}`}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
         </div>
       </div>
 
-      <CardContent className="p-4">
-        {/* Meal Items */}
-        <div className="space-y-3 mb-4">
+      <CardContent className="p-4 space-y-4">
+        {/* Lista de itens */}
+        <div className="space-y-3">
           {meal.items.map((item, index) => (
             <MealItemEditor
               key={item.id}
@@ -120,23 +121,28 @@ export default function MealEditor({ meal, onUpdate, onDelete, onMoveUp, onMoveD
           ))}
         </div>
 
+        {/* Botão para adicionar item */}
         <Button
           variant="outline"
+          size="sm"
           onClick={addItem}
-          className="w-full mb-4 flex items-center justify-center space-x-2"
+          className="w-full border-dashed"
           data-testid={`button-add-item-${meal.id}`}
         >
-          <Plus className="h-4 w-4" />
-          <span>Adicionar Item</span>
+          <Plus className="h-4 w-4 mr-2" />
+          Adicionar Item
         </Button>
 
-        <div>
-          <label className="block text-sm font-medium mb-2">Observações da Refeição</label>
+        {/* Observações da refeição */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-muted-foreground">
+            Observações da Refeição
+          </label>
           <Textarea
-            className="h-20"
             placeholder="Observações específicas desta refeição..."
             value={meal.notes || ""}
             onChange={(e) => updateMealNotes(e.target.value)}
+            className="min-h-[80px]"
             data-testid={`textarea-meal-notes-${meal.id}`}
           />
         </div>

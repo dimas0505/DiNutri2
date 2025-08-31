@@ -14,6 +14,7 @@ import {
 import { db } from "./db.js";
 import { eq, desc, and } from "drizzle-orm";
 import { randomBytes } from "crypto";
+import { nanoid } from "nanoid";
 
 export interface IStorage {
   // User operations
@@ -172,16 +173,33 @@ export class DatabaseStorage implements IStorage {
   }
 
   async upsertUser(userData: Partial<UpsertUser>): Promise<User> {
+    // CORRIGIDO: Garantir que email seja sempre uma string válida
     if (!userData.email) {
       throw new Error("Email is required to upsert a user.");
     }
+    
+    // Criar objeto com tipos corretos, garantindo que email seja string
+    const userWithId = {
+      id: nanoid(),
+      email: userData.email, // Já validado acima
+      firstName: userData.firstName ?? null,
+      lastName: userData.lastName ?? null,
+      profileImageUrl: userData.profileImageUrl ?? null,
+      role: userData.role ?? "patient" as const,
+      hashedPassword: userData.hashedPassword ?? null,
+    };
+    
     const [user] = await db
       .insert(users)
-      .values(userData)
+      .values(userWithId)
       .onConflictDoUpdate({
         target: users.email,
         set: {
-          ...userData,
+          firstName: userData.firstName ?? null,
+          lastName: userData.lastName ?? null,
+          profileImageUrl: userData.profileImageUrl ?? null,
+          role: userData.role ?? "patient" as const,
+          hashedPassword: userData.hashedPassword ?? null,
           updatedAt: new Date(),
         },
       })
@@ -204,7 +222,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createPatient(patient: InsertPatient): Promise<Patient> {
-    const [newPatient] = await db.insert(patients).values(patient).returning();
+    const patientWithId = {
+      id: nanoid(),
+      ...patient,
+    };
+    
+    const [newPatient] = await db.insert(patients).values(patientWithId).returning();
     return newPatient;
   }
 
@@ -220,9 +243,20 @@ export class DatabaseStorage implements IStorage {
   // Invitation operations
   async createInvitation(nutritionistId: string): Promise<{ token: string }> {
     const token = randomBytes(32).toString("hex");
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 7); // Expira em 7 dias
+    
+    const invitationWithId = {
+      id: nanoid(),
+      nutritionistId,
+      token,
+      email: "placeholder@email.com", // Email temporário, será atualizado quando o paciente se registrar
+      expiresAt,
+    };
+    
     const [newInvitation] = await db
       .insert(invitations)
-      .values({ nutritionistId, token })
+      .values(invitationWithId)
       .returning({ token: invitations.token });
     return newInvitation;
   }
@@ -289,12 +323,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createPrescription(prescription: InsertPrescription): Promise<Prescription> {
+    const prescriptionWithId = {
+      id: nanoid(),
+      ...prescription,
+      meals: prescription.meals as any, // Type assertion for JSONB field
+    };
+    
     const [newPrescription] = await db
       .insert(prescriptions)
-      .values({
-        ...prescription,
-        meals: prescription.meals as any, // Type assertion for JSONB field
-      })
+      .values(prescriptionWithId)
       .returning();
     return newPrescription;
   }
@@ -331,16 +368,19 @@ export class DatabaseStorage implements IStorage {
       throw new Error("Prescription not found");
     }
 
+    const duplicatedWithId = {
+      id: nanoid(),
+      patientId: original.patientId,
+      nutritionistId: original.nutritionistId,
+      title,
+      status: "draft" as const,
+      meals: original.meals as any, // Type assertion for JSONB field
+      generalNotes: original.generalNotes,
+    };
+
     const [duplicated] = await db
       .insert(prescriptions)
-      .values({
-        patientId: original.patientId,
-        nutritionistId: original.nutritionistId,
-        title,
-        status: "draft",
-        meals: original.meals as any, // Type assertion for JSONB field
-        generalNotes: original.generalNotes,
-      })
+      .values(duplicatedWithId)
       .returning();
     return duplicated;
   }

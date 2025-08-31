@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent } from "@/components/ui/card";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 import { insertPatientSchema } from "@shared/schema";
 
@@ -30,6 +31,7 @@ type FormData = z.infer<typeof formSchema>;
 export default function NewPatientPage() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
 
   const form = useForm<FormData>({
@@ -37,7 +39,7 @@ export default function NewPatientPage() {
     defaultValues: {
       name: "",
       email: "",
-      password: "", // Valor padrão para o novo campo
+      password: "",
       birthDate: "",
       sex: undefined,
       heightCm: undefined,
@@ -48,7 +50,10 @@ export default function NewPatientPage() {
 
   const createPatientMutation = useMutation({
     mutationFn: async (data: FormData) => {
-      const payload = { ...data };
+      const payload = { 
+        ...data,
+        ownerId: user?.id
+      };
       if (payload.weightKg === "") {
         delete payload.weightKg;
       }
@@ -76,6 +81,14 @@ export default function NewPatientPage() {
   });
 
   const onSubmit = (data: FormData) => {
+    if (!user?.id) {
+      toast({
+        title: "Erro",
+        description: "Usuário não encontrado. Faça login novamente.",
+        variant: "destructive",
+      });
+      return;
+    }
     createPatientMutation.mutate(data);
   };
 
@@ -90,7 +103,8 @@ export default function NewPatientPage() {
             onClick={() => setLocation("/patients")}
             data-testid="button-back"
           >
-            <ArrowLeft className="h-4 w-4" />
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Voltar
           </Button>
         }
       />
@@ -100,136 +114,156 @@ export default function NewPatientPage() {
           <CardContent className="p-6">
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="md:col-span-2">
-                    <FormField
-                      control={form.control}
-                      name="name"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Nome Completo</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Nome do paciente" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                  <div>
-                    <FormField
-                      control={form.control}
-                      name="email"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Email</FormLabel>
-                          <FormControl>
-                            <Input type="email" placeholder="email@exemplo.com" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                  <div>
-                    <FormField
-                      control={form.control}
-                      name="password"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Senha Provisória</FormLabel>
-                          <FormControl>
-                            <Input type="password" placeholder="••••••••" {...field} />
-                          </FormControl>
-                           <FormDescription className="text-xs">
-                            O paciente usará esta senha para o primeiro acesso.
-                          </FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                  <div>
-                    <FormField
-                      control={form.control}
-                      name="birthDate"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Data de Nascimento</FormLabel>
-                          <FormControl>
-                            <Input type="date" {...field} value={field.value || ""} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                  <div>
-                    <FormField
-                      control={form.control}
-                      name="sex"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Sexo</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value || ""}>
-                            <FormControl>
-                              <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="F">Feminino</SelectItem>
-                              <SelectItem value="M">Masculino</SelectItem>
-                              <SelectItem value="Outro">Outro</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                  
-                  <div>
-                    <FormField
-                      control={form.control}
-                      name="heightCm"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Altura (cm)</FormLabel>
-                          <FormControl>
-                            <Input 
-                              type="number" 
-                              placeholder="165"
-                              value={field.value ?? ''}
-                              onChange={(e) => field.onChange(e.target.value)}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                  
-                  <div>
-                    <FormField
-                      control={form.control}
-                      name="weightKg"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Peso (kg) - Opcional</FormLabel>
-                          <FormControl>
-                            <Input 
-                              type="number" 
-                              step="0.01" 
-                              placeholder="64.50"
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <FormField
+                    control={form.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Nome Completo *</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Nome do paciente" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Email *</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="email" 
+                            placeholder="email@exemplo.com"
+                            autoComplete="email"
+                            value={field.value || ""}
+                            onChange={field.onChange}
+                            onBlur={field.onBlur}
+                            name={field.name}
+                            ref={field.ref}
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          Este será o login do paciente
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
-                
+
+                <FormField
+                  control={form.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Senha *</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="password" 
+                          placeholder="••••••••"
+                          autoComplete="new-password"
+                          {...field} 
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Senha que o paciente usará para acessar o sistema
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <FormField
+                    control={form.control}
+                    name="birthDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Data de Nascimento</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="date" 
+                            value={field.value || ""}
+                            onChange={field.onChange}
+                            onBlur={field.onBlur}
+                            name={field.name}
+                            ref={field.ref}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="sex"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Sexo</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value || undefined}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecionar" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="M">Masculino</SelectItem>
+                            <SelectItem value="F">Feminino</SelectItem>
+                            <SelectItem value="Outro">Outro</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="heightCm"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Altura (cm)</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            placeholder="170" 
+                            {...field}
+                            onChange={(e) => field.onChange(e.target.value === "" ? undefined : Number(e.target.value))}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="weightKg"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Peso (kg)</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="text" 
+                          placeholder="70.5" 
+                          {...field} 
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Formato: 70.5 (opcional)
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
                 <FormField
                   control={form.control}
                   name="notes"
@@ -237,19 +271,34 @@ export default function NewPatientPage() {
                     <FormItem>
                       <FormLabel>Observações</FormLabel>
                       <FormControl>
-                        <Textarea placeholder="Observações..." className="h-24" {...field} value={field.value || ""} />
+                        <Textarea 
+                          placeholder="Observações sobre o paciente..."
+                          className="min-h-[100px]"
+                          value={field.value || ""}
+                          onChange={field.onChange}
+                          onBlur={field.onBlur}
+                          name={field.name}
+                          ref={field.ref}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-                
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <Button type="button" variant="secondary" className="flex-1" onClick={() => setLocation("/patients")}>
+
+                <div className="flex justify-end space-x-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setLocation("/patients")}
+                  >
                     Cancelar
                   </Button>
-                  <Button type="submit" className="flex-1" disabled={createPatientMutation.isPending}>
-                    {createPatientMutation.isPending ? "Cadastrando..." : "Cadastrar Paciente"}
+                  <Button 
+                    type="submit"
+                    disabled={createPatientMutation.isPending}
+                  >
+                    {createPatientMutation.isPending ? "Criando..." : "Criar Paciente"}
                   </Button>
                 </div>
               </form>

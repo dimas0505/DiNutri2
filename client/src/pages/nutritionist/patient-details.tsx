@@ -1,29 +1,34 @@
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { ArrowLeft, CheckCircle, Eye, FileText, Plus, Trash2, Users, XCircle } from "lucide-react";
 import { useLocation } from "wouter";
-import { ArrowLeft, FileText, Eye, Edit, Copy, CheckCircle } from "lucide-react";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
 import type { Patient, Prescription } from "@shared/schema";
 
-interface PatientDetailsPageProps {
-  params: { id: string };
-}
-
-export default function PatientDetailsPage({ params }: PatientDetailsPageProps) {
+export default function PatientDetails({ params }: { params: { id: string } }) {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const { data: patient, isLoading: patientLoading } = useQuery<Patient>({
     queryKey: ["/api/patients", params.id],
+    queryFn: async () => {
+      const response = await apiRequest("GET", `/api/patients/${params.id}`);
+      return await response.json();
+    },
   });
 
-  const { data: prescriptions = [], isLoading: prescriptionsLoading } = useQuery<Prescription[]>({
+  const { data: prescriptions, isLoading: prescriptionsLoading } = useQuery<Prescription[]>({
     queryKey: ["/api/patients", params.id, "prescriptions"],
+    queryFn: async () => {
+      const response = await apiRequest("GET", `/api/patients/${params.id}/prescriptions`);
+      return await response.json();
+    },
   });
 
   const createPrescriptionMutation = useMutation({
@@ -39,7 +44,7 @@ export default function PatientDetailsPage({ params }: PatientDetailsPageProps) 
     },
     onSuccess: (prescription) => {
       queryClient.invalidateQueries({ queryKey: ["/api/patients", params.id, "prescriptions"] });
-      setLocation(`/prescriptions/${prescription.id}/edit`);
+      setLocation(`/prescriptions/${prescription.id}`);
     },
     onError: () => {
       toast({
@@ -58,7 +63,7 @@ export default function PatientDetailsPage({ params }: PatientDetailsPageProps) 
     },
     onSuccess: (prescription) => {
       queryClient.invalidateQueries({ queryKey: ["/api/patients", params.id, "prescriptions"] });
-      setLocation(`/prescriptions/${prescription.id}/edit`);
+      setLocation(`/prescriptions/${prescription.id}`);
     },
     onError: () => {
       toast({
@@ -190,96 +195,107 @@ export default function PatientDetailsPage({ params }: PatientDetailsPageProps) 
                 {hasAccountLinked ? (
                   <div className="flex items-center gap-3 text-green-600">
                     <CheckCircle className="h-5 w-5" />
-                    <p className="text-sm font-medium">Paciente com acesso à plataforma.</p>
+                    <span className="text-sm">Paciente tem acesso ao sistema</span>
                   </div>
                 ) : (
-                  <div className="space-y-4">
-                    <p className="text-sm text-muted-foreground">
-                      Este paciente foi cadastrado manualmente e ainda não possui um login de acesso.
-                    </p>
+                  <div className="flex items-center gap-3 text-amber-600">
+                    <XCircle className="h-5 w-5" />
+                    <span className="text-sm">Paciente ainda não possui acesso</span>
                   </div>
+                )}
+                {!hasAccountLinked && (
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Para criar prescrições, o paciente precisa primeiro fazer o cadastro no sistema.
+                  </p>
                 )}
               </CardContent>
             </Card>
           </div>
 
-          {/* Prescriptions History */}
+          {/* Prescriptions */}
           <div className="lg:col-span-2">
             <Card>
               <CardHeader>
-                <CardTitle>Prescrições</CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle>Prescrições</CardTitle>
+                  <Button
+                    size="sm"
+                    onClick={() => createPrescriptionMutation.mutate()}
+                    disabled={createPrescriptionMutation.isPending || !hasAccountLinked}
+                    title={!hasAccountLinked ? "Paciente precisa ter um login" : "Nova prescrição"}
+                    data-testid="button-new-prescription-card"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Nova
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 {prescriptionsLoading ? (
                   <div className="text-center py-8">
                     <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto mb-2"></div>
-                    <p className="text-muted-foreground">Carregando prescrições...</p>
+                    <p className="text-muted-foreground text-sm">Carregando prescrições...</p>
                   </div>
-                ) : prescriptions.length === 0 ? (
-                  <div className="text-center py-8">
-                    <p className="text-muted-foreground mb-4">
-                      {hasAccountLinked ? "Nenhuma prescrição criada ainda." : "O paciente precisa ter um login antes que você possa criar uma prescrição."}
-                    </p>
-                    <Button 
-                      onClick={() => createPrescriptionMutation.mutate()}
-                      disabled={createPrescriptionMutation.isPending || !hasAccountLinked}
-                      data-testid="button-create-first-prescription"
-                    >
-                      Criar Primeira Prescrição
-                    </Button>
-                  </div>
-                ) : (
+                ) : prescriptions && prescriptions.length > 0 ? (
                   <div className="space-y-4">
                     {prescriptions.map((prescription) => (
-                      <div key={prescription.id} className="border border-border rounded-lg p-4 hover:bg-muted/20 transition-colors">
+                      <div key={prescription.id} className="border border-border rounded-lg p-4">
                         <div className="flex items-center justify-between mb-2">
                           <h3 className="font-medium" data-testid={`text-prescription-title-${prescription.id}`}>
                             {prescription.title}
                           </h3>
-                          <div className="flex items-center space-x-2">
-                            <Badge variant={prescription.status === 'published' ? 'default' : 'secondary'}>
-                              {prescription.status === 'published' ? 'Publicado' : 'Rascunho'}
-                            </Badge>
-                            <div className="flex space-x-1">
-                              <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                title="Visualizar"
-                                data-testid={`button-view-prescription-${prescription.id}`}
-                              >
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                              <Button 
-                                variant="ghost" 
-                                size="sm"
-                                onClick={() => setLocation(`/prescriptions/${prescription.id}/edit`)}
-                                title="Editar"
-                                data-testid={`button-edit-prescription-${prescription.id}`}
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button 
-                                variant="ghost" 
-                                size="sm"
-                                onClick={() => duplicatePrescriptionMutation.mutate(prescription.id)}
-                                disabled={duplicatePrescriptionMutation.isPending}
-                                title="Duplicar"
-                                data-testid={`button-duplicate-prescription-${prescription.id}`}
-                              >
-                                <Copy className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </div>
+                          <Badge 
+                            variant={prescription.status === 'published' ? 'default' : 'secondary'}
+                            data-testid={`badge-prescription-status-${prescription.id}`}
+                          >
+                            {prescription.status === 'published' ? 'Publicado' : 'Rascunho'}
+                          </Badge>
                         </div>
-                        <p className="text-sm text-muted-foreground">
-                          {prescription.meals.length} refeições configuradas • 
-                          {prescription.status === 'published' && prescription.publishedAt
-                            ? ` Publicado em ${formatDate(prescription.publishedAt.toString())}`
-                            : ` Última edição em ${formatDate(prescription.updatedAt?.toString() || '')}`
-                          }
+                        <p className="text-sm text-muted-foreground mb-3">
+                          Criado em {formatDate(prescription.createdAt)}
+                          {prescription.publishedAt && ` • Publicado em ${formatDate(prescription.publishedAt)}`}
                         </p>
+                        <div className="flex items-center space-x-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setLocation(`/prescriptions/${prescription.id}`)}
+                            data-testid={`button-edit-prescription-${prescription.id}`}
+                          >
+                            <Eye className="h-4 w-4 mr-1" />
+                            {prescription.status === 'published' ? 'Visualizar' : 'Editar'}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => duplicatePrescriptionMutation.mutate(prescription.id)}
+                            disabled={duplicatePrescriptionMutation.isPending}
+                            data-testid={`button-duplicate-prescription-${prescription.id}`}
+                          >
+                            <FileText className="h-4 w-4 mr-1" />
+                            Duplicar
+                          </Button>
+                        </div>
                       </div>
                     ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                    <p className="text-muted-foreground mb-4">Nenhuma prescrição criada ainda.</p>
+                    {hasAccountLinked ? (
+                      <Button
+                        onClick={() => createPrescriptionMutation.mutate()}
+                        disabled={createPrescriptionMutation.isPending}
+                        data-testid="button-create-first-prescription"
+                      >
+                        Criar Primeira Prescrição
+                      </Button>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        O paciente precisa ter um login para criar prescrições.
+                      </p>
+                    )}
                   </div>
                 )}
               </CardContent>

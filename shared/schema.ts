@@ -1,71 +1,53 @@
-import { sql } from "drizzle-orm";
+import { pgTable, varchar, text, timestamp, boolean, integer, jsonb } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
-import {
-  index,
-  jsonb,
-  pgTable,
-  text,
-  timestamp,
-  varchar,
-  integer,
-  decimal,
-  uuid as pgUuid,
-} from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-// Session storage table (required for Replit Auth)
-export const sessions = pgTable(
-  "sessions",
-  {
-    sid: varchar("sid").primaryKey(),
-    sess: jsonb("sess").notNull(),
-    expire: timestamp("expire").notNull(),
-  },
-  (table) => [index("IDX_session_expire").on(table.expire)],
-);
-
-// User storage table (required for Replit Auth)
+// Users table
 export const users = pgTable("users", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  email: varchar("email").unique(),
-  hashedPassword: text("hashed_password"),
+  id: varchar("id").primaryKey(),
+  email: varchar("email").unique().notNull(),
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
-  role: varchar("role", { enum: ["admin", "nutritionist", "patient"] }).notNull().default("patient"), // <-- ADICIONADO "admin"
+  role: varchar("role", { enum: ["admin", "nutritionist", "patient"] }).notNull().default("patient"),
+  hashedPassword: varchar("hashed_password"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 // Patients table
 export const patients = pgTable("patients", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  ownerId: varchar("owner_id").references(() => users.id).notNull(), // nutritionist
-  userId: varchar("user_id").references(() => users.id).unique(), // Link to the patient's own user account
-  name: text("name").notNull(),
-  email: varchar("email").notNull(),
-  birthDate: varchar("birth_date"), // YYYY-MM-DD format
+  id: varchar("id").primaryKey(),
+  ownerId: varchar("owner_id").references(() => users.id).notNull(),
+  userId: varchar("user_id").references(() => users.id),
+  name: varchar("name").notNull(),
+  email: varchar("email"),
+  birthDate: varchar("birth_date"),
   sex: varchar("sex", { enum: ["M", "F", "Outro"] }),
   heightCm: integer("height_cm"),
-  weightKg: decimal("weight_kg", { precision: 5, scale: 2 }),
+  weightKg: varchar("weight_kg"),
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// NEW: Invitations table
+// Invitations table
 export const invitations = pgTable("invitations", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: varchar("id").primaryKey(),
+  email: varchar("email").notNull(),
   nutritionistId: varchar("nutritionist_id").references(() => users.id).notNull(),
-  token: text("token").unique().notNull(),
-  status: varchar("status", { enum: ["pending", "accepted"] }).notNull().default("pending"),
+  role: varchar("role", { enum: ["patient"] }).notNull().default("patient"),
+  token: varchar("token").unique().notNull(),
+  status: varchar("status", { enum: ["pending", "accepted", "expired"] }).notNull().default("pending"),
+  expiresAt: timestamp("expires_at").notNull(),
+  used: boolean("used").default(false),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
 // Prescriptions table
 export const prescriptions = pgTable("prescriptions", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: varchar("id").primaryKey(),
   patientId: varchar("patient_id").references(() => patients.id).notNull(),
   nutritionistId: varchar("nutritionist_id").references(() => users.id).notNull(),
   title: text("title").notNull(),
@@ -79,13 +61,13 @@ export const prescriptions = pgTable("prescriptions", {
 
 // Relations
 export const usersRelations = relations(users, ({ one, many }) => ({
-  patientProfile: one(patients, { // A user might have a patient profile
+  patientProfile: one(patients, {
     fields: [users.id],
     references: [patients.userId],
   }),
-  ownedPatients: many(patients, { relationName: 'ownedPatients' }), // Nutritionist's patients
+  ownedPatients: many(patients, { relationName: 'ownedPatients' }),
   prescriptions: many(prescriptions),
-  invitations: many(invitations), // Nutritionist's invitations
+  invitations: many(invitations),
 }));
 
 export const patientsRelations = relations(patients, ({ one, many }) => ({
@@ -94,7 +76,7 @@ export const patientsRelations = relations(patients, ({ one, many }) => ({
     references: [users.id],
     relationName: 'ownedPatients'
   }),
-  user: one(users, { // The patient's user account
+  user: one(users, {
     fields: [patients.userId],
     references: [users.id],
   }),
@@ -124,6 +106,7 @@ export interface MealItemData {
   id: string;
   description: string;
   amount: string;
+  substitutes?: string[]; // Nova propriedade para substitutos
 }
 
 export interface MealData {
@@ -171,3 +154,4 @@ export type Patient = typeof patients.$inferSelect;
 export type InsertPrescription = z.infer<typeof insertPrescriptionSchema>;
 export type UpdatePrescription = z.infer<typeof updatePrescriptionSchema>;
 export type Prescription = typeof prescriptions.$inferSelect;
+export type Invitation = typeof invitations.$inferSelect;
