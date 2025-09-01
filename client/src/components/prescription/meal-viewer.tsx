@@ -1,15 +1,18 @@
 import { useState, useEffect } from "react";
-import { Info, ChevronDown, ChevronUp, Heart, MessageSquare } from "lucide-react";
+import { Info, ChevronDown, ChevronUp, Heart, MessageSquare, Camera } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import MoodRegistrationModal from "@/components/mood/mood-registration-modal";
 import type { MealData } from "@shared/schema";
 
 interface MealViewerProps {
   meal: MealData;
   prescriptionId?: string;
+  patientId?: string;
+  autoExpand?: boolean; // Nova prop
 }
 
 interface MoodEntry {
@@ -19,14 +22,6 @@ interface MoodEntry {
   notes?: string;
   date: string;
 }
-
-const moodOptions = [
-  { value: 'very_sad', label: '😢', description: 'Muito triste' },
-  { value: 'sad', label: '😟', description: 'Triste' },
-  { value: 'neutral', label: '😐', description: 'Neutro' },
-  { value: 'happy', label: '😊', description: 'Feliz' },
-  { value: 'very_happy', label: '😄', description: 'Muito feliz' }
-];
 
 // Função para fazer requisições API (temporária, até implementarmos a API completa)
 async function apiRequest(method: string, url: string, data?: any) {
@@ -45,15 +40,22 @@ async function apiRequest(method: string, url: string, data?: any) {
   return response.json();
 }
 
-export default function MealViewer({ meal, prescriptionId }: MealViewerProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [moodBefore, setMoodBefore] = useState<string>('');
-  const [moodAfter, setMoodAfter] = useState<string>('');
-  const [notes, setNotes] = useState('');
+export default function MealViewer({ meal, prescriptionId, patientId, autoExpand = false }: MealViewerProps) {
+  // Se autoExpand for true, começar expandido
+  const [isExpanded, setIsExpanded] = useState(autoExpand);
+  const [showMoodModal, setShowMoodModal] = useState(false);
+  const [showSubstitutes, setShowSubstitutes] = useState<{ [key: string]: boolean }>({});
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const today = new Date().toISOString().split('T')[0];
+
+  // Expandir automaticamente quando autoExpand for true
+  useEffect(() => {
+    if (autoExpand) {
+      setIsExpanded(true);
+    }
+  }, [autoExpand]);
 
   // Buscar entrada de humor do dia atual para esta refeição
   const { data: moodEntry, isLoading } = useQuery<MoodEntry>({
@@ -67,214 +69,160 @@ export default function MealViewer({ meal, prescriptionId }: MealViewerProps) {
         return null;
       }
     },
-    enabled: isExpanded && !!prescriptionId,
+    enabled: !!prescriptionId,
   });
 
-  // Atualizar estado local quando carregar dados
-  useEffect(() => {
-    if (moodEntry) {
-      setMoodBefore(moodEntry.moodBefore || '');
-      setMoodAfter(moodEntry.moodAfter || '');
-      setNotes(moodEntry.notes || '');
-    }
-  }, [moodEntry]);
-
-  const saveMoodMutation = useMutation({
-    mutationFn: async (data: { moodBefore?: string; moodAfter?: string; notes?: string }) => {
-      if (!prescriptionId) throw new Error('Prescription ID is required');
-      
-      if (moodEntry?.id) {
-        // Atualizar entrada existente
-        return await apiRequest("PUT", `/api/mood-entries/${moodEntry.id}`, data);
-      } else {
-        // Criar nova entrada
-        return await apiRequest("POST", "/api/mood-entries", {
-          prescriptionId,
-          mealId: meal.id,
-          date: today,
-          ...data
-        });
-      }
-    },
-    onSuccess: () => {
-      toast({
-        title: "Sucesso",
-        description: "Humor registrado com sucesso!",
-      });
-      queryClient.invalidateQueries({ 
-        queryKey: ["/api/mood-entries", prescriptionId, meal.id, today] 
-      });
-    },
-    onError: () => {
-      toast({
-        title: "Erro",
-        description: "Falha ao registrar humor.",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const handleSave = () => {
-    saveMoodMutation.mutate({
-      moodBefore: moodBefore || undefined,
-      moodAfter: moodAfter || undefined,
-      notes: notes || undefined
+  const handlePhotoAction = () => {
+    toast({
+      title: "Foto para diário alimentar",
+      description: "Funcionalidade em desenvolvimento!",
     });
   };
 
-  const getMoodLabel = (moodValue: string) => {
-    const mood = moodOptions.find(option => option.value === moodValue);
-    return mood ? `${mood.label} ${mood.description}` : '';
+  const handleMoodRegistration = () => {
+    setShowMoodModal(true);
+  };
+
+  const toggleSubstitutes = (itemId: string) => {
+    setShowSubstitutes(prev => ({
+      ...prev,
+      [itemId]: !prev[itemId]
+    }));
   };
 
   return (
-    <Card>
-      <CardHeader 
-        className="pb-4 bg-accent/5 cursor-pointer hover:bg-accent/10 transition-colors"
-        onClick={() => setIsExpanded(!isExpanded)}
-      >
-        <div className="flex items-center justify-between">
-          <CardTitle data-testid={`text-meal-name-${meal.id}`}>
-            {meal.name}
-          </CardTitle>
-          <div className="flex items-center space-x-2">
-            {/* Indicador se já tem registro de humor hoje */}
-            {moodEntry && (
-              <div className="flex items-center space-x-1 text-sm text-muted-foreground">
-                <Heart className="h-4 w-4 text-pink-500" />
-                <span>Registrado</span>
-              </div>
-            )}
-            {isExpanded ? (
-              <ChevronUp className="h-5 w-5 text-muted-foreground" />
-            ) : (
-              <ChevronDown className="h-5 w-5 text-muted-foreground" />
-            )}
-          </div>
-        </div>
-      </CardHeader>
-      
-      <CardContent className="p-4">
-        {/* Itens da refeição */}
-        <div className="grid gap-3 mb-4">
-          {meal.items.map((item) => (
-            <div key={item.id} className="flex items-center justify-between bg-background border border-border rounded-md p-3">
-              <div className="flex-1">
-                <span className="font-medium" data-testid={`text-item-description-${item.id}`}>
-                  {item.description}
-                </span>
-              </div>
-              <div className="text-muted-foreground" data-testid={`text-item-amount-${item.id}`}>
-                {item.amount}
-              </div>
+    <>
+      <Card>
+        <CardHeader 
+          className={`pb-4 bg-accent/5 transition-colors ${
+            !autoExpand ? 'cursor-pointer hover:bg-accent/10' : ''
+          }`}
+          onClick={!autoExpand ? () => setIsExpanded(!isExpanded) : undefined}
+        >
+          <div className="flex items-center justify-between">
+            <CardTitle data-testid={`text-meal-name-${meal.id}`}>
+              {meal.name}
+            </CardTitle>
+            <div className="flex items-center space-x-2">
+              {/* Indicador se já tem registro de humor hoje */}
+              {moodEntry && (
+                <div className="flex items-center space-x-1 text-sm text-muted-foreground">
+                  <Heart className="h-4 w-4 text-pink-500" />
+                  <span>Registrado</span>
+                </div>
+              )}
+              {/* Só mostrar setas se não for autoExpand */}
+              {!autoExpand && (
+                isExpanded ? (
+                  <ChevronUp className="h-5 w-5 text-muted-foreground" />
+                ) : (
+                  <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                )
+              )}
             </div>
-          ))}
-        </div>
-
-        {/* Notas da refeição */}
-        {meal.notes && (
-          <div className="bg-muted/30 p-3 rounded-md mb-4">
-            <p className="text-sm text-muted-foreground flex items-start space-x-2" data-testid={`text-meal-notes-${meal.id}`}>
-              <Info className="h-4 w-4 mt-0.5 flex-shrink-0" />
-              <span>{meal.notes}</span>
-            </p>
           </div>
-        )}
-
-        {/* Seção de tracking de humor (expandida) - apenas se tiver prescriptionId */}
-        {isExpanded && prescriptionId && (
-          <div className="border-t pt-4 space-y-4">
-            <div className="flex items-center space-x-2 mb-4">
-              <Heart className="h-5 w-5 text-pink-500" />
-              <h4 className="font-medium">Como você se sente hoje?</h4>
-            </div>
-
-            {isLoading ? (
-              <div className="text-center py-4">
-                <p className="text-muted-foreground">Carregando...</p>
-              </div>
-            ) : (
-              <>
-                {/* Humor antes da refeição */}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Antes da refeição:</label>
-                  <div className="flex flex-wrap gap-2">
-                    {moodOptions.map((option) => (
-                      <Button
-                        key={`before-${option.value}`}
-                        variant={moodBefore === option.value ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setMoodBefore(option.value)}
-                        className="flex items-center space-x-1"
-                      >
-                        <span>{option.label}</span>
-                        <span className="text-xs">{option.description}</span>
-                      </Button>
-                    ))}
-                  </div>
-                  {moodBefore && (
-                    <p className="text-xs text-muted-foreground">
-                      Selecionado: {getMoodLabel(moodBefore)}
-                    </p>
-                  )}
-                </div>
-
-                {/* Humor após a refeição */}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Após a refeição:</label>
-                  <div className="flex flex-wrap gap-2">
-                    {moodOptions.map((option) => (
-                      <Button
-                        key={`after-${option.value}`}
-                        variant={moodAfter === option.value ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setMoodAfter(option.value)}
-                        className="flex items-center space-x-1"
-                      >
-                        <span>{option.label}</span>
-                        <span className="text-xs">{option.description}</span>
-                      </Button>
-                    ))}
-                  </div>
-                  {moodAfter && (
-                    <p className="text-xs text-muted-foreground">
-                      Selecionado: {getMoodLabel(moodAfter)}
-                    </p>
-                  )}
-                </div>
-
-                {/* Observações */}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium flex items-center space-x-1">
-                    <MessageSquare className="h-4 w-4" />
-                    <span>Observações (opcional):</span>
-                  </label>
-                  <Textarea
-                    placeholder="Como foi a refeição? Alguma observação especial..."
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    className="h-20"
-                  />
-                </div>
-
-                {/* Botão salvar */}
-                <div className="flex justify-end">
-                  <Button 
-                    onClick={handleSave}
-                    disabled={saveMoodMutation.isPending}
-                    className="flex items-center space-x-2"
+        </CardHeader>
+        
+        <CardContent className="p-4">
+          {isExpanded && (
+            <>
+              {/* Menu da refeição - Botões de ação */}
+              <div className="mb-4">
+                <h4 className="text-sm font-medium text-muted-foreground mb-3">Menu da refeição</h4>
+                <div className="grid grid-cols-2 gap-3 mb-4">
+                  <Button
+                    onClick={handlePhotoAction}
+                    className="h-20 flex flex-col items-center justify-center space-y-2 bg-green-600 hover:bg-green-700 text-white rounded-lg"
                   >
-                    <Heart className="h-4 w-4" />
-                    <span>
-                      {saveMoodMutation.isPending ? 'Salvando...' : 'Salvar Registro'}
-                    </span>
+                    <Camera className="h-6 w-6" />
+                    <div className="text-xs text-center leading-tight">
+                      <div>Foto para o</div>
+                      <div>diário alimentar</div>
+                    </div>
+                  </Button>
+                  
+                  <Button
+                    onClick={handleMoodRegistration}
+                    className="h-20 flex flex-col items-center justify-center space-y-2 bg-green-600 hover:bg-green-700 text-white rounded-lg"
+                  >
+                    <Heart className="h-6 w-6" />
+                    <div className="text-xs text-center leading-tight">
+                      <div>Registrar humor</div>
+                      <div>na refeição</div>
+                    </div>
                   </Button>
                 </div>
-              </>
-            )}
-          </div>
-        )}
-      </CardContent>
-    </Card>
+              </div>
+
+              {/* Alimentos */}
+              <div className="space-y-4">
+                <h4 className="text-sm font-medium text-muted-foreground">Alimentos</h4>
+                
+                {meal.items.map((item) => (
+                  <div key={item.id} className="space-y-2">
+                    <div className="flex flex-col space-y-1">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="font-medium text-gray-900" data-testid={`text-item-description-${item.id}`}>
+                            {item.description}
+                          </div>
+                          <div className="text-sm text-muted-foreground" data-testid={`text-item-amount-${item.id}`}>
+                            {item.amount}
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Opções de substituição */}
+                      {item.substitutes && item.substitutes.length > 0 && (
+                        <div className="ml-4">
+                          <button
+                            onClick={() => toggleSubstitutes(item.id)}
+                            className="text-sm text-green-600 hover:text-green-700 flex items-center space-x-1"
+                          >
+                            <span>↪</span>
+                            <span>Ver opções de substituição</span>
+                          </button>
+                          
+                          {showSubstitutes[item.id] && (
+                            <div className="mt-2 ml-4 space-y-1">
+                              {item.substitutes.map((substitute, index) => (
+                                <div key={index} className="text-sm text-gray-600">
+                                  • {substitute}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Notas da refeição */}
+              {meal.notes && (
+                <div className="mt-6 bg-muted/30 p-3 rounded-md">
+                  <p className="text-sm text-muted-foreground flex items-start space-x-2" data-testid={`text-meal-notes-${meal.id}`}>
+                    <Info className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                    <span>{meal.notes}</span>
+                  </p>
+                </div>
+              )}
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Modal de registro de humor */}
+      {prescriptionId && (
+        <MoodRegistrationModal
+          isOpen={showMoodModal}
+          onClose={() => setShowMoodModal(false)}
+          meal={meal}
+          prescriptionId={prescriptionId}
+          patientId={patientId || ""}
+        />
+      )}
+    </>
   );
 }

@@ -84,7 +84,7 @@ export default function PatientPrescriptionView() {
     const pres = prescriptions.find(p => p.id === prescriptionId);
     if (pres) {
       setSelectedPrescription(pres);
-      setSelectedMeal(null);
+      setSelectedMeal(null); // Reset meal selection when changing prescription
     }
   };
   
@@ -92,6 +92,11 @@ export default function PatientPrescriptionView() {
     if (selectedPrescription) {
       setLocation(`/prescriptions/${selectedPrescription.id}/print`);
     }
+  };
+
+  // Modificação principal: ao clicar na refeição, mostrar diretamente expandida
+  const handleMealClick = (meal: MealData) => {
+    setSelectedMeal(meal);
   };
 
   const pageContent = () => {
@@ -115,6 +120,7 @@ export default function PatientPrescriptionView() {
       );
     }
 
+    // Se uma refeição foi selecionada, mostrar diretamente o MealViewer expandido
     if (selectedMeal && selectedPrescription) {
       return (
         <div className="p-4 md:p-0">
@@ -122,14 +128,18 @@ export default function PatientPrescriptionView() {
             <ArrowLeft className="h-4 w-4 mr-2" />
             Voltar para as refeições
           </Button>
+          {/* MealViewer já vem com isExpanded como padrão agora */}
           <MealViewer 
             meal={selectedMeal}
             prescriptionId={selectedPrescription.id}
+            patientId={currentPatient?.id || ""}
+            autoExpand={true} // Nova prop para forçar expansão
           />
         </div>
       );
     }
 
+    // Lista de refeições
     return (
       <div className="p-4 md:p-0">
         <Tabs value={selectedPrescription?.id} onValueChange={handleSelectPrescription} className="w-full">
@@ -145,7 +155,7 @@ export default function PatientPrescriptionView() {
                 key={meal.id} 
                 variant="outline" 
                 className="w-full h-16 justify-start p-4 text-lg"
-                onClick={() => setSelectedMeal(meal)}
+                onClick={() => handleMealClick(meal)}
               >
                 <Utensils className="h-5 w-5 mr-4 text-muted-foreground" />
                 {meal.name}

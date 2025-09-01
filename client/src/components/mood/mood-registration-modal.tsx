@@ -2,8 +2,7 @@ import { useState, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MoodSelector } from "./mood-selector";
+import { X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import type { MoodType, MealData } from "@shared/schema";
@@ -23,7 +22,15 @@ interface MoodEntryData {
   notes?: string;
 }
 
-export function MoodRegistrationModal({
+const moodOptions = [
+  { value: "very_sad" as MoodType, emoji: "😢" },
+  { value: "sad" as MoodType, emoji: "😔" },
+  { value: "neutral" as MoodType, emoji: "😐" },
+  { value: "happy" as MoodType, emoji: "😊" },
+  { value: "very_happy" as MoodType, emoji: "😍" },
+];
+
+function MoodRegistrationModal({
   isOpen,
   onClose,
   meal,
@@ -32,12 +39,10 @@ export function MoodRegistrationModal({
 }: MoodRegistrationModalProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<"before" | "after">("before");
   const [moodBefore, setMoodBefore] = useState<MoodType | undefined>();
   const [moodAfter, setMoodAfter] = useState<MoodType | undefined>();
-  const [notes, setNotes] = useState("");
 
-  const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+  const today = new Date().toISOString().split('T')[0];
 
   // Buscar registro de humor existente para hoje
   const { data: existingMoodEntry, isLoading } = useQuery<MoodEntryData>({
@@ -51,12 +56,9 @@ export function MoodRegistrationModal({
     if (existingMoodEntry) {
       setMoodBefore(existingMoodEntry.moodBefore);
       setMoodAfter(existingMoodEntry.moodAfter);
-      setNotes(existingMoodEntry.notes || "");
     } else {
-      // Limpar estado se não houver registro existente
       setMoodBefore(undefined);
       setMoodAfter(undefined);
-      setNotes("");
     }
   }, [existingMoodEntry]);
 
@@ -64,7 +66,6 @@ export function MoodRegistrationModal({
     mutationFn: async (data: {
       moodBefore?: MoodType;
       moodAfter?: MoodType;
-      notes?: string;
     }) => {
       const payload = {
         patientId,
@@ -75,10 +76,8 @@ export function MoodRegistrationModal({
       };
 
       if (existingMoodEntry?.id) {
-        // Atualizar registro existente
         return await apiRequest("PUT", `/api/mood-entries/${existingMoodEntry.id}`, payload);
       } else {
-        // Criar novo registro
         return await apiRequest("POST", "/api/mood-entries", payload);
       }
     },
@@ -115,13 +114,11 @@ export function MoodRegistrationModal({
     saveMoodMutation.mutate({
       moodBefore,
       moodAfter,
-      notes: notes.trim() || undefined,
     });
   };
 
   const handleClose = () => {
     onClose();
-    // Não limpar o estado aqui, pois ele será limpo quando o modal abrir novamente
   };
 
   if (isLoading) {
@@ -138,63 +135,83 @@ export function MoodRegistrationModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Registrar Humor - {meal.name}</DialogTitle>
+      <DialogContent className="sm:max-w-sm p-0 gap-0">
+        {/* Header */}
+        <DialogHeader className="p-4 pb-0">
+          <div className="flex items-center justify-between">
+            <DialogTitle className="text-lg font-semibold">
+              {meal.name}
+            </DialogTitle>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleClose}
+              className="h-6 w-6 p-0"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+          <p className="text-sm text-muted-foreground">Menu da refeição</p>
         </DialogHeader>
 
-        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "before" | "after")}>
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="before" className="flex items-center space-x-2">
-              <span>🍽️</span>
-              <span>Antes da Refeição</span>
-              {moodBefore && <span className="ml-2 text-green-600">✓</span>}
-            </TabsTrigger>
-            <TabsTrigger value="after" className="flex items-center space-x-2">
-              <span>😋</span>
-              <span>Depois da Refeição</span>
-              {moodAfter && <span className="ml-2 text-green-600">✓</span>}
-            </TabsTrigger>
-          </TabsList>
-
-          <div className="mt-6">
-            <TabsContent value="before">
-              <MoodSelector
-                title="Como você está se sentindo ANTES de comer?"
-                selectedMood={moodBefore}
-                onMoodChange={setMoodBefore}
-                notes={notes}
-                onNotesChange={setNotes}
-                showNotes={true}
-              />
-            </TabsContent>
-
-            <TabsContent value="after">
-              <MoodSelector
-                title="Como você se sente DEPOIS de comer?"
-                selectedMood={moodAfter}
-                onMoodChange={setMoodAfter}
-                notes={notes}
-                onNotesChange={setNotes}
-                showNotes={true}
-              />
-            </TabsContent>
+        {/* Content */}
+        <div className="p-4 space-y-6">
+          {/* Humor antes da refeição */}
+          <div className="bg-white p-4 rounded-lg space-y-4">
+            <h3 className="text-center text-sm font-medium">
+              Seu humor ANTES da refeição?
+            </h3>
+            <div className="flex justify-center space-x-2">
+              {moodOptions.map((option) => (
+                <button
+                  key={`before-${option.value}`}
+                  onClick={() => setMoodBefore(option.value)}
+                  className={`w-12 h-12 text-2xl rounded-full transition-all ${
+                    moodBefore === option.value
+                      ? 'ring-2 ring-blue-500 bg-blue-50'
+                      : 'hover:bg-gray-50'
+                  }`}
+                >
+                  {option.emoji}
+                </button>
+              ))}
+            </div>
           </div>
-        </Tabs>
 
-        <DialogFooter className="flex-col sm:flex-row gap-2">
-          <Button variant="outline" onClick={handleClose} className="w-full sm:w-auto">
-            Cancelar
-          </Button>
+          {/* Humor após a refeição */}
+          <div className="bg-white p-4 rounded-lg space-y-4">
+            <h3 className="text-center text-sm font-medium">
+              Seu humor APÓS a refeição?
+            </h3>
+            <div className="flex justify-center space-x-2">
+              {moodOptions.map((option) => (
+                <button
+                  key={`after-${option.value}`}
+                  onClick={() => setMoodAfter(option.value)}
+                  className={`w-12 h-12 text-2xl rounded-full transition-all ${
+                    moodAfter === option.value
+                      ? 'ring-2 ring-blue-500 bg-blue-50'
+                      : 'hover:bg-gray-50'
+                  }`}
+                >
+                  {option.emoji}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Botão Avançar */}
           <Button 
-            onClick={handleSave} 
+            onClick={handleSave}
             disabled={saveMoodMutation.isPending || (!moodBefore && !moodAfter)}
-            className="w-full sm:w-auto"
+            className="w-full bg-green-600 hover:bg-green-700 text-white"
           >
-            {saveMoodMutation.isPending ? "Salvando..." : "Salvar Humor"}
+            {saveMoodMutation.isPending ? "Salvando..." : "Avançar >>"}
           </Button>
-        </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   );
 }
+
+export default MoodRegistrationModal;
