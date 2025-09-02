@@ -1,6 +1,5 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { X } from "lucide-react";
 
 interface MealSubstitutionModalProps {
   isOpen: boolean;
@@ -17,22 +16,12 @@ export default function MealSubstitutionModal({
 }: MealSubstitutionModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md p-0 gap-0">
+      <DialogContent className="sm:max-w-md p-0 gap-0 mx-auto">
         {/* Header */}
         <DialogHeader className="p-4 pb-2">
-          <div className="flex items-center justify-between">
-            <DialogTitle className="text-lg font-semibold text-gray-800">
-              Opções de Substituição
-            </DialogTitle>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onClose}
-              className="p-1 h-8 w-8"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
+          <DialogTitle className="text-lg font-semibold text-gray-800 text-left">
+            Opções de Substituição
+          </DialogTitle>
           <p className="text-sm text-gray-600 text-left">
             Para: {foodName}
           </p>
