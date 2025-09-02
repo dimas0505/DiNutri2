@@ -14,6 +14,7 @@ export default {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+        xl: "var(--radius-xl)",
       },
       colors: {
         background: "var(--background)",
@@ -29,10 +30,13 @@ export default {
         primary: {
           DEFAULT: "var(--primary)",
           foreground: "var(--primary-foreground)",
+          hover: "var(--primary-hover)",
+          active: "var(--primary-active)",
         },
         secondary: {
           DEFAULT: "var(--secondary)",
           foreground: "var(--secondary-foreground)",
+          hover: "var(--secondary-hover)",
         },
         muted: {
           DEFAULT: "var(--muted)",
@@ -41,10 +45,22 @@ export default {
         accent: {
           DEFAULT: "var(--accent)",
           foreground: "var(--accent-foreground)",
+          subtle: "var(--accent-subtle)",
         },
         destructive: {
           DEFAULT: "var(--destructive)",
           foreground: "var(--destructive-foreground)",
+          subtle: "var(--destructive-subtle)",
+        },
+        success: {
+          DEFAULT: "var(--success)",
+          foreground: "var(--success-foreground)",
+          subtle: "var(--success-subtle)",
+        },
+        warning: {
+          DEFAULT: "var(--warning)",
+          foreground: "var(--warning-foreground)",
+          subtle: "var(--warning-subtle)",
         },
         border: "var(--border)",
         input: "var(--input)",
@@ -68,9 +84,9 @@ export default {
         },
       },
       fontFamily: {
-        sans: ["Inter", "sans-serif"],
-        serif: ["var(--font-serif)"],
-        mono: ["var(--font-mono)"],
+        sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        serif: ['ui-serif', 'Georgia', 'serif'],
+        mono: ['ui-monospace', 'SF Mono', 'Consolas', 'monospace'],
       },
       spacing: {
         'safe-top': 'env(safe-area-inset-top)',
@@ -83,6 +99,24 @@ export default {
       },
       minWidth: {
         'touch': '44px',
+      },
+      boxShadow: {
+        'xs': 'var(--shadow-xs)',
+        'sm': 'var(--shadow-sm)',
+        'DEFAULT': 'var(--shadow)',
+        'md': 'var(--shadow-md)',
+        'lg': 'var(--shadow-lg)',
+        'xl': 'var(--shadow-xl)',
+        '2xl': 'var(--shadow-2xl)',
+        'inner': 'var(--shadow-inner)',
+      },
+      backgroundImage: {
+        'gradient-primary': 'var(--gradient-primary)',
+        'gradient-secondary': 'var(--gradient-secondary)',
+        'gradient-accent': 'var(--gradient-accent)',
+        'gradient-success': 'var(--gradient-success)',
+        'gradient-warning': 'var(--gradient-warning)',
+        'gradient-destructive': 'var(--gradient-destructive)',
       },
       keyframes: {
         "accordion-down": {
