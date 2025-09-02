@@ -14,7 +14,7 @@ const STATIC_ASSETS = [
 
 // Install event - cache static assets
 self.addEventListener('install', (event) => {
-  console.log('Service Worker installing...');
+  console.log('Service Worker installing with cache:', CACHE_NAME);
   event.waitUntil(
     caches.open(STATIC_CACHE)
       .then((cache) => {
@@ -25,19 +25,23 @@ self.addEventListener('install', (event) => {
         console.log('Error caching static assets:', error);
       })
   );
+  // Force the waiting service worker to become the active service worker
   self.skipWaiting();
 });
 
 // Activate event - clean up old caches
 self.addEventListener('activate', (event) => {
-  console.log('Service Worker activating...');
+  console.log('Service Worker activating with cache:', CACHE_NAME);
   event.waitUntil(
     caches.keys()
       .then((cacheNames) => {
         return Promise.all(
           cacheNames
             .filter((cacheName) => {
-              return cacheName.startsWith('dinutri-') && cacheName !== STATIC_CACHE && cacheName !== DYNAMIC_CACHE;
+              // Delete all caches that start with 'dinutri-' but are not the current ones
+              return cacheName.startsWith('dinutri-') && 
+                     cacheName !== STATIC_CACHE && 
+                     cacheName !== DYNAMIC_CACHE;
             })
             .map((cacheName) => {
               console.log('Deleting old cache:', cacheName);
@@ -45,8 +49,12 @@ self.addEventListener('activate', (event) => {
             })
         );
       })
+      .then(() => {
+        console.log('Cache cleanup completed');
+        // Take control of all existing clients immediately
+        return self.clients.claim();
+      })
   );
-  self.clients.claim();
 });
 
 // Fetch event - serve from cache, fallback to network
