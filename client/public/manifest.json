@@ -1,6 +1,6 @@
 {
-  "name": "DiNutri2 - Sistema de Prescrição Nutricional",
-  "short_name": "DiNutri2",
+  "name": "DiNutri - Sistema de Prescrição Nutricional",
+  "short_name": "DiNutri",
   "description": "Sistema completo de prescrição nutricional para nutricionistas e pacientes",
   "start_url": "/",
   "display": "standalone",
@@ -67,14 +67,14 @@
       "sizes": "320x640",
       "type": "image/png",
       "form_factor": "narrow",
-      "label": "Interface mobile do DiNutri2"
+      "label": "Interface mobile do DiNutri"
     },
     {
       "src": "/screenshot-desktop.png",
       "sizes": "1280x720",
       "type": "image/png",
       "form_factor": "wide",
-      "label": "Interface desktop do DiNutri2"
+      "label": "Interface desktop do DiNutri"
     }
   ],
   "shortcuts": [

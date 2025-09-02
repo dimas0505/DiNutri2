@@ -1,4 +1,4 @@
-const CACHE_NAME = 'dinutri2-v1';
+const CACHE_NAME = 'dinutri-v1';
 const STATIC_CACHE = `${CACHE_NAME}-static`;
 const DYNAMIC_CACHE = `${CACHE_NAME}-dynamic`;
 
@@ -6,8 +6,10 @@ const DYNAMIC_CACHE = `${CACHE_NAME}-dynamic`;
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
-  '/static/css/main.css',
-  '/static/js/main.js',
+  // Icons
+  '/icon-192x192.png',
+  '/icon-512x512.png',
+  '/logo_dinutri.png'
 ];
 
 // Install event - cache static assets
@@ -35,7 +37,7 @@ self.addEventListener('activate', (event) => {
         return Promise.all(
           cacheNames
             .filter((cacheName) => {
-              return cacheName.startsWith('dinutri2-') && cacheName !== STATIC_CACHE && cacheName !== DYNAMIC_CACHE;
+              return cacheName.startsWith('dinutri-') && cacheName !== STATIC_CACHE && cacheName !== DYNAMIC_CACHE;
             })
             .map((cacheName) => {
               console.log('Deleting old cache:', cacheName);
@@ -149,7 +151,7 @@ self.addEventListener('push', (event) => {
     };
 
     event.waitUntil(
-      self.registration.showNotification(data.title || 'DiNutri2', options)
+      self.registration.showNotification(data.title || 'DiNutri', options)
     );
   }
 });
