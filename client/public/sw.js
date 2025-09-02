@@ -6,8 +6,10 @@ const DYNAMIC_CACHE = `${CACHE_NAME}-dynamic`;
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
-  '/static/css/main.css',
-  '/static/js/main.js',
+  // Icons
+  '/icon-192x192.png',
+  '/icon-512x512.png',
+  '/logo_dinutri.png'
 ];
 
 // Install event - cache static assets
