@@ -3,6 +3,7 @@ import { Info, ChevronDown, ChevronUp, ChevronRight, Heart, MessageSquare, Camer
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import MoodRegistrationModal from "@/components/mood/mood-registration-modal";
@@ -44,7 +45,7 @@ export default function MealViewer({ meal, prescriptionId, patientId, autoExpand
   // Se autoExpand for true, começar expandido
   const [isExpanded, setIsExpanded] = useState(autoExpand);
   const [showMoodModal, setShowMoodModal] = useState(false);
-  const [showSubstitutes, setShowSubstitutes] = useState<{ [key: string]: boolean }>({});
+  const [substitutesModalItem, setSubstitutesModalItem] = useState<{ id: string; name: string; substitutes: string[] } | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -83,11 +84,12 @@ export default function MealViewer({ meal, prescriptionId, patientId, autoExpand
     setShowMoodModal(true);
   };
 
-  const toggleSubstitutes = (itemId: string) => {
-    setShowSubstitutes(prev => ({
-      ...prev,
-      [itemId]: !prev[itemId]
-    }));
+  const openSubstitutesModal = (item: any) => {
+    setSubstitutesModalItem({
+      id: item.id,
+      name: item.description,
+      substitutes: item.substitutes
+    });
   };
 
   return (
@@ -186,21 +188,11 @@ export default function MealViewer({ meal, prescriptionId, patientId, autoExpand
                       {item.substitutes && item.substitutes.length > 0 && (
                         <div>
                           <button
-                            onClick={() => toggleSubstitutes(item.id)}
+                            onClick={() => openSubstitutesModal(item)}
                             className="text-sm text-blue-600 hover:text-blue-700 flex items-center space-x-1"
                           >
                             <span>Ver opções de substituição</span>
                           </button>
-                          
-                          {showSubstitutes[item.id] && (
-                            <div className="mt-2 space-y-1">
-                              {item.substitutes.map((substitute, index) => (
-                                <div key={index} className="text-sm text-gray-600 pl-4">
-                                  • {substitute}
-                                </div>
-                              ))}
-                            </div>
-                          )}
                         </div>
                       )}
                     </div>
@@ -232,6 +224,26 @@ export default function MealViewer({ meal, prescriptionId, patientId, autoExpand
           patientId={patientId || ""}
         />
       )}
+
+      {/* Modal de opções de substituição */}
+      <Dialog open={substitutesModalItem !== null} onOpenChange={() => setSubstitutesModalItem(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Opções de substituição</DialogTitle>
+            <div className="text-sm text-gray-600 mt-2">
+              {substitutesModalItem?.name}
+            </div>
+          </DialogHeader>
+          <div className="mt-4 space-y-3">
+            {substitutesModalItem?.substitutes.map((substitute, index) => (
+              <div key={index} className="flex items-center space-x-2 p-3 bg-gray-50 rounded-lg">
+                <div className="w-2 h-2 bg-blue-600 rounded-full flex-shrink-0"></div>
+                <span className="text-sm text-gray-700">{substitute}</span>
+              </div>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
