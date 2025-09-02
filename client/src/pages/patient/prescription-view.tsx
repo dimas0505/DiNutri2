@@ -18,6 +18,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { HeaderDNutri } from "@/components/ui/header-dinutri";
 import { MealCard } from "@/components/ui/meal-card";
 import { DNutriBottomNav } from "@/components/ui/dinutri-bottom-nav";
+import { ProfileModal } from "@/components/ui/profile-modal";
 
 export default function PatientPrescriptionView() {
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -30,6 +31,7 @@ export default function PatientPrescriptionView() {
   const [showFullScreenMenu, setShowFullScreenMenu] = useState(false);
   const [isSubstitutesModalOpen, setIsSubstitutesModalOpen] = useState(false);
   const [selectedItemForSubstitutes, setSelectedItemForSubstitutes] = useState<MealItemData | null>(null);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -199,13 +201,17 @@ export default function PatientPrescriptionView() {
             if (item === "home") setLocation("/");
             else if (item === "prescription") setLocation("/patient/prescription");
             else if (item === "profile") {
-              // For now, show a simple logout action since there's no profile page
-              const confirmLogout = window.confirm("Deseja sair do aplicativo?");
-              if (confirmLogout) {
-                window.location.href = "/api/logout";
-              }
+              // Open profile modal instead of logout confirmation
+              setIsProfileModalOpen(true);
             }
           }}
+        />
+
+        {/* Profile Modal */}
+        <ProfileModal 
+          open={isProfileModalOpen}
+          onOpenChange={setIsProfileModalOpen}
+          patient={currentPatient}
         />
 
         {/* Modal de substituições */}
