@@ -87,6 +87,13 @@ export function registerServiceWorker(): Promise<ServiceWorkerRegistration | nul
     .then((registration) => {
       console.log('Service Worker registered successfully:', registration);
       
+      // Debug: Log current cache versions
+      if ('caches' in window) {
+        caches.keys().then((cacheNames) => {
+          console.log('Current cache names:', cacheNames);
+        });
+      }
+      
       // Check for updates
       registration.addEventListener('updatefound', () => {
         const newWorker = registration.installing;
