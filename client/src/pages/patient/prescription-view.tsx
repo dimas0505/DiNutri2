@@ -15,6 +15,9 @@ import { isUnauthorizedError } from "@/lib/authUtils";
 import type { Prescription, MealData, MealItemData, Patient } from "@shared/schema";
 import { MobileLayout, DefaultMobileDrawer } from "@/components/layout/mobile-layout";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { HeaderDNutri } from "@/components/ui/header-dinutri";
+import { MealCard } from "@/components/ui/meal-card";
+import { DNutriBottomNav } from "@/components/ui/dinutri-bottom-nav";
 
 export default function PatientPrescriptionView() {
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -150,17 +153,14 @@ export default function PatientPrescriptionView() {
             ))}
           </TabsList>
         
-          <div className="space-y-3 mt-4">
+          <div className="space-y-4 mt-6">
             {selectedPrescription?.meals.map(meal => (
-              <Button 
-                key={meal.id} 
-                variant="outline" 
-                className="w-full h-16 justify-start p-4 text-lg"
+              <MealCard
+                key={meal.id}
+                title={meal.name}
+                icon={Utensils}
                 onClick={() => handleMealClick(meal)}
-              >
-                <Utensils className="h-5 w-5 mr-4 text-muted-foreground" />
-                {meal.name}
-              </Button>
+              />
             ))}
           </div>
         </Tabs>
@@ -169,7 +169,7 @@ export default function PatientPrescriptionView() {
   };
   
   if (isMobile) {
-    // Se estiver mostrando a tela completa do menu da refeição, renderizar fora do MobileLayout
+    // Se estiver mostrando a tela completa do menu da refeição, renderizar fora do layout customizado
     if (selectedMeal && selectedPrescription && showFullScreenMenu) {
       return (
         <MealMenuScreen
@@ -181,13 +181,26 @@ export default function PatientPrescriptionView() {
       );
     }
 
+    // Layout customizado para o mockup
     return (
-      <MobileLayout 
-        title="Início" 
-        showBottomNav={true}
-        drawerContent={<DefaultMobileDrawer />}
-      >
-        {pageContent()}
+      <div className="min-h-screen bg-background">
+        {/* Header customizado com gradiente */}
+        <HeaderDNutri />
+        
+        {/* Área de conteúdo com cantos superiores arredondados */}
+        <main className="bg-white rounded-t-2xl -mt-2 min-h-screen pt-6 pb-20">
+          {pageContent()}
+        </main>
+
+        {/* Bottom navigation customizada */}
+        <DNutriBottomNav 
+          activeItem="prescription" 
+          onItemClick={(item) => {
+            if (item === "home") setLocation("/");
+            else if (item === "prescription") setLocation("/patient/prescription");
+            else if (item === "profile") setLocation("/patient/profile");
+          }}
+        />
 
         {/* Modal de substituições */}
         <Dialog open={isSubstitutesModalOpen} onOpenChange={setIsSubstitutesModalOpen}>
@@ -202,7 +215,7 @@ export default function PatientPrescriptionView() {
             </div>
           </DialogContent>
         </Dialog>
-      </MobileLayout>
+      </div>
     );
   }
 
