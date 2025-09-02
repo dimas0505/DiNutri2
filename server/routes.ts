@@ -602,6 +602,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Endpoint para o paciente buscar seu próprio perfil
+  app.get('/api/patient/my-profile', isAuthenticated, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'patient') {
+        return res.status(403).json({ message: "Only patients can access this endpoint" });
+      }
+      
+      const patient = await storage.getPatientByUserId(req.user.id);
+      if (!patient) {
+        return res.status(404).json({ message: "Patient profile not found" });
+      }
+      
+      res.json(patient);
+    } catch (error) {
+      console.error("Error fetching patient profile:", error);
+      res.status(500).json({ message: "Failed to fetch patient profile" });
+    }
+  });
+
   // --- ROTAS DE HUMOR (NEW) ---
   
   // Buscar registro de humor para um dia específico

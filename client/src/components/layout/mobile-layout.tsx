@@ -124,7 +124,11 @@ export function MobileLayout({
 }
 
 // Default drawer content for authenticated users
-export function DefaultMobileDrawer() {
+interface DefaultMobileDrawerProps {
+  onProfileClick?: () => void;
+}
+
+export function DefaultMobileDrawer({ onProfileClick }: DefaultMobileDrawerProps = {}) {
   const { isNutritionist, isPatient } = useAuth();
   const [, setLocation] = useLocation();
 
@@ -133,25 +137,33 @@ export function DefaultMobileDrawer() {
     window.location.href = "/api/logout";
   };
 
-  const menuItems = [
+  const navigationItems = [
     ...(isNutritionist ? [
-      { label: 'Pacientes', href: '/patients', icon: Users },
-      { label: 'Nova Prescrição', href: '/patients/new', icon: FileText },
+      { label: 'Pacientes', href: '/patients', icon: Users, action: 'navigate' },
+      { label: 'Nova Prescrição', href: '/patients/new', icon: FileText, action: 'navigate' },
     ] : []),
     ...(isPatient ? [
-      { label: 'Minha Prescrição', href: '/patient/prescription', icon: FileText },
-      { label: 'Perfil', href: '/patient/profile', icon: User },
+      { label: 'Minha Prescrição', href: '/patient/prescription', icon: FileText, action: 'navigate' },
+      { label: 'Perfil', href: '', icon: User, action: 'profile' },
     ] : []),
   ];
 
+  const handleItemClick = (item: any) => {
+    if (item.action === 'navigate') {
+      setLocation(item.href);
+    } else if (item.action === 'profile' && onProfileClick) {
+      onProfileClick();
+    }
+  };
+
   return (
     <div className="space-y-2">
-      {menuItems.map((item) => {
+      {navigationItems.map((item, index) => {
         const Icon = item.icon;
         return (
           <button
-            key={item.href}
-            onClick={() => setLocation(item.href)}
+            key={`${item.label}-${index}`}
+            onClick={() => handleItemClick(item)}
             className="w-full flex items-center space-x-3 px-4 py-3 text-left hover:bg-accent rounded-lg transition-colors"
           >
             <Icon className="h-5 w-5" />
@@ -161,7 +173,7 @@ export function DefaultMobileDrawer() {
       })}
       
       {/* Separator and logout option */}
-      {menuItems.length > 0 && (
+      {navigationItems.length > 0 && (
         <div className="border-t pt-2 mt-4">
           <button
             onClick={handleLogout}

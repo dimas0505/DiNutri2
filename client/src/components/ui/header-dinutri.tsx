@@ -10,12 +10,14 @@ interface HeaderDNutriProps {
   className?: string;
   showGoalCard?: boolean;
   goalText?: string;
+  onProfileClick?: () => void;
 }
 
 export function HeaderDNutri({ 
   className, 
   showGoalCard = true, 
-  goalText = "Déficit 1000 kcal" 
+  goalText = "Déficit 1000 kcal",
+  onProfileClick
 }: HeaderDNutriProps) {
   const { user } = useAuth();
   const userName = (user as any)?.firstName || (user as any)?.email?.split('@')[0] || "Usuário";
@@ -38,7 +40,7 @@ export function HeaderDNutri({
         <div className="flex items-center space-x-3">
           {/* Hamburger menu */}
           <MobileDrawer title="Menu">
-            <DefaultMobileDrawer />
+            <DefaultMobileDrawer onProfileClick={onProfileClick} />
           </MobileDrawer>
           
           {/* Logo */}

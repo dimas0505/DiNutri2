@@ -54,14 +54,11 @@ export default function PatientPrescriptionView() {
   });
 
   // Buscar dados do paciente para obter patientId - corrigido
-  const { data: allPatients } = useQuery<Patient[]>({
-    queryKey: ["/api/patients"],
-    enabled: !!user,
+  const { data: currentPatient } = useQuery<Patient>({
+    queryKey: ["/api/patient/my-profile"],
+    enabled: !!user && user.role === 'patient',
     retry: false,
   });
-
-  // Encontrar o paciente associado ao usuário atual
-  const currentPatient = allPatients?.find(p => p.userId === user?.id);
 
   useEffect(() => {
     if (prescriptions.length > 0 && !selectedPrescription) {
@@ -187,7 +184,7 @@ export default function PatientPrescriptionView() {
     return (
       <div className="min-h-screen bg-background">
         {/* Header customizado com gradiente */}
-        <HeaderDNutri />
+        <HeaderDNutri onProfileClick={() => setIsProfileModalOpen(true)} />
         
         {/* Área de conteúdo com cantos superiores arredondados */}
         <main className="bg-white rounded-t-2xl -mt-2 min-h-screen pt-6 pb-20">
