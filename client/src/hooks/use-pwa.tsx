@@ -82,17 +82,18 @@ export function registerServiceWorker(): Promise<ServiceWorkerRegistration | nul
     return Promise.resolve(null);
   }
 
+  // Add a listener for messages from the service worker to handle the reload
+  navigator.serviceWorker.addEventListener('message', (event) => {
+    if (event.data && event.data.action === 'SW_UPDATED') {
+      console.log('SW_UPDATED message received, reloading window...');
+      window.location.reload();
+    }
+  });
+
   return navigator.serviceWorker
     .register('/sw.js')
     .then((registration) => {
       console.log('Service Worker registered successfully:', registration);
-      
-      // Debug: Log current cache versions
-      if ('caches' in window) {
-        caches.keys().then((cacheNames) => {
-          console.log('Current cache names:', cacheNames);
-        });
-      }
       
       // Check for updates
       registration.addEventListener('updatefound', () => {
@@ -105,6 +106,11 @@ export function registerServiceWorker(): Promise<ServiceWorkerRegistration | nul
               
               console.log('New SW version available, isMobile:', isMobile);
               
+              const handleUpdate = () => {
+                console.log('Update button clicked, sending SKIP_WAITING message');
+                newWorker.postMessage({ action: 'SKIP_WAITING' });
+              };
+              
               if (isMobile) {
                 // Show toast notification for mobile users
                 toast({
@@ -113,16 +119,7 @@ export function registerServiceWorker(): Promise<ServiceWorkerRegistration | nul
                   action: (
                     <Button
                       size="sm"
-                      onClick={() => {
-                        console.log('Update button clicked, sending SKIP_WAITING message');
-                        newWorker.postMessage({ action: 'SKIP_WAITING' });
-                        
-                        // Wait for the new service worker to take control
-                        navigator.serviceWorker.addEventListener('controllerchange', () => {
-                          console.log('New service worker took control, reloading...');
-                          window.location.href = window.location.href;
-                        }, { once: true });
-                      }}
+                      onClick={handleUpdate}
                     >
                       Atualizar
                     </Button>
@@ -131,14 +128,7 @@ export function registerServiceWorker(): Promise<ServiceWorkerRegistration | nul
               } else {
                 // Fallback to confirm dialog for desktop
                 if (confirm('Nova versão disponível. Atualizar agora?')) {
-                  console.log('Desktop update confirmed, sending SKIP_WAITING message');
-                  newWorker.postMessage({ action: 'SKIP_WAITING' });
-                  
-                  // Wait for the new service worker to take control
-                  navigator.serviceWorker.addEventListener('controllerchange', () => {
-                    console.log('New service worker took control, reloading...');
-                    window.location.href = window.location.href;
-                  }, { once: true });
+                  handleUpdate();
                 }
               }
             }

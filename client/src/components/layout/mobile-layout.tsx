@@ -44,13 +44,6 @@ export function MobileLayout({
           active: location.startsWith('/patients'),
         },
         {
-          id: 'prescriptions',
-          label: 'Prescrições',
-          icon: FileText,
-          href: '/prescriptions',
-          active: location.startsWith('/prescriptions'),
-        },
-        {
           id: 'profile',
           label: 'Perfil',
           icon: User,

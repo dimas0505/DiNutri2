@@ -19,7 +19,7 @@ self.addEventListener('install', (event) => {
     caches.open(STATIC_CACHE)
       .then((cache) => {
         console.log('Caching static assets');
-        return cache.addAll(STATIC_ASSETS.filter(url => url !== '/'));
+        return cache.addAll(STATIC_ASSETS); // Cache '/' on install for offline fallback
       })
       .catch((error) => {
         console.log('Error caching static assets:', error);
@@ -38,8 +38,8 @@ self.addEventListener('activate', (event) => {
           cacheNames
             .filter((cacheName) => {
               // Delete all caches that start with 'dinutri-' but are not the current ones
-              return cacheName.startsWith('dinutri-') && 
-                     cacheName !== STATIC_CACHE && 
+              return cacheName.startsWith('dinutri-') &&
+                     cacheName !== STATIC_CACHE &&
                      cacheName !== DYNAMIC_CACHE;
             })
             .map((cacheName) => {
@@ -59,7 +59,7 @@ self.addEventListener('activate', (event) => {
 // Fetch event - serve from cache, fallback to network
 self.addEventListener('fetch', (event) => {
   const { request } = event;
-  
+
   // Skip non-GET requests and Chrome extension requests
   if (request.method !== 'GET' || request.url.startsWith('chrome-extension://')) {
     return;
@@ -85,16 +85,37 @@ self.addEventListener('fetch', (event) => {
     );
     return;
   }
+  
+  // Network-first for navigation requests (HTML pages)
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      fetch(request)
+        .then((networkResponse) => {
+          // Cache the new page for offline access
+          const responseClone = networkResponse.clone();
+          caches.open(STATIC_CACHE).then((cache) => {
+            cache.put(request.url, responseClone);
+          });
+          return networkResponse;
+        })
+        .catch(() => {
+          // If network fails, serve the cached HTML
+          return caches.match(request.url) || caches.match('/');
+        })
+    );
+    return;
+  }
 
-  // Handle static assets with cache-first strategy
+  // Handle other static assets with cache-first strategy
   event.respondWith(
     caches.match(request)
       .then((response) => {
+        // Return from cache if found
         if (response) {
           return response;
         }
-        
-        // If not in cache, fetch from network
+
+        // If not in cache, fetch from network and cache it
         return fetch(request)
           .then((fetchResponse) => {
             // Cache successful responses
@@ -106,12 +127,6 @@ self.addEventListener('fetch', (event) => {
                 });
             }
             return fetchResponse;
-          })
-          .catch(() => {
-            // Return offline page for navigation requests
-            if (request.destination === 'document') {
-              return caches.match('/');
-            }
           });
       })
   );
@@ -131,7 +146,7 @@ self.addEventListener('sync', (event) => {
 // Push notification handler
 self.addEventListener('push', (event) => {
   console.log('Push message received');
-  
+
   if (event.data) {
     const data = event.data.json();
     const options = {
@@ -166,9 +181,9 @@ self.addEventListener('push', (event) => {
 // Notification click handler
 self.addEventListener('notificationclick', (event) => {
   console.log('Notification click received');
-  
+
   event.notification.close();
-  
+
   if (event.action === 'explore') {
     event.waitUntil(
       clients.openWindow('/')
@@ -179,7 +194,7 @@ self.addEventListener('notificationclick', (event) => {
 // Message handler for update commands
 self.addEventListener('message', (event) => {
   console.log('Message received in SW:', event.data);
-  
+
   if (event.data && event.data.action === 'SKIP_WAITING') {
     console.log('SKIP_WAITING message received, updating service worker...');
     self.skipWaiting().then(() => {
