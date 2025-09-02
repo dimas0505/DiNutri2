@@ -1,4 +1,7 @@
 import { useState, useEffect } from 'react';
+import { toast } from './use-toast';
+import { isMobileDevice, isTouchDevice } from '@/utils/mobile';
+import { Button } from '@/components/ui/button';
 
 interface PWAInstallEvent extends Event {
   prompt: () => Promise<void>;
@@ -91,13 +94,51 @@ export function registerServiceWorker(): Promise<ServiceWorkerRegistration | nul
           newWorker.addEventListener('statechange', () => {
             if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
               // New content is available
-              if (confirm('Nova versão disponível. Atualizar agora?')) {
-                newWorker.postMessage({ action: 'SKIP_WAITING' });
-                window.location.reload();
+              const isMobile = isMobileDevice() || isTouchDevice();
+              
+              console.log('New SW version available, isMobile:', isMobile);
+              
+              if (isMobile) {
+                // Show toast notification for mobile users
+                toast({
+                  title: "🎉 Nova versão disponível!",
+                  description: "Toque para atualizar o aplicativo agora.",
+                  action: (
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        console.log('Update button clicked, sending SKIP_WAITING message');
+                        newWorker.postMessage({ action: 'SKIP_WAITING' });
+                        
+                        // Add a small delay before reload to ensure message is processed
+                        setTimeout(() => {
+                          window.location.reload();
+                        }, 100);
+                      }}
+                    >
+                      Atualizar
+                    </Button>
+                  ),
+                });
+              } else {
+                // Fallback to confirm dialog for desktop
+                if (confirm('Nova versão disponível. Atualizar agora?')) {
+                  console.log('Desktop update confirmed, sending SKIP_WAITING message');
+                  newWorker.postMessage({ action: 'SKIP_WAITING' });
+                  setTimeout(() => {
+                    window.location.reload();
+                  }, 100);
+                }
               }
             }
           });
         }
+      });
+
+      // Listen for controllerchange but don't auto-reload to allow toast interaction
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        console.log('Service Worker controller changed');
+        // Don't auto-reload here - let the user decide via the toast or confirm dialog
       });
 
       return registration;

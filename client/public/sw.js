@@ -1,4 +1,4 @@
-const CACHE_NAME = 'dinutri-v1';
+const CACHE_NAME = 'dinutri-v1'; // Production cache version
 const STATIC_CACHE = `${CACHE_NAME}-static`;
 const DYNAMIC_CACHE = `${CACHE_NAME}-dynamic`;
 
@@ -166,5 +166,15 @@ self.addEventListener('notificationclick', (event) => {
     event.waitUntil(
       clients.openWindow('/')
     );
+  }
+});
+
+// Message handler for update commands
+self.addEventListener('message', (event) => {
+  console.log('Message received in SW:', event.data);
+  
+  if (event.data && event.data.action === 'SKIP_WAITING') {
+    console.log('SKIP_WAITING message received, updating service worker...');
+    self.skipWaiting();
   }
 });
