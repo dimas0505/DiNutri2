@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 :root {
-  /* Enhanced color palette with modern gradients */
+  /* Enhanced vibrant color palette */
   --background: hsl(0 0% 100%);
   --foreground: hsl(224 71.4% 4.1%);
   --card: hsl(0 0% 100%);
@@ -11,54 +11,75 @@
   --popover: hsl(0 0% 100%);
   --popover-foreground: hsl(224 71.4% 4.1%);
   
-  /* Modern blue gradient primary colors */
+  /* Vibrant primary colors with gradients */
   --primary: hsl(217 91% 60%);
   --primary-foreground: hsl(0 0% 98%);
   --primary-hover: hsl(217 91% 55%);
   --primary-active: hsl(217 91% 50%);
+  --primary-light: hsl(217 91% 75%);
+  --primary-dark: hsl(217 91% 45%);
   
-  /* Refined secondary palette */
+  /* Rich secondary palette */
   --secondary: hsl(220 14.3% 95.9%);
   --secondary-foreground: hsl(220.9 39.3% 11%);
   --secondary-hover: hsl(220 14.3% 92%);
+  --secondary-vibrant: hsl(250 85% 65%);
+  --secondary-vibrant-foreground: hsl(0 0% 98%);
   
   /* Enhanced muted colors */
   --muted: hsl(220 14.3% 95.9%);
   --muted-foreground: hsl(220 8.9% 46.1%);
   
-  /* Accent colors for highlights */
+  /* Multiple accent colors for variety */
   --accent: hsl(217 91% 60%);
   --accent-foreground: hsl(0 0% 98%);
   --accent-subtle: hsl(217 91% 95%);
+  --accent-emerald: hsl(160 84% 39%);
+  --accent-emerald-foreground: hsl(0 0% 98%);
+  --accent-purple: hsl(268 84% 64%);
+  --accent-purple-foreground: hsl(0 0% 98%);
+  --accent-orange: hsl(24 95% 53%);
+  --accent-orange-foreground: hsl(0 0% 98%);
   
-  /* Modern destructive colors */
-  --destructive: hsl(0 72.2% 50.6%);
+  /* Enhanced semantic colors */
+  --destructive: hsl(0 84% 60%);
   --destructive-foreground: hsl(0 0% 98%);
-  --destructive-subtle: hsl(0 72.2% 95%);
+  --destructive-subtle: hsl(0 84% 95%);
+  --destructive-light: hsl(0 84% 70%);
   
-  /* Success colors */
   --success: hsl(142 76% 36%);
   --success-foreground: hsl(0 0% 98%);
   --success-subtle: hsl(142 76% 95%);
+  --success-light: hsl(142 76% 50%);
+  --success-vibrant: hsl(160 84% 39%);
   
-  /* Warning colors */
   --warning: hsl(38 92% 50%);
   --warning-foreground: hsl(0 0% 98%);
   --warning-subtle: hsl(38 92% 95%);
+  --warning-light: hsl(38 92% 65%);
+  --warning-vibrant: hsl(43 96% 56%);
   
-  /* Borders and inputs */
+  --info: hsl(199 89% 48%);
+  --info-foreground: hsl(0 0% 98%);
+  --info-subtle: hsl(199 89% 95%);
+  --info-light: hsl(199 89% 60%);
+  
+  /* Borders and inputs with subtle color */
   --border: hsl(220 13% 91%);
   --input: hsl(220 13% 91%);
   --ring: hsl(217 91% 60%);
   
-  /* Enhanced chart colors */
+  /* Enhanced chart colors with more variety */
   --chart-1: hsl(217 91% 60%);
   --chart-2: hsl(142 76% 36%);
   --chart-3: hsl(38 92% 50%);
   --chart-4: hsl(268 84% 64%);
   --chart-5: hsl(340 82% 52%);
+  --chart-6: hsl(160 84% 39%);
+  --chart-7: hsl(24 95% 53%);
+  --chart-8: hsl(199 89% 48%);
   
-  /* Modern sidebar colors */
+  /* Enhanced sidebar colors */
   --sidebar: hsl(0 0% 98%);
   --sidebar-foreground: hsl(224 71.4% 4.1%);
   --sidebar-primary: hsl(217 91% 60%);
@@ -67,19 +88,21 @@
   --sidebar-accent-foreground: hsl(217 91% 60%);
   --sidebar-border: hsl(220 13% 91%);
   --sidebar-ring: hsl(217 91% 60%);
-  
-  /* Typography */
-  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
-  --font-serif: ui-serif, Georgia, serif;
-  --font-mono: ui-monospace, 'SF Mono', Consolas, monospace;
-  
-  /* Border radius system */
+
+  /* Typography with enhanced font system */
+  --font-sans: 'Inter', 'Segoe UI', 'Roboto', ui-sans-serif, system-ui, sans-serif;
+  --font-serif: 'Inter', ui-serif, Georgia, serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Consolas, monospace;
+  --font-display: 'Inter', 'Segoe UI', ui-sans-serif, system-ui, sans-serif;
+
+  /* Enhanced border radius system */
   --radius: 0.75rem;
   --radius-sm: 0.5rem;
   --radius-lg: 1rem;
   --radius-xl: 1.5rem;
-  
-  /* Enhanced shadow system with realistic depth */
+  --radius-2xl: 2rem;
+
+  /* Professional shadow system with colored shadows */
   --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.05);
   --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
   --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
@@ -88,14 +111,37 @@
   --shadow-xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
   --shadow-2xl: 0 50px 100px -20px rgb(0 0 0 / 0.25);
   --shadow-inner: inset 0 2px 4px 0 rgb(0 0 0 / 0.05);
-  
-  /* Gradient definitions */
+  --shadow-colored-primary: 0 10px 15px -3px hsl(217 91% 60% / 0.2), 0 4px 6px -4px hsl(217 91% 60% / 0.1);
+  --shadow-colored-success: 0 10px 15px -3px hsl(142 76% 36% / 0.2), 0 4px 6px -4px hsl(142 76% 36% / 0.1);
+  --shadow-colored-warning: 0 10px 15px -3px hsl(38 92% 50% / 0.2), 0 4px 6px -4px hsl(38 92% 50% / 0.1);
+  --shadow-colored-destructive: 0 10px 15px -3px hsl(0 84% 60% / 0.2), 0 4px 6px -4px hsl(0 84% 60% / 0.1);
+
+  /* Enhanced gradient definitions with more variety */
   --gradient-primary: linear-gradient(135deg, hsl(217 91% 60%) 0%, hsl(217 91% 50%) 100%);
+  --gradient-primary-vibrant: linear-gradient(135deg, hsl(217 91% 65%) 0%, hsl(268 84% 64%) 50%, hsl(217 91% 50%) 100%);
   --gradient-secondary: linear-gradient(135deg, hsl(220 14.3% 95.9%) 0%, hsl(220 14.3% 92%) 100%);
   --gradient-accent: linear-gradient(135deg, hsl(217 91% 60%) 0%, hsl(268 84% 64%) 100%);
-  --gradient-success: linear-gradient(135deg, hsl(142 76% 36%) 0%, hsl(142 76% 30%) 100%);
-  --gradient-warning: linear-gradient(135deg, hsl(38 92% 50%) 0%, hsl(38 92% 45%) 100%);
-  --gradient-destructive: linear-gradient(135deg, hsl(0 72.2% 50.6%) 0%, hsl(0 72.2% 45%) 100%);
+  --gradient-emerald: linear-gradient(135deg, hsl(160 84% 39%) 0%, hsl(142 76% 36%) 100%);
+  --gradient-orange: linear-gradient(135deg, hsl(24 95% 53%) 0%, hsl(38 92% 50%) 100%);
+  --gradient-purple: linear-gradient(135deg, hsl(268 84% 64%) 0%, hsl(250 85% 65%) 100%);
+  --gradient-success: linear-gradient(135deg, hsl(142 76% 36%) 0%, hsl(160 84% 39%) 100%);
+  --gradient-warning: linear-gradient(135deg, hsl(38 92% 50%) 0%, hsl(43 96% 56%) 100%);
+  --gradient-destructive: linear-gradient(135deg, hsl(0 84% 60%) 0%, hsl(0 84% 50%) 100%);
+  --gradient-info: linear-gradient(135deg, hsl(199 89% 48%) 0%, hsl(217 91% 60%) 100%);
+  
+  /* Mesh gradients for backgrounds */
+  --gradient-mesh-1: radial-gradient(at 40% 20%, hsl(217 91% 60% / 0.3) 0px, transparent 50%), 
+                      radial-gradient(at 80% 0%, hsl(268 84% 64% / 0.2) 0px, transparent 50%), 
+                      radial-gradient(at 0% 50%, hsl(160 84% 39% / 0.2) 0px, transparent 50%);
+  --gradient-mesh-2: radial-gradient(at 60% 80%, hsl(24 95% 53% / 0.3) 0px, transparent 50%), 
+                      radial-gradient(at 20% 100%, hsl(142 76% 36% / 0.2) 0px, transparent 50%), 
+                      radial-gradient(at 100% 30%, hsl(217 91% 60% / 0.2) 0px, transparent 50%);
+  
+  /* Texture patterns */
+  --pattern-dots: radial-gradient(circle at 25% 25%, hsl(217 91% 60% / 0.1) 2px, transparent 2px);
+  --pattern-grid: linear-gradient(hsl(217 91% 60% / 0.05) 1px, transparent 1px), 
+                  linear-gradient(90deg, hsl(217 91% 60% / 0.05) 1px, transparent 1px);
+  --pattern-noise: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.03'/%3E%3C/svg%3E");
 }
 
 /* Dark mode preparation */
@@ -303,9 +349,13 @@
     animation: bounce-in 0.4s ease-out;
   }
 
-  /* Gradient utilities */
+  /* Enhanced gradient utilities with more color variety */
   .gradient-primary {
     background: var(--gradient-primary);
+  }
+
+  .gradient-primary-vibrant {
+    background: var(--gradient-primary-vibrant);
   }
 
   .gradient-secondary {
@@ -314,6 +364,18 @@
 
   .gradient-accent {
     background: var(--gradient-accent);
+  }
+
+  .gradient-emerald {
+    background: var(--gradient-emerald);
+  }
+
+  .gradient-orange {
+    background: var(--gradient-orange);
+  }
+
+  .gradient-purple {
+    background: var(--gradient-purple);
   }
 
   .gradient-success {
@@ -326,6 +388,51 @@
 
   .gradient-destructive {
     background: var(--gradient-destructive);
+  }
+
+  .gradient-info {
+    background: var(--gradient-info);
+  }
+
+  /* Mesh gradient backgrounds for visual interest */
+  .gradient-mesh-1 {
+    background: var(--gradient-mesh-1);
+  }
+
+  .gradient-mesh-2 {
+    background: var(--gradient-mesh-2);
+  }
+
+  /* Texture pattern utilities */
+  .pattern-dots {
+    background-image: var(--pattern-dots);
+    background-size: 20px 20px;
+  }
+
+  .pattern-grid {
+    background-image: var(--pattern-grid);
+    background-size: 20px 20px;
+  }
+
+  .pattern-noise {
+    background-image: var(--pattern-noise);
+  }
+
+  /* Colored shadow utilities */
+  .shadow-primary {
+    box-shadow: var(--shadow-colored-primary);
+  }
+
+  .shadow-success {
+    box-shadow: var(--shadow-colored-success);
+  }
+
+  .shadow-warning {
+    box-shadow: var(--shadow-colored-warning);
+  }
+
+  .shadow-destructive {
+    box-shadow: var(--shadow-colored-destructive);
   }
 
   /* Modern button hover effects */

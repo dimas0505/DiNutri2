@@ -21,6 +21,11 @@ const buttonVariants = cva(
         success: "bg-gradient-success text-success-foreground shadow-md hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 active:shadow-md",
         warning: "bg-gradient-warning text-warning-foreground shadow-md hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 active:shadow-md",
         accent: "bg-gradient-accent text-accent-foreground shadow-md hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 active:shadow-md",
+        emerald: "bg-gradient-emerald text-accent-emerald-foreground shadow-md hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 active:shadow-md",
+        orange: "bg-gradient-orange text-accent-orange-foreground shadow-md hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 active:shadow-md",
+        purple: "bg-gradient-purple text-accent-purple-foreground shadow-md hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 active:shadow-md",
+        info: "bg-gradient-info text-info-foreground shadow-md hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 active:shadow-md",
+        vibrant: "bg-gradient-primary-vibrant text-primary-foreground shadow-md hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 active:shadow-md",
       },
       size: {
         default: "h-11 px-6 py-2.5",

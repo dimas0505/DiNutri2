@@ -9,15 +9,23 @@ const badgeVariants = cva(
     variants: {
       variant: {
         default:
-          "border-transparent bg-primary text-primary-foreground hover:bg-primary-hover shadow-sm hover:shadow-md",
+          "border-transparent bg-gradient-primary text-primary-foreground hover:shadow-md shadow-primary hover:scale-105",
         secondary:
-          "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary-hover shadow-sm",
+          "border-transparent bg-gradient-secondary text-secondary-foreground hover:bg-secondary-hover shadow-sm",
         destructive:
-          "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-sm hover:shadow-md",
+          "border-transparent bg-gradient-destructive text-destructive-foreground hover:shadow-md shadow-destructive hover:scale-105",
         success:
-          "border-transparent bg-success text-success-foreground hover:bg-success/90 shadow-sm hover:shadow-md",
+          "border-transparent bg-gradient-success text-success-foreground hover:shadow-md shadow-success hover:scale-105",
         warning:
-          "border-transparent bg-warning text-warning-foreground hover:bg-warning/90 shadow-sm hover:shadow-md",
+          "border-transparent bg-gradient-warning text-warning-foreground hover:shadow-md shadow-warning hover:scale-105",
+        emerald:
+          "border-transparent bg-gradient-emerald text-accent-emerald-foreground hover:shadow-md shadow-success hover:scale-105",
+        orange:
+          "border-transparent bg-gradient-orange text-accent-orange-foreground hover:shadow-md shadow-warning hover:scale-105",
+        purple:
+          "border-transparent bg-gradient-purple text-accent-purple-foreground hover:shadow-md shadow-primary hover:scale-105",
+        info:
+          "border-transparent bg-gradient-info text-info-foreground hover:shadow-md shadow-primary hover:scale-105",
         outline: "text-foreground border-border hover:bg-accent hover:text-accent-foreground",
         subtle: "bg-muted text-muted-foreground hover:bg-muted/80",
       },
