@@ -3,7 +3,6 @@ import { useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { ArrowLeft } from "lucide-react";
 import Header from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { MobileLayout, DefaultMobileDrawer } from "@/components/layout/mobile-layout";
 
 const createUserSchema = z.object({
   email: z.string().email("Email inválido."),
@@ -69,22 +69,13 @@ export default function CreateUserPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header
-        title="Criar Novo Usuário"
-        leftElement={
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setLocation("/admin")}
-            data-testid="button-back"
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-        }
-      />
-
-      <main className="max-w-2xl mx-auto p-4 lg:p-6">
+    <MobileLayout
+      title="Criar Novo Usuário"
+      showBack={true}
+      onBack={() => setLocation("/admin")}
+      drawerContent={<DefaultMobileDrawer />}
+    >
+      <main className="max-w-2xl mx-auto">
         <Card>
           <CardHeader>
             <CardTitle>Informações do Usuário</CardTitle>
@@ -193,6 +184,6 @@ export default function CreateUserPage() {
           </CardContent>
         </Card>
       </main>
-    </div>
+    </MobileLayout>
   );
 }

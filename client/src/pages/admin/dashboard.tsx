@@ -1,10 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Plus, Users, Shield, UserPlus, Settings, Edit } from "lucide-react";
-import Header from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { MobileLayout, DefaultMobileDrawer } from "@/components/layout/mobile-layout";
 import type { User } from "@shared/schema";
 
 export default function AdminDashboard() {
@@ -44,33 +44,33 @@ export default function AdminDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header
-        title="Painel Administrativo"
-        rightElement={
-          <div className="flex items-center space-x-3">
-            <Button
-              variant="outline"
-              onClick={() => setLocation("/admin/profile")}
-              className="flex items-center space-x-2"
-              data-testid="button-profile"
-            >
-              <Settings className="h-4 w-4" />
-              <span>Meu Perfil</span>
-            </Button>
-            <Button
-              onClick={() => setLocation("/admin/create-user")}
-              className="flex items-center space-x-2"
-              data-testid="button-create-user"
-            >
-              <UserPlus className="h-4 w-4" />
-              <span>Criar Usuário</span>
-            </Button>
-          </div>
-        }
-      />
+    <MobileLayout
+      title="Painel Administrativo"
+      drawerContent={<DefaultMobileDrawer />}
+    >
+      <div className="flex justify-end mb-4">
+        <div className="flex items-center space-x-3">
+          <Button
+            variant="outline"
+            onClick={() => setLocation("/admin/profile")}
+            className="flex items-center space-x-2"
+            data-testid="button-profile"
+          >
+            <Settings className="h-4 w-4" />
+            <span>Meu Perfil</span>
+          </Button>
+          <Button
+            onClick={() => setLocation("/admin/create-user")}
+            className="flex items-center space-x-2"
+            data-testid="button-create-user"
+          >
+            <UserPlus className="h-4 w-4" />
+            <span>Criar Usuário</span>
+          </Button>
+        </div>
+      </div>
 
-      <main className="max-w-7xl mx-auto p-4 lg:p-6">
+      <main className="max-w-7xl mx-auto">
         {/* Estatísticas */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <Card>
@@ -186,6 +186,6 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
       </main>
-    </div>
+    </MobileLayout>
   );
 }

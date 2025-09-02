@@ -1,8 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { ArrowLeft, Plus, Copy } from "lucide-react";
-import Header from "@/components/layout/header";
+import { Plus, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -13,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import type { Prescription, Patient, MealData } from "@shared/schema";
 import { v4 as uuidv4 } from 'uuid';
+import { MobileLayout, DefaultMobileDrawer } from "@/components/layout/mobile-layout";
 
 interface PrescriptionEditorPageProps {
   params: { id: string };
@@ -133,40 +133,49 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background">
-        <Header title="Carregando..." />
-        <main className="max-w-4xl mx-auto p-4 lg:p-6">
+      <MobileLayout title="Carregando..." drawerContent={<DefaultMobileDrawer />}>
+        <main className="max-w-4xl mx-auto">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
         </main>
-      </div>
+      </MobileLayout>
     );
   }
 
   if (!prescription) {
     return (
-      <div className="min-h-screen bg-background">
-        <Header title="Prescrição não encontrada" />
-        <main className="max-w-4xl mx-auto p-4 lg:p-6">
+      <MobileLayout title="Prescrição não encontrada" showBack={true} onBack={() => setLocation("/")} drawerContent={<DefaultMobileDrawer />}>
+        <main className="max-w-4xl mx-auto">
           <p className="text-center text-muted-foreground">Prescrição não encontrada.</p>
         </main>
-      </div>
+      </MobileLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header
-        leftElement={
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setLocation(`/patients/${prescription.patientId}`)}
-            data-testid="button-back"
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-        }
-        rightElement={
+    <MobileLayout
+      title={title || "Editor de Prescrição"}
+      subtitle={patient?.name}
+      showBack={true}
+      onBack={() => setLocation(`/patients/${prescription.patientId}`)}
+      drawerContent={<DefaultMobileDrawer />}
+    >
+      <main className="max-w-4xl mx-auto">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+          <div className="flex-1 w-full">
+            <Input
+              className="text-2xl font-bold h-auto p-1 border-none outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Título da prescrição"
+              data-testid="input-prescription-title"
+            />
+            <p className="text-sm text-muted-foreground mt-1">
+              {patient?.name} • 
+              <Badge variant={prescription.status === 'published' ? 'default' : 'secondary'} className="ml-2">
+                {prescription.status === 'published' ? 'Publicado' : 'Rascunho'}
+              </Badge>
+            </p>
+          </div>
           <div className="flex items-center space-x-3">
             <Button
               variant="secondary"
@@ -184,26 +193,8 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
               Publicar
             </Button>
           </div>
-        }
-      >
-        <div>
-          <Input
-            className="text-xl font-bold border-none outline-none bg-transparent p-0 h-auto"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="Título da prescrição"
-            data-testid="input-prescription-title"
-          />
-          <p className="text-sm text-muted-foreground mt-1">
-            {patient?.name} • 
-            <Badge variant={prescription.status === 'published' ? 'default' : 'secondary'} className="ml-2">
-              {prescription.status === 'published' ? 'Publicado' : 'Rascunho'}
-            </Badge>
-          </p>
         </div>
-      </Header>
-
-      <main className="max-w-4xl mx-auto p-4 lg:p-6">
+        
         {/* Prescription Tools */}
         <div className="mb-6 flex flex-wrap gap-3">
           <Button
@@ -263,6 +254,6 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
           </CardContent>
         </Card>
       </main>
-    </div>
+    </MobileLayout>
   );
 }

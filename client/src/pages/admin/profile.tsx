@@ -3,8 +3,7 @@ import { useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { ArrowLeft, User, Lock } from "lucide-react";
-import Header from "@/components/layout/header";
+import { User, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
+import { MobileLayout, DefaultMobileDrawer } from "@/components/layout/mobile-layout";
 
 const changePasswordSchema = z.object({
   currentPassword: z.string().min(1, "Senha atual é obrigatória."),
@@ -114,22 +114,13 @@ export default function AdminProfilePage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header
-        title="Meu Perfil"
-        leftElement={
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setLocation("/admin")}
-            data-testid="button-back"
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-        }
-      />
-
-      <main className="max-w-2xl mx-auto p-4 lg:p-6">
+    <MobileLayout
+      title="Meu Perfil"
+      showBack={true}
+      onBack={() => setLocation("/admin")}
+      drawerContent={<DefaultMobileDrawer />}
+    >
+      <main className="max-w-2xl mx-auto">
         <Tabs defaultValue="profile" className="space-y-6">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="profile" className="flex items-center space-x-2">
@@ -270,6 +261,6 @@ export default function AdminProfilePage() {
           </TabsContent>
         </Tabs>
       </main>
-    </div>
+    </MobileLayout>
   );
 }

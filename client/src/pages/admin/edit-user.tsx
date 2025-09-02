@@ -4,8 +4,7 @@ import { useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { ArrowLeft, Trash2 } from "lucide-react";
-import Header from "@/components/layout/header";
+import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -16,6 +15,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
+import { MobileLayout, DefaultMobileDrawer } from "@/components/layout/mobile-layout";
 import type { User } from "@shared/schema";
 
 const updateUserSchema = z.object({
@@ -191,101 +191,95 @@ export default function EditUserPage({ params }: EditUserPageProps) {
   const isAdminUser = user?.role === 'admin';
   const canDelete = !isCurrentUser && !isAdminUser && (dependencies?.canDelete ?? false);
 
+  const renderDeleteButton = () => {
+    if (isCurrentUser || isAdminUser) return null;
+    return (
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogTrigger asChild>
+          <Button 
+            variant="destructive" 
+            size="sm"
+            disabled={!canDelete || loadingDependencies}
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            {loadingDependencies ? "Verificando..." : "Excluir Usuário"}
+          </Button>
+        </AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza de que deseja excluir o usuário <strong>{user?.firstName} {user?.lastName}</strong>?
+              {dependencies?.hasPatients && (
+                <div className="mt-2 p-2 bg-yellow-100 rounded text-yellow-800">
+                  ⚠️ Este usuário possui pacientes associados. A exclusão não será possível.
+                </div>
+              )}
+              {dependencies?.hasPrescriptions && (
+                <div className="mt-2 p-2 bg-yellow-100 rounded text-yellow-800">
+                  ⚠️ Este usuário possui prescrições associadas. A exclusão não será possível.
+                </div>
+              )}
+              {dependencies?.hasInvitations && !dependencies?.hasPatients && !dependencies?.hasPrescriptions && (
+                <div className="mt-2 p-2 bg-blue-100 rounded text-blue-800">
+                  ℹ️ Este usuário possui convites que serão excluídos automaticamente.
+                </div>
+              )}
+              {canDelete && (
+                <div className="mt-2 text-red-600">
+                  Esta ação não pode ser desfeita.
+                </div>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            {canDelete && (
+              <AlertDialogAction 
+                onClick={handleDeleteUser}
+                disabled={deleteUserMutation.isPending}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {deleteUserMutation.isPending ? "Excluindo..." : "Excluir"}
+              </AlertDialogAction>
+            )}
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    );
+  };
+
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background">
-        <Header title="Carregando..." />
-        <main className="max-w-2xl mx-auto p-4 lg:p-6">
+      <MobileLayout title="Carregando..." drawerContent={<DefaultMobileDrawer />}>
+        <main className="max-w-2xl mx-auto">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
         </main>
-      </div>
+      </MobileLayout>
     );
   }
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-background">
-        <Header title="Usuário não encontrado" />
-        <main className="max-w-2xl mx-auto p-4 lg:p-6">
+      <MobileLayout title="Usuário não encontrado" showBack={true} onBack={() => setLocation("/admin")} drawerContent={<DefaultMobileDrawer />}>
+        <main className="max-w-2xl mx-auto">
           <p className="text-center text-muted-foreground">Usuário não encontrado.</p>
         </main>
-      </div>
+      </MobileLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header
-        title={`Editar: ${user.firstName} ${user.lastName}`}
-        leftElement={
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setLocation("/admin")}
-            data-testid="button-back"
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-        }
-        rightElement={
-          !isCurrentUser && !isAdminUser && (
-            <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-              <AlertDialogTrigger asChild>
-                <Button 
-                  variant="destructive" 
-                  size="sm"
-                  disabled={!canDelete || loadingDependencies}
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  {loadingDependencies ? "Verificando..." : "Excluir Usuário"}
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Tem certeza de que deseja excluir o usuário <strong>{user.firstName} {user.lastName}</strong>?
-                    {dependencies?.hasPatients && (
-                      <div className="mt-2 p-2 bg-yellow-100 rounded text-yellow-800">
-                        ⚠️ Este usuário possui pacientes associados. A exclusão não será possível.
-                      </div>
-                    )}
-                    {dependencies?.hasPrescriptions && (
-                      <div className="mt-2 p-2 bg-yellow-100 rounded text-yellow-800">
-                        ⚠️ Este usuário possui prescrições associadas. A exclusão não será possível.
-                      </div>
-                    )}
-                    {dependencies?.hasInvitations && !dependencies?.hasPatients && !dependencies?.hasPrescriptions && (
-                      <div className="mt-2 p-2 bg-blue-100 rounded text-blue-800">
-                        ℹ️ Este usuário possui convites que serão excluídos automaticamente.
-                      </div>
-                    )}
-                    {canDelete && (
-                      <div className="mt-2 text-red-600">
-                        Esta ação não pode ser desfeita.
-                      </div>
-                    )}
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                  {canDelete && (
-                    <AlertDialogAction 
-                      onClick={handleDeleteUser}
-                      disabled={deleteUserMutation.isPending}
-                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                    >
-                      {deleteUserMutation.isPending ? "Excluindo..." : "Excluir"}
-                    </AlertDialogAction>
-                  )}
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          )
-        }
-      />
-
-      <main className="max-w-2xl mx-auto p-4 lg:p-6">
+    <MobileLayout
+      title={`Editar: ${user.firstName} ${user.lastName}`}
+      showBack={true}
+      onBack={() => setLocation("/admin")}
+      drawerContent={<DefaultMobileDrawer />}
+    >
+      <main className="max-w-2xl mx-auto">
+        <div className="flex justify-end mb-4">
+          {renderDeleteButton()}
+        </div>
         <Tabs defaultValue="profile" className="space-y-6">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="profile">Informações do Usuário</TabsTrigger>
@@ -429,6 +423,6 @@ export default function EditUserPage({ params }: EditUserPageProps) {
           </TabsContent>
         </Tabs>
       </main>
-    </div>
+    </MobileLayout>
   );
 }

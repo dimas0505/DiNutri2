@@ -3,8 +3,6 @@ import { useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { ArrowLeft } from "lucide-react";
-import Header from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -15,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 import { insertPatientSchema } from "@shared/schema";
+import { MobileLayout, DefaultMobileDrawer } from "@/components/layout/mobile-layout";
 
 // O schema do formulário agora inclui o campo de senha
 const formSchema = insertPatientSchema.omit({ ownerId: true, userId: true }).extend({
@@ -93,23 +92,13 @@ export default function NewPatientPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header 
-        title="Novo Paciente"
-        leftElement={
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setLocation("/patients")}
-            data-testid="button-back"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Voltar
-          </Button>
-        }
-      />
-
-      <main className="max-w-2xl mx-auto p-4 lg:p-6">
+    <MobileLayout 
+      title="Novo Paciente"
+      showBack={true}
+      onBack={() => setLocation("/patients")}
+      drawerContent={<DefaultMobileDrawer />}
+    >
+      <main className="max-w-2xl mx-auto">
         <Card>
           <CardContent className="p-6">
             <Form {...form}>
@@ -306,6 +295,6 @@ export default function NewPatientPage() {
           </CardContent>
         </Card>
       </main>
-    </div>
+    </MobileLayout>
   );
 }

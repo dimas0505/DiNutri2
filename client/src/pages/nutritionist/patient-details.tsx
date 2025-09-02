@@ -4,11 +4,11 @@ import { ArrowLeft, CheckCircle, Eye, FileText, Plus, Trash2, Users, XCircle } f
 import { useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import Header from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { MobileLayout, DefaultMobileDrawer } from "@/components/layout/mobile-layout";
 import type { Patient, Prescription } from "@shared/schema";
 
 export default function PatientDetails({ params }: { params: { id: string } }) {
@@ -125,56 +125,46 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
 
   if (patientLoading) {
     return (
-      <div className="min-h-screen bg-background">
-        <Header title="Carregando..." />
-        <main className="max-w-7xl mx-auto p-4 lg:p-6">
+      <MobileLayout title="Carregando..." drawerContent={<DefaultMobileDrawer />}>
+        <main className="max-w-7xl mx-auto">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
         </main>
-      </div>
+      </MobileLayout>
     );
   }
 
   if (!patient) {
     return (
-      <div className="min-h-screen bg-background">
-        <Header title="Paciente não encontrado" />
-        <main className="max-w-7xl mx-auto p-4 lg:p-6">
+      <MobileLayout title="Paciente não encontrado" showBack={true} onBack={() => setLocation("/patients")} drawerContent={<DefaultMobileDrawer />}>
+        <main className="max-w-7xl mx-auto">
           <p className="text-center text-muted-foreground">Paciente não encontrado.</p>
         </main>
-      </div>
+      </MobileLayout>
     );
   }
   
   const hasAccountLinked = !!patient.userId;
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header
-        title={patient.name}
-        subtitle={patient.email || undefined}
-        leftElement={
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setLocation("/patients")}
-            data-testid="button-back"
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-        }
-        rightElement={
-          <Button
-            onClick={() => createPrescriptionMutation.mutate()}
-            disabled={createPrescriptionMutation.isPending || !hasAccountLinked}
-            title={!hasAccountLinked ? "Paciente precisa ter um login para criar prescrições" : "Nova Prescrição"}
-            data-testid="button-new-prescription"
-          >
-            Nova Prescrição
-          </Button>
-        }
-      />
+    <MobileLayout
+      title={patient.name}
+      subtitle={patient.email || undefined}
+      showBack={true}
+      onBack={() => setLocation("/patients")}
+      drawerContent={<DefaultMobileDrawer />}
+    >
+      <div className="flex justify-end mb-4">
+        <Button
+          onClick={() => createPrescriptionMutation.mutate()}
+          disabled={createPrescriptionMutation.isPending || !hasAccountLinked}
+          title={!hasAccountLinked ? "Paciente precisa ter um login para criar prescrições" : "Nova Prescrição"}
+          data-testid="button-new-prescription"
+        >
+          Nova Prescrição
+        </Button>
+      </div>
 
-      <main className="max-w-7xl mx-auto p-4 lg:p-6">
+      <main className="max-w-7xl mx-auto">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Patient Info */}
           <div className="lg:col-span-1 space-y-6">
@@ -360,6 +350,6 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
           </div>
         </div>
       </main>
-    </div>
+    </MobileLayout>
   );
 }
