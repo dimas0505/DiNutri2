@@ -198,7 +198,13 @@ export default function PatientPrescriptionView() {
           onItemClick={(item) => {
             if (item === "home") setLocation("/");
             else if (item === "prescription") setLocation("/patient/prescription");
-            else if (item === "profile") setLocation("/patient/profile");
+            else if (item === "profile") {
+              // For now, show a simple logout action since there's no profile page
+              const confirmLogout = window.confirm("Deseja sair do aplicativo?");
+              if (confirmLogout) {
+                window.location.href = "/api/logout";
+              }
+            }
           }}
         />
 
