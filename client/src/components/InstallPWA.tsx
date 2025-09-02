@@ -35,10 +35,10 @@ export default function InstallPWA() {
           
           <div className="flex-1 min-w-0">
             <h3 className="font-medium text-sm text-foreground mb-1">
-              Instalar DiNutri2
+              Instalar DiNutri
             </h3>
             <p className="text-xs text-muted-foreground mb-3">
-              Adicione o DiNutri2 à sua tela inicial para acesso rápido e experiência nativa.
+              Adicione o DiNutri à sua tela inicial para acesso rápido e experiência nativa.
             </p>
             
             <div className="flex gap-2">
