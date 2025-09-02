@@ -84,38 +84,49 @@ export default function Landing() {
         .animation-delay-4000 {
           animation-delay: 4s;
         }
+        .animation-delay-6000 {
+          animation-delay: 6s;
+        }
       `}</style>
 
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center p-4 relative overflow-hidden">
-        {/* Background decorative elements */}
+        {/* Enhanced background decorative elements */}
         <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-400 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob"></div>
-          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-purple-400 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-2000"></div>
-          <div className="absolute top-40 left-40 w-80 h-80 bg-yellow-400 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-4000"></div>
+          {/* Primary gradient blob */}
+          <div className="absolute -top-40 -right-40 w-96 h-96 bg-gradient-to-br from-blue-400 to-indigo-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob"></div>
+          {/* Secondary gradient blob */}
+          <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-gradient-to-br from-purple-400 to-pink-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-2000"></div>
+          {/* Accent gradient blob */}
+          <div className="absolute top-40 left-40 w-96 h-96 bg-gradient-to-br from-yellow-300 to-orange-400 rounded-full mix-blend-multiply filter blur-xl opacity-15 animate-blob animation-delay-4000"></div>
+          {/* Additional subtle blob for depth */}
+          <div className="absolute top-1/2 right-1/3 w-64 h-64 bg-gradient-to-br from-emerald-300 to-teal-400 rounded-full mix-blend-multiply filter blur-2xl opacity-10 animate-blob animation-delay-6000"></div>
         </div>
 
-        <div className="w-full max-w-md relative z-10">
-          {/* Logo Section - Espaçamento reduzido */}
-          <div className="flex flex-col items-center mb-6">
-            <div className="mb-3 transform hover:scale-105 transition-transform duration-300">
-              <DiNutriLogo size="xl" variant="full" className="h-36 md:h-40" />
+        {/* Subtle grid pattern overlay */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.1)_1px,transparent_1px)] bg-[length:32px_32px] opacity-30"></div>
+
+        <div className="w-full max-w-md relative z-10 animate-fade-in">
+          {/* Enhanced logo section */}
+          <div className="flex flex-col items-center mb-8">
+            <div className="mb-4 transform hover:scale-110 transition-all duration-500 animate-bounce-in">
+              <DiNutriLogo size="xl" variant="full" className="h-36 md:h-40 filter drop-shadow-lg" />
             </div>
             
-            {/* Tagline moderna - mais próxima da logo */}
-            <div className="text-center">
-              <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-1">
+            {/* Enhanced tagline with better typography */}
+            <div className="text-center animate-slide-up">
+              <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent mb-2">
                 Nutrição Inteligente
               </h1>
-              <p className="text-gray-600 text-sm md:text-base">
+              <p className="text-gray-600 text-sm md:text-base font-medium tracking-wide">
                 Sua plataforma completa de gestão nutricional
               </p>
             </div>
           </div>
 
-          {/* Card de login moderno */}
-          <Card className="shadow-2xl border-0 bg-white/90 backdrop-blur-md">
-            <CardHeader className="space-y-3 text-center pb-6">
-              <CardTitle className="text-2xl font-bold text-gray-900">
+          {/* Enhanced login card */}
+          <Card className="shadow-2xl border-0 bg-white/95 backdrop-blur-lg animate-scale-in">
+            <CardHeader className="space-y-4 text-center pb-6">
+              <CardTitle className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
                 Bem-vindo de volta!
               </CardTitle>
               <CardDescription className="text-gray-600">
@@ -131,12 +142,12 @@ export default function Landing() {
                     name="email"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-gray-700 font-medium">Email</FormLabel>
+                        <FormLabel className="text-foreground font-semibold text-sm">Email</FormLabel>
                         <FormControl>
                           <Input
                             type="email"
                             placeholder="seu@email.com"
-                            className="h-12 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-20 transition-all duration-200"
+                            className="h-12 text-base"
                             {...field}
                           />
                         </FormControl>
@@ -150,20 +161,20 @@ export default function Landing() {
                     name="password"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-gray-700 font-medium">Senha</FormLabel>
+                        <FormLabel className="text-foreground font-semibold text-sm">Senha</FormLabel>
                         <FormControl>
                           <div className="relative">
                             <Input
                               type={showPassword ? "text" : "password"}
                               placeholder="••••••••"
-                              className="h-12 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-20 transition-all duration-200 pr-12"
+                              className="h-12 text-base pr-12"
                               {...field}
                             />
                             <Button
                               type="button"
                               variant="ghost"
                               size="sm"
-                              className="absolute right-0 top-0 h-12 px-3 hover:bg-transparent text-gray-400 hover:text-gray-600"
+                              className="absolute right-0 top-0 h-12 px-3 hover:bg-transparent text-muted-foreground hover:text-foreground transition-colors"
                               onClick={() => setShowPassword(!showPassword)}
                             >
                               {showPassword ? (
@@ -181,7 +192,8 @@ export default function Landing() {
 
                   <Button
                     type="submit"
-                    className="w-full h-12 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all duration-200"
+                    size="lg"
+                    className="w-full font-semibold text-base"
                     disabled={loginMutation.isPending}
                   >
                     {loginMutation.isPending ? (
@@ -198,9 +210,9 @@ export default function Landing() {
             </CardContent>
           </Card>
 
-          {/* Footer elegante */}
-          <div className="text-center mt-6">
-            <p className="text-sm text-gray-500">
+          {/* Enhanced footer */}
+          <div className="text-center mt-8 animate-fade-in">
+            <p className="text-sm text-muted-foreground font-medium">
               © 2025 DiNutri. Todos os direitos reservados.
             </p>
           </div>
