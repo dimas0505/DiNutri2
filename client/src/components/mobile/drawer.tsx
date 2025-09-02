@@ -39,16 +39,8 @@ export function MobileDrawer({
       >
         <SheetTitle className="sr-only">{title}</SheetTitle>
         <div className="flex flex-col h-full">
-          <div className="flex items-center justify-between pb-4 border-b">
+          <div className="flex items-center pb-4 border-b">
             <h2 className="text-lg font-semibold">{title}</h2>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={() => setOpen(false)}
-              className="h-8 w-8 p-0"
-            >
-              <X className="h-4 w-4" />
-            </Button>
           </div>
           <div className="flex-1 py-4 overflow-y-auto">
             {children}

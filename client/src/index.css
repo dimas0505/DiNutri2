@@ -39,6 +39,12 @@
   --font-serif: Georgia, serif;
   --font-mono: Menlo, monospace;
   --radius: 0.5rem;
+  
+  /* DNutri Mockup Color Tokens */
+  --dn-header-from: #8B5CF6;
+  --dn-header-to: #A855F7;
+  --dn-meal-from: #FF7A7A;
+  --dn-meal-to: #FFB366;
   --shadow-2xs: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00);
   --shadow-xs: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00);
   --shadow-sm: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00), 0px 1px 2px -1px hsl(202.8169 89.1213% 53.1373% / 0.00);

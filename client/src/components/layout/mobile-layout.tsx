@@ -3,7 +3,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { MobileHeader } from "@/components/mobile";
 import { BottomNavigation } from "@/components/mobile";
 import { useAuth } from "@/hooks/useAuth";
-import { Home, Users, FileText, User, Menu } from "lucide-react";
+import { Home, Users, FileText, User, Menu, LogOut } from "lucide-react";
 import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 
@@ -124,29 +124,46 @@ export function MobileLayout({
 }
 
 // Default drawer content for authenticated users
-export function DefaultMobileDrawer() {
+interface DefaultMobileDrawerProps {
+  onProfileClick?: () => void;
+}
+
+export function DefaultMobileDrawer({ onProfileClick }: DefaultMobileDrawerProps = {}) {
   const { isNutritionist, isPatient } = useAuth();
   const [, setLocation] = useLocation();
 
-  const menuItems = [
+  const handleLogout = () => {
+    // Redireciona diretamente para a rota de logout que fará o redirecionamento
+    window.location.href = "/api/logout";
+  };
+
+  const navigationItems = [
     ...(isNutritionist ? [
-      { label: 'Pacientes', href: '/patients', icon: Users },
-      { label: 'Nova Prescrição', href: '/patients/new', icon: FileText },
+      { label: 'Pacientes', href: '/patients', icon: Users, action: 'navigate' },
+      { label: 'Nova Prescrição', href: '/patients/new', icon: FileText, action: 'navigate' },
     ] : []),
     ...(isPatient ? [
-      { label: 'Minha Prescrição', href: '/patient/prescription', icon: FileText },
-      { label: 'Perfil', href: '/patient/profile', icon: User },
+      { label: 'Minha Prescrição', href: '/patient/prescription', icon: FileText, action: 'navigate' },
+      { label: 'Perfil', href: '', icon: User, action: 'profile' },
     ] : []),
   ];
 
+  const handleItemClick = (item: any) => {
+    if (item.action === 'navigate') {
+      setLocation(item.href);
+    } else if (item.action === 'profile' && onProfileClick) {
+      onProfileClick();
+    }
+  };
+
   return (
     <div className="space-y-2">
-      {menuItems.map((item) => {
+      {navigationItems.map((item, index) => {
         const Icon = item.icon;
         return (
           <button
-            key={item.href}
-            onClick={() => setLocation(item.href)}
+            key={`${item.label}-${index}`}
+            onClick={() => handleItemClick(item)}
             className="w-full flex items-center space-x-3 px-4 py-3 text-left hover:bg-accent rounded-lg transition-colors"
           >
             <Icon className="h-5 w-5" />
@@ -154,6 +171,19 @@ export function DefaultMobileDrawer() {
           </button>
         );
       })}
+      
+      {/* Separator and logout option */}
+      {navigationItems.length > 0 && (
+        <div className="border-t pt-2 mt-4">
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center space-x-3 px-4 py-3 text-left hover:bg-accent rounded-lg transition-colors text-red-600 hover:text-red-700"
+          >
+            <LogOut className="h-5 w-5" />
+            <span>Sair</span>
+          </button>
+        </div>
+      )}
     </div>
   );
 }
