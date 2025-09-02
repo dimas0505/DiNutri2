@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
-import { Info, ChevronDown, ChevronUp, Heart, MessageSquare, Camera } from "lucide-react";
+import { Info, ChevronDown, ChevronUp, Heart, MessageSquare, Camera, Maximize2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import MoodRegistrationModal from "@/components/mood/mood-registration-modal";
+import MealMenuScreen from "@/components/meal/meal-menu-screen";
 import type { MealData } from "@shared/schema";
 
 interface MealViewerProps {
@@ -44,6 +45,7 @@ export default function MealViewer({ meal, prescriptionId, patientId, autoExpand
   // Se autoExpand for true, começar expandido
   const [isExpanded, setIsExpanded] = useState(autoExpand);
   const [showMoodModal, setShowMoodModal] = useState(false);
+  const [showFullScreenMenu, setShowFullScreenMenu] = useState(false);
   const [showSubstitutes, setShowSubstitutes] = useState<{ [key: string]: boolean }>({});
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -128,11 +130,22 @@ export default function MealViewer({ meal, prescriptionId, patientId, autoExpand
             <>
               {/* Menu da refeição - Botões de ação */}
               <div className="mb-4">
-                <h4 className="text-sm font-medium text-muted-foreground mb-3">Menu da refeição</h4>
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-sm font-medium text-muted-foreground">Menu da refeição</h4>
+                  <Button
+                    onClick={() => setShowFullScreenMenu(true)}
+                    variant="outline"
+                    size="sm"
+                    className="text-blue-600 border-blue-200 hover:bg-blue-50 hover:border-blue-300"
+                  >
+                    <Maximize2 className="h-4 w-4 mr-1" />
+                    Tela Completa
+                  </Button>
+                </div>
                 <div className="grid grid-cols-2 gap-3 mb-4">
                   <Button
                     onClick={handlePhotoAction}
-                    className="h-20 flex flex-col items-center justify-center space-y-2 bg-green-600 hover:bg-green-700 text-white rounded-lg"
+                    className="h-20 flex flex-col items-center justify-center space-y-2 bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg"
                   >
                     <Camera className="h-6 w-6" />
                     <div className="text-xs text-center leading-tight">
@@ -143,7 +156,7 @@ export default function MealViewer({ meal, prescriptionId, patientId, autoExpand
                   
                   <Button
                     onClick={handleMoodRegistration}
-                    className="h-20 flex flex-col items-center justify-center space-y-2 bg-green-600 hover:bg-green-700 text-white rounded-lg"
+                    className="h-20 flex flex-col items-center justify-center space-y-2 bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg"
                   >
                     <Heart className="h-6 w-6" />
                     <div className="text-xs text-center leading-tight">
@@ -177,7 +190,7 @@ export default function MealViewer({ meal, prescriptionId, patientId, autoExpand
                         <div className="ml-4">
                           <button
                             onClick={() => toggleSubstitutes(item.id)}
-                            className="text-sm text-green-600 hover:text-green-700 flex items-center space-x-1"
+                            className="text-sm text-blue-600 hover:text-blue-700 flex items-center space-x-1"
                           >
                             <span>↪</span>
                             <span>Ver opções de substituição</span>
@@ -221,6 +234,16 @@ export default function MealViewer({ meal, prescriptionId, patientId, autoExpand
           meal={meal}
           prescriptionId={prescriptionId}
           patientId={patientId || ""}
+        />
+      )}
+
+      {/* Tela completa do menu da refeição */}
+      {showFullScreenMenu && prescriptionId && (
+        <MealMenuScreen
+          meal={meal}
+          prescriptionId={prescriptionId}
+          patientId={patientId || ""}
+          onClose={() => setShowFullScreenMenu(false)}
         />
       )}
     </>

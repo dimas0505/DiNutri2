@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import MealViewer from "@/components/prescription/meal-viewer";
+import MealMenuScreen from "@/components/meal/meal-menu-screen";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -23,6 +24,7 @@ export default function PatientPrescriptionView() {
   
   const [selectedPrescription, setSelectedPrescription] = useState<Prescription | null>(null);
   const [selectedMeal, setSelectedMeal] = useState<MealData | null>(null);
+  const [showFullScreenMenu, setShowFullScreenMenu] = useState(false);
   const [isSubstitutesModalOpen, setIsSubstitutesModalOpen] = useState(false);
   const [selectedItemForSubstitutes, setSelectedItemForSubstitutes] = useState<MealItemData | null>(null);
 
@@ -94,9 +96,15 @@ export default function PatientPrescriptionView() {
     }
   };
 
-  // Modificação principal: ao clicar na refeição, mostrar diretamente expandida
+  // Ao clicar na refeição, abrir diretamente na tela cheia
   const handleMealClick = (meal: MealData) => {
     setSelectedMeal(meal);
+    setShowFullScreenMenu(true);
+  };
+
+  const handleCloseFullScreenMenu = () => {
+    setShowFullScreenMenu(false);
+    setSelectedMeal(null);
   };
 
   const pageContent = () => {
@@ -120,22 +128,15 @@ export default function PatientPrescriptionView() {
       );
     }
 
-    // Se uma refeição foi selecionada, mostrar diretamente o MealViewer expandido
-    if (selectedMeal && selectedPrescription) {
+    // Se uma refeição foi selecionada, mostrar a tela completa do menu da refeição
+    if (selectedMeal && selectedPrescription && showFullScreenMenu) {
       return (
-        <div className="p-4 md:p-0">
-          <Button variant="ghost" onClick={() => setSelectedMeal(null)} className="mb-4 -ml-4">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Voltar para as refeições
-          </Button>
-          {/* MealViewer já vem com isExpanded como padrão agora */}
-          <MealViewer 
-            meal={selectedMeal}
-            prescriptionId={selectedPrescription.id}
-            patientId={currentPatient?.id || ""}
-            autoExpand={true} // Nova prop para forçar expansão
-          />
-        </div>
+        <MealMenuScreen
+          meal={selectedMeal}
+          prescriptionId={selectedPrescription.id}
+          patientId={currentPatient?.id || ""}
+          onClose={handleCloseFullScreenMenu}
+        />
       );
     }
 
@@ -168,6 +169,18 @@ export default function PatientPrescriptionView() {
   };
   
   if (isMobile) {
+    // Se estiver mostrando a tela completa do menu da refeição, renderizar fora do MobileLayout
+    if (selectedMeal && selectedPrescription && showFullScreenMenu) {
+      return (
+        <MealMenuScreen
+          meal={selectedMeal}
+          prescriptionId={selectedPrescription.id}
+          patientId={currentPatient?.id || ""}
+          onClose={handleCloseFullScreenMenu}
+        />
+      );
+    }
+
     return (
       <MobileLayout 
         title="Início" 

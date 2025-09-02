@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import type { MoodType, MealData } from "@shared/schema";
@@ -135,22 +134,12 @@ function MoodRegistrationModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-sm p-0 gap-0">
+      <DialogContent className="sm:max-w-sm p-0 gap-0 mx-auto">
         {/* Header */}
         <DialogHeader className="p-4 pb-0">
-          <div className="flex items-center justify-between">
-            <DialogTitle className="text-lg font-semibold">
-              {meal.name}
-            </DialogTitle>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleClose}
-              className="h-6 w-6 p-0"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
+          <DialogTitle className="text-lg font-semibold">
+            {meal.name}
+          </DialogTitle>
           <p className="text-sm text-muted-foreground">Menu da refeição</p>
         </DialogHeader>
 
@@ -204,7 +193,7 @@ function MoodRegistrationModal({
           <Button 
             onClick={handleSave}
             disabled={saveMoodMutation.isPending || (!moodBefore && !moodAfter)}
-            className="w-full bg-green-600 hover:bg-green-700 text-white"
+            className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white"
           >
             {saveMoodMutation.isPending ? "Salvando..." : "Avançar >>"}
           </Button>
