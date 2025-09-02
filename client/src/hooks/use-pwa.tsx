@@ -117,10 +117,11 @@ export function registerServiceWorker(): Promise<ServiceWorkerRegistration | nul
                         console.log('Update button clicked, sending SKIP_WAITING message');
                         newWorker.postMessage({ action: 'SKIP_WAITING' });
                         
-                        // Add a small delay before reload to ensure message is processed
-                        setTimeout(() => {
-                          window.location.reload();
-                        }, 100);
+                        // Wait for the new service worker to take control
+                        navigator.serviceWorker.addEventListener('controllerchange', () => {
+                          console.log('New service worker took control, reloading...');
+                          window.location.href = window.location.href;
+                        }, { once: true });
                       }}
                     >
                       Atualizar
@@ -132,20 +133,17 @@ export function registerServiceWorker(): Promise<ServiceWorkerRegistration | nul
                 if (confirm('Nova versão disponível. Atualizar agora?')) {
                   console.log('Desktop update confirmed, sending SKIP_WAITING message');
                   newWorker.postMessage({ action: 'SKIP_WAITING' });
-                  setTimeout(() => {
-                    window.location.reload();
-                  }, 100);
+                  
+                  // Wait for the new service worker to take control
+                  navigator.serviceWorker.addEventListener('controllerchange', () => {
+                    console.log('New service worker took control, reloading...');
+                    window.location.href = window.location.href;
+                  }, { once: true });
                 }
               }
             }
           });
         }
-      });
-
-      // Listen for controllerchange but don't auto-reload to allow toast interaction
-      navigator.serviceWorker.addEventListener('controllerchange', () => {
-        console.log('Service Worker controller changed');
-        // Don't auto-reload here - let the user decide via the toast or confirm dialog
       });
 
       return registration;

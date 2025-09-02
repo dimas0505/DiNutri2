@@ -25,8 +25,7 @@ self.addEventListener('install', (event) => {
         console.log('Error caching static assets:', error);
       })
   );
-  // Force the waiting service worker to become the active service worker
-  self.skipWaiting();
+  // Don't skip waiting immediately - wait for user action
 });
 
 // Activate event - clean up old caches
@@ -183,6 +182,14 @@ self.addEventListener('message', (event) => {
   
   if (event.data && event.data.action === 'SKIP_WAITING') {
     console.log('SKIP_WAITING message received, updating service worker...');
-    self.skipWaiting();
+    self.skipWaiting().then(() => {
+      console.log('Service worker skipped waiting successfully');
+      // Notify all clients that the new SW is ready
+      self.clients.matchAll().then((clients) => {
+        clients.forEach((client) => {
+          client.postMessage({ action: 'SW_UPDATED' });
+        });
+      });
+    });
   }
 });
