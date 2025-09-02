@@ -67,7 +67,7 @@ export function ProfileModal({ open, onOpenChange, patient }: ProfileModalProps)
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="w-[90vw] max-w-[90vw] sm:max-w-md mx-0 left-[50%] right-auto translate-x-[-50%]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <User className="h-5 w-5" />
