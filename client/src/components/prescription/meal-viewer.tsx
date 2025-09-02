@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
-import { Info, ChevronDown, ChevronUp, Heart, MessageSquare, Camera } from "lucide-react";
+import { Info, ChevronDown, ChevronUp, ChevronRight, Heart, MessageSquare, Camera } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import MoodRegistrationModal from "@/components/mood/mood-registration-modal";
@@ -44,7 +45,7 @@ export default function MealViewer({ meal, prescriptionId, patientId, autoExpand
   // Se autoExpand for true, começar expandido
   const [isExpanded, setIsExpanded] = useState(autoExpand);
   const [showMoodModal, setShowMoodModal] = useState(false);
-  const [showSubstitutes, setShowSubstitutes] = useState<{ [key: string]: boolean }>({});
+  const [substitutesModalItem, setSubstitutesModalItem] = useState<{ id: string; name: string; substitutes: string[] } | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -83,56 +84,62 @@ export default function MealViewer({ meal, prescriptionId, patientId, autoExpand
     setShowMoodModal(true);
   };
 
-  const toggleSubstitutes = (itemId: string) => {
-    setShowSubstitutes(prev => ({
-      ...prev,
-      [itemId]: !prev[itemId]
-    }));
+  const openSubstitutesModal = (item: any) => {
+    setSubstitutesModalItem({
+      id: item.id,
+      name: item.description,
+      substitutes: item.substitutes
+    });
   };
 
   return (
     <>
       <Card>
         <CardHeader 
-          className={`pb-4 bg-accent/5 transition-colors ${
-            !autoExpand ? 'cursor-pointer hover:bg-accent/10' : ''
+          className={`pb-4 bg-gradient-to-r from-blue-600 to-blue-700 rounded-t-lg transition-colors ${
+            !autoExpand ? 'cursor-pointer hover:from-blue-700 hover:to-blue-800' : ''
           }`}
           onClick={!autoExpand ? () => setIsExpanded(!isExpanded) : undefined}
         >
           <div className="flex items-center justify-between">
-            <CardTitle data-testid={`text-meal-name-${meal.id}`}>
+            <CardTitle className="text-white" data-testid={`text-meal-name-${meal.id}`}>
               {meal.name}
             </CardTitle>
             <div className="flex items-center space-x-2">
               {/* Indicador se já tem registro de humor hoje */}
               {moodEntry && (
-                <div className="flex items-center space-x-1 text-sm text-muted-foreground">
-                  <Heart className="h-4 w-4 text-pink-500" />
+                <div className="flex items-center space-x-1 text-sm text-white/90">
+                  <Heart className="h-4 w-4 text-white" />
                   <span>Registrado</span>
                 </div>
               )}
               {/* Só mostrar setas se não for autoExpand */}
               {!autoExpand && (
                 isExpanded ? (
-                  <ChevronUp className="h-5 w-5 text-muted-foreground" />
+                  <ChevronUp className="h-5 w-5 text-white/80" />
                 ) : (
-                  <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                  <ChevronDown className="h-5 w-5 text-white/80" />
                 )
               )}
             </div>
           </div>
+          {/* Subtítulo Menu da refeição */}
+          {isExpanded && (
+            <div className="mt-2">
+              <p className="text-white/90 text-sm">Menu da refeição</p>
+            </div>
+          )}
         </CardHeader>
         
         <CardContent className="p-4">
           {isExpanded && (
             <>
               {/* Menu da refeição - Botões de ação */}
-              <div className="mb-4">
-                <h4 className="text-sm font-medium text-muted-foreground mb-3">Menu da refeição</h4>
-                <div className="grid grid-cols-2 gap-3 mb-4">
+              <div className="mb-4 bg-gradient-to-r from-blue-600 to-blue-700 p-4 rounded-lg -mt-4">
+                <div className="grid grid-cols-2 gap-3">
                   <Button
                     onClick={handlePhotoAction}
-                    className="h-20 flex flex-col items-center justify-center space-y-2 bg-green-600 hover:bg-green-700 text-white rounded-lg"
+                    className="h-20 flex flex-col items-center justify-center space-y-2 bg-white/20 hover:bg-white/30 text-white rounded-lg border-0 backdrop-blur-sm"
                   >
                     <Camera className="h-6 w-6" />
                     <div className="text-xs text-center leading-tight">
@@ -143,7 +150,7 @@ export default function MealViewer({ meal, prescriptionId, patientId, autoExpand
                   
                   <Button
                     onClick={handleMoodRegistration}
-                    className="h-20 flex flex-col items-center justify-center space-y-2 bg-green-600 hover:bg-green-700 text-white rounded-lg"
+                    className="h-20 flex flex-col items-center justify-center space-y-2 bg-white/20 hover:bg-white/30 text-white rounded-lg border-0 backdrop-blur-sm"
                   >
                     <Heart className="h-6 w-6" />
                     <div className="text-xs text-center leading-tight">
@@ -156,42 +163,36 @@ export default function MealViewer({ meal, prescriptionId, patientId, autoExpand
 
               {/* Alimentos */}
               <div className="space-y-4">
-                <h4 className="text-sm font-medium text-muted-foreground">Alimentos</h4>
+                <div className="bg-blue-600 text-white px-4 py-3 rounded-lg">
+                  <h4 className="text-sm font-medium">Alimentos</h4>
+                </div>
                 
                 {meal.items.map((item) => (
-                  <div key={item.id} className="space-y-2">
-                    <div className="flex flex-col space-y-1">
-                      <div className="flex items-start justify-between">
+                  <div key={item.id} className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
                         <div className="flex-1">
-                          <div className="font-medium text-gray-900" data-testid={`text-item-description-${item.id}`}>
+                          <div className="font-bold text-gray-900" data-testid={`text-item-description-${item.id}`}>
                             {item.description}
                           </div>
-                          <div className="text-sm text-muted-foreground" data-testid={`text-item-amount-${item.id}`}>
+                          <div className="text-sm text-gray-600" data-testid={`text-item-amount-${item.id}`}>
                             {item.amount}
                           </div>
+                        </div>
+                        <div className="text-gray-400">
+                          <ChevronRight className="h-5 w-5" />
                         </div>
                       </div>
                       
                       {/* Opções de substituição */}
                       {item.substitutes && item.substitutes.length > 0 && (
-                        <div className="ml-4">
+                        <div>
                           <button
-                            onClick={() => toggleSubstitutes(item.id)}
-                            className="text-sm text-green-600 hover:text-green-700 flex items-center space-x-1"
+                            onClick={() => openSubstitutesModal(item)}
+                            className="text-sm text-blue-600 hover:text-blue-700 flex items-center space-x-1"
                           >
-                            <span>↪</span>
                             <span>Ver opções de substituição</span>
                           </button>
-                          
-                          {showSubstitutes[item.id] && (
-                            <div className="mt-2 ml-4 space-y-1">
-                              {item.substitutes.map((substitute, index) => (
-                                <div key={index} className="text-sm text-gray-600">
-                                  • {substitute}
-                                </div>
-                              ))}
-                            </div>
-                          )}
                         </div>
                       )}
                     </div>
@@ -223,6 +224,26 @@ export default function MealViewer({ meal, prescriptionId, patientId, autoExpand
           patientId={patientId || ""}
         />
       )}
+
+      {/* Modal de opções de substituição */}
+      <Dialog open={substitutesModalItem !== null} onOpenChange={() => setSubstitutesModalItem(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Opções de substituição</DialogTitle>
+            <div className="text-sm text-gray-600 mt-2">
+              {substitutesModalItem?.name}
+            </div>
+          </DialogHeader>
+          <div className="mt-4 space-y-3">
+            {substitutesModalItem?.substitutes.map((substitute, index) => (
+              <div key={index} className="flex items-center space-x-2 p-3 bg-gray-50 rounded-lg">
+                <div className="w-2 h-2 bg-blue-600 rounded-full flex-shrink-0"></div>
+                <span className="text-sm text-gray-700">{substitute}</span>
+              </div>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
