@@ -556,7 +556,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Nova rota para excluir prescrição
+  // Rota para excluir prescrição
   app.delete('/api/prescriptions/:id', isAuthenticated, async (req: any, res) => {
     try {
       const prescription = await storage.getPrescription(req.params.id);
@@ -568,11 +568,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Verificar se o usuário tem permissão para excluir
       if (prescription.nutritionistId !== req.user.id) {
         return res.status(403).json({ message: "Permission denied" });
-      }
-
-      // Não permitir exclusão de prescrições publicadas
-      if (prescription.status === 'published') {
-        return res.status(403).json({ message: "Cannot delete published prescriptions" });
       }
 
       await storage.deletePrescription(req.params.id);
