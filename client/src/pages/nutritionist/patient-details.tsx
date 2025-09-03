@@ -388,14 +388,29 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                         {anamnesisHistory.map(record => (
                           <div key={record.id} className="p-3 border rounded-md">
                             <p className="font-medium">Data: {new Date(record.createdAt!).toLocaleDateString('pt-BR')}</p>
-                            <p className="text-sm">Peso: {record.weightKg || 'N/A'} kg</p>
-                            {record.goal && (
-                              <p className="text-sm">Objetivo: {
-                                record.goal === 'lose_weight' ? 'Perder peso' : 
-                                record.goal === 'maintain_weight' ? 'Manter peso' : 
-                                record.goal === 'gain_weight' ? 'Ganhar peso' : record.goal
-                              }</p>
-                            )}
+                            <div className="text-sm space-y-1 mt-2">
+                              <p>Peso: {record.weightKg || 'N/A'} kg</p>
+                              {record.goal && (
+                                <p>Objetivo: {
+                                  record.goal === 'lose_weight' ? 'Perder peso' : 
+                                  record.goal === 'maintain_weight' ? 'Manter peso' : 
+                                  record.goal === 'gain_weight' ? 'Ganhar peso' : record.goal
+                                }</p>
+                              )}
+                              {record.protocolAdherence && (
+                                <p>Adesão ao protocolo: {
+                                  record.protocolAdherence === 'total' ? 'Total' :
+                                  record.protocolAdherence === 'partial' ? 'Parcial' :
+                                  record.protocolAdherence === 'low' ? 'Baixa' : record.protocolAdherence
+                                }</p>
+                              )}
+                              {record.nextProtocolRequests && (
+                                <div>
+                                  <p className="font-medium">Solicitações para próximo plano:</p>
+                                  <p className="text-muted-foreground">{record.nextProtocolRequests}</p>
+                                </div>
+                              )}
+                            </div>
                           </div>
                         ))}
                       </div>

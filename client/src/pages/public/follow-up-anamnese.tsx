@@ -25,6 +25,9 @@ const formSchema = insertAnamnesisRecordSchema.omit({ patientId: true }).extend(
   likedHealthyFoods: z.array(z.string()).default([]),
   dislikedFoods: z.array(z.string()).default([]),
   intolerances: z.array(z.string()).default([]),
+  // New feedback fields
+  protocolAdherence: z.enum(["total", "partial", "low"]).optional(),
+  nextProtocolRequests: z.string().optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -73,6 +76,8 @@ export default function FollowUpAnamnesePage() {
       diseases: "",
       medications: "",
       biotype: undefined,
+      protocolAdherence: undefined,
+      nextProtocolRequests: "",
     },
   });
 
@@ -402,6 +407,53 @@ export default function FollowUpAnamnesePage() {
                       )}
                     />
                   </div>
+                </div>
+
+                {/* Protocol Feedback */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold">Feedback do Plano Nutricional</h3>
+                  
+                  <FormField
+                    control={form.control}
+                    name="protocolAdherence"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Como foi sua adesão ao protocolo nutricional anterior?</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value || undefined}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione sua adesão" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="total">Total - Segui completamente as orientações</SelectItem>
+                            <SelectItem value="partial">Parcial - Segui a maior parte das orientações</SelectItem>
+                            <SelectItem value="low">Baixa - Tive dificuldades para seguir as orientações</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="nextProtocolRequests"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Que alimentos ou preparações você gostaria de incluir no próximo plano?</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Descreva alimentos específicos, pratos ou preparações que você gostaria de incluir no seu próximo plano nutricional..."
+                            className="min-h-[80px]"
+                            value={field.value || ""}
+                            onChange={field.onChange}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
 
                 {/* Additional Notes */}

@@ -122,6 +122,10 @@ export const anamnesisRecords = pgTable("anamnesis_records", {
   medications: text("medications"),
   biotype: varchar("biotype", { enum: ["gain_weight_easily", "hard_to_gain", "gain_muscle_easily"] }),
   
+  // Feedback fields for follow-up anamnesis
+  protocolAdherence: varchar("protocol_adherence", { enum: ["total", "partial", "low"] }),
+  nextProtocolRequests: text("next_protocol_requests"),
+  
   createdAt: timestamp("created_at").defaultNow(),
 });
 
