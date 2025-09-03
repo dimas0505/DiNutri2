@@ -99,6 +99,32 @@ export const moodEntries = pgTable("mood_entries", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Anamnesis Records table
+export const anamnesisRecords = pgTable("anamnesis_records", {
+  id: varchar("id").primaryKey(),
+  patientId: varchar("patient_id").references(() => patients.id, { onDelete: 'cascade' }).notNull(),
+  
+  // Anamnesis fields - a snapshot in time
+  weightKg: varchar("weight_kg"),
+  notes: text("notes"),
+  goal: varchar("goal", { enum: ["lose_weight", "maintain_weight", "gain_weight"] }),
+  activityLevel: varchar("activity_level", { enum: ["1", "2", "3", "4", "5"] }),
+  likedHealthyFoods: jsonb("liked_healthy_foods").$type<string[]>().default([]),
+  dislikedFoods: jsonb("disliked_foods").$type<string[]>().default([]),
+  hasIntolerance: boolean("has_intolerance"),
+  intolerances: jsonb("intolerances").$type<string[]>().default([]),
+  canEatMorningSolids: boolean("can_eat_morning_solids"),
+  mealsPerDayCurrent: integer("meals_per_day_current"),
+  mealsPerDayWilling: integer("meals_per_day_willing"),
+  alcoholConsumption: varchar("alcohol_consumption", { enum: ["yes", "no", "moderate"] }),
+  supplements: text("supplements"),
+  diseases: text("diseases"),
+  medications: text("medications"),
+  biotype: varchar("biotype", { enum: ["gain_weight_easily", "hard_to_gain", "gain_muscle_easily"] }),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ one, many }) => ({
   patientProfile: one(patients, {
@@ -122,6 +148,7 @@ export const patientsRelations = relations(patients, ({ one, many }) => ({
   }),
   prescriptions: many(prescriptions),
   moodEntries: many(moodEntries),
+  anamnesisRecords: many(anamnesisRecords),
 }));
 
 export const invitationsRelations = relations(invitations, ({ one }) => ({
@@ -151,6 +178,13 @@ export const moodEntriesRelations = relations(moodEntries, ({ one }) => ({
   prescription: one(prescriptions, {
     fields: [moodEntries.prescriptionId],
     references: [prescriptions.id],
+  }),
+}));
+
+export const anamnesisRecordsRelations = relations(anamnesisRecords, ({ one }) => ({
+  patient: one(patients, {
+    fields: [anamnesisRecords.patientId],
+    references: [patients.id],
   }),
 }));
 
@@ -222,6 +256,11 @@ export const insertMoodEntrySchema = createInsertSchema(moodEntries).omit({
   updatedAt: true,
 });
 
+export const insertAnamnesisRecordSchema = createInsertSchema(anamnesisRecords).omit({
+  id: true,
+  createdAt: true,
+});
+
 export const updatePatientSchema = insertPatientSchema.partial();
 
 // Types
@@ -235,3 +274,4 @@ export type UpdatePrescription = z.infer<typeof updatePrescriptionSchema>;
 export type Prescription = typeof prescriptions.$inferSelect;
 export type Invitation = typeof invitations.$inferSelect;
 export type InsertMoodEntry = z.infer<typeof insertMoodEntrySchema>;
+export type AnamnesisRecord = typeof anamnesisRecords.$inferSelect;
