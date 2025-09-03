@@ -209,7 +209,11 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                     <p className="text-sm text-muted-foreground" data-testid="text-patient-notes">{patient.notes}</p>
                   </div>
                 )}
-                <Button variant="secondary" className="mt-4 w-full text-sm">
+                <Button 
+                  variant="secondary" 
+                  className="mt-4 w-full text-sm"
+                  onClick={() => setLocation(`/patients/${patient.id}/edit`)}
+                >
                   Editar Dados
                 </Button>
               </CardContent>

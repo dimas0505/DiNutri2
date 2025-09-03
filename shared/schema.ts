@@ -222,10 +222,13 @@ export const insertMoodEntrySchema = createInsertSchema(moodEntries).omit({
   updatedAt: true,
 });
 
+export const updatePatientSchema = insertPatientSchema.partial();
+
 // Types
 export type UpsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertPatient = z.infer<typeof insertPatientSchema>;
+export type UpdatePatient = z.infer<typeof updatePatientSchema>;
 export type Patient = typeof patients.$inferSelect;
 export type InsertPrescription = z.infer<typeof insertPrescriptionSchema>;
 export type UpdatePrescription = z.infer<typeof updatePrescriptionSchema>;

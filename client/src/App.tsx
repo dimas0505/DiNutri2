@@ -11,6 +11,7 @@ import Home from "@/pages/home";
 import PatientsPage from "@/pages/nutritionist/patients";
 import NewPatientPage from "@/pages/nutritionist/new-patient";
 import PatientDetailsPage from "@/pages/nutritionist/patient-details";
+import EditPatientPage from "@/pages/nutritionist/edit-patient";
 import PrescriptionEditorPage from "@/pages/nutritionist/prescription-editor";
 import PatientPrescriptionView from "@/pages/patient/prescription-view";
 import PrescriptionPrintPage from "@/pages/patient/prescription-print";
@@ -62,6 +63,7 @@ function Router() {
           <Route path="/patients" component={PatientsPage} />
           <Route path="/patients/new" component={NewPatientPage} />
           <Route path="/patients/:id" component={PatientDetailsPage} />
+          <Route path="/patients/:id/edit" component={EditPatientPage} />
           <Route path="/prescriptions/:id/edit" component={PrescriptionEditorPage} />
         </>
       )}
