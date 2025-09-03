@@ -34,7 +34,7 @@ function PatientCard({ patient, onViewDetails, onNewPrescription }: {
   };
 
   return (
-    <MobileCard interactive className="p-4">
+    <MobileCard interactive className="p-4" onClick={onViewDetails}>
       <div className="flex items-start justify-between">
         <div className="flex-1 min-w-0">
           <h3 className="font-medium text-foreground truncate" data-testid={`text-patient-name-${patient.id}`}>
@@ -59,7 +59,7 @@ function PatientCard({ patient, onViewDetails, onNewPrescription }: {
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={(e) => e.stopPropagation()}>
               <MoreVertical className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
@@ -69,7 +69,7 @@ function PatientCard({ patient, onViewDetails, onNewPrescription }: {
               Ver detalhes
             </DropdownMenuItem>
             <DropdownMenuItem 
-              onClick={onNewPrescription}
+              onClick={(e) => { e.stopPropagation(); onNewPrescription(); }}
               disabled={!patient.userId}
             >
               <FileText className="h-4 w-4 mr-2" />
@@ -94,9 +94,12 @@ export default function PatientsPage() {
   });
 
   const createInvitationMutation = useMutation({
-    mutationFn: () => apiRequest("POST", "/api/invitations"),
-    onSuccess: async (res) => {
-      const { token } = await res.json();
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/invitations");
+      return res.json();
+    },
+    onSuccess: (data) => {
+      const { token } = data;
       const fullUrl = `${window.location.origin}/anamnese?token=${token}`;
       setInvitationLink(fullUrl);
       toast({ title: "Link de convite gerado!" });
@@ -133,83 +136,78 @@ export default function PatientsPage() {
     return age;
   };
 
-  // Mobile layout
-  if (isMobile) {
-    return (
-      <MobileLayout 
-        title="Meus Pacientes" 
-        drawerContent={<DefaultMobileDrawer />}
-      >
-        <div className="space-y-4 py-4">
-          {/* Search and Actions */}
-          <div className="space-y-3">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-              <Input
-                type="search"
-                placeholder="Buscar pacientes..."
-                className="pl-10"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                data-testid="input-search-patients"
-              />
-            </div>
-            <div className="flex gap-2">
-              <Button 
-                variant="outline"
-                onClick={() => createInvitationMutation.mutate()}
-                disabled={createInvitationMutation.isPending}
-                className="flex-1 text-sm"
-                data-testid="button-invite-patient"
-              >
-                <LinkIcon className="h-4 w-4 mr-2" />
-                {createInvitationMutation.isPending ? "Gerando..." : "Convidar"}
-              </Button>
-              <Button 
-                onClick={() => setLocation("/patients/new")}
-                className="flex-1 text-sm"
-                data-testid="button-new-patient"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Adicionar
-              </Button>
-            </div>
+  const mobileContent = (
+    <MobileLayout 
+      title="Meus Pacientes" 
+      drawerContent={<DefaultMobileDrawer />}
+    >
+      <div className="space-y-4 py-4">
+        {/* Search and Actions */}
+        <div className="space-y-3">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+            <Input
+              type="search"
+              placeholder="Buscar pacientes..."
+              className="pl-10"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              data-testid="input-search-patients"
+            />
           </div>
-
-          {/* Patients List */}
-          <div className="space-y-3">
-            {isLoading ? (
-              <div className="flex flex-col items-center justify-center py-12">
-                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mb-4"></div>
-                <p className="text-muted-foreground">Carregando pacientes...</p>
-              </div>
-            ) : filteredPatients.length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-muted-foreground">
-                  {searchQuery ? "Nenhum paciente encontrado." : "Nenhum paciente cadastrado."}
-                </p>
-              </div>
-            ) : (
-              filteredPatients.map((patient) => (
-                <PatientCard
-                  key={patient.id}
-                  patient={patient}
-                  onViewDetails={() => setLocation(`/patients/${patient.id}`)}
-                  onNewPrescription={() => setLocation(`/patients/${patient.id}`)}
-                />
-              ))
-            )}
+          <div className="flex gap-2">
+            <Button 
+              variant="outline"
+              onClick={() => createInvitationMutation.mutate()}
+              disabled={createInvitationMutation.isPending}
+              className="flex-1 text-sm"
+              data-testid="button-invite-patient"
+            >
+              <LinkIcon className="h-4 w-4 mr-2" />
+              {createInvitationMutation.isPending ? "Gerando..." : "Convidar"}
+            </Button>
+            <Button 
+              onClick={() => setLocation("/patients/new")}
+              className="flex-1 text-sm"
+              data-testid="button-new-patient"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Adicionar
+            </Button>
           </div>
         </div>
-      </MobileLayout>
-    );
-  }
 
-  // Desktop layout (original)
-  return (
+        {/* Patients List */}
+        <div className="space-y-3">
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center py-12">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mb-4"></div>
+              <p className="text-muted-foreground">Carregando pacientes...</p>
+            </div>
+          ) : filteredPatients.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground">
+                {searchQuery ? "Nenhum paciente encontrado." : "Nenhum paciente cadastrado."}
+              </p>
+            </div>
+          ) : (
+            filteredPatients.map((patient) => (
+              <PatientCard
+                key={patient.id}
+                patient={patient}
+                onViewDetails={() => setLocation(`/patients/${patient.id}`)}
+                onNewPrescription={() => setLocation(`/patients/${patient.id}`)}
+              />
+            ))
+          )}
+        </div>
+      </div>
+    </MobileLayout>
+  );
+
+  const desktopContent = (
     <div className="min-h-screen bg-background">
       <Header title="Meus Pacientes" />
-      
       <main className="max-w-7xl mx-auto p-4 lg:p-6">
         <div className="mb-6 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
           <div className="flex-1 relative">
@@ -244,7 +242,6 @@ export default function PatientsPage() {
             </Button>
           </div>
         </div>
-
         <Card>
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -324,6 +321,12 @@ export default function PatientsPage() {
           </div>
         </Card>
       </main>
+    </div>
+  );
+
+  return (
+    <>
+      {isMobile ? mobileContent : desktopContent}
 
       <Dialog open={!!invitationLink} onOpenChange={(isOpen) => !isOpen && setInvitationLink(null)}>
         <DialogContent>
@@ -344,6 +347,6 @@ export default function PatientsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   );
 }
