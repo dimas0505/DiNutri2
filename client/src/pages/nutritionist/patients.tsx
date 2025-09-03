@@ -97,7 +97,7 @@ export default function PatientsPage() {
     mutationFn: () => apiRequest("POST", "/api/invitations"),
     onSuccess: async (res) => {
       const { token } = await res.json();
-      const fullUrl = `${window.location.origin}/api/login?token=${token}`;
+      const fullUrl = `${window.location.origin}/anamnese?token=${token}`;
       setInvitationLink(fullUrl);
       toast({ title: "Link de convite gerado!" });
     },
