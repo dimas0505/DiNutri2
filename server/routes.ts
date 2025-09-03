@@ -313,13 +313,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // --- ROTAS DE CONVITE (sem alterações) ---
   app.post('/api/invitations', isAuthenticated, async (req: any, res) => {
     try {
+      console.log("Creating invitation for user:", req.user);
+      
       if (req.user.role !== 'nutritionist') {
+        console.log("Access denied: user role is", req.user.role);
         return res.status(403).json({ message: "Only nutritionists can create invitations." });
       }
+      
+      console.log("Calling storage.createInvitation with userId:", req.user.id);
       const invitation = await storage.createInvitation(req.user.id);
+      
+      console.log("Invitation created successfully, returning:", invitation);
       res.json(invitation);
     } catch (error) {
       console.error("Error creating invitation:", error);
+      console.error("Error stack:", error instanceof Error ? error.stack : 'No stack available');
       res.status(500).json({ message: "Failed to create invitation" });
     }
   });

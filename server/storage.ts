@@ -285,23 +285,32 @@ export class DatabaseStorage implements IStorage {
   
   // Invitation operations
   async createInvitation(nutritionistId: string): Promise<{ token: string }> {
-    const token = randomBytes(32).toString("hex");
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7); // Expira em 7 dias
-    
-    const invitationWithId = {
-      id: nanoid(),
-      nutritionistId,
-      token,
-      email: "placeholder@email.com", // Email temporário, será atualizado quando o paciente se registrar
-      expiresAt,
-    };
-    
-    const [newInvitation] = await db
-      .insert(invitations)
-      .values(invitationWithId)
-      .returning({ token: invitations.token });
-    return newInvitation;
+    try {
+      const token = randomBytes(32).toString("hex");
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 7); // Expira em 7 dias
+      
+      const invitationWithId = {
+        id: nanoid(),
+        nutritionistId,
+        token,
+        email: "placeholder@email.com", // Email temporário, será atualizado quando o paciente se registrar
+        expiresAt,
+      };
+      
+      console.log("Creating invitation with data:", invitationWithId);
+      
+      const [newInvitation] = await db
+        .insert(invitations)
+        .values(invitationWithId)
+        .returning({ token: invitations.token });
+        
+      console.log("Invitation created successfully:", newInvitation);
+      return newInvitation;
+    } catch (error) {
+      console.error("Error in createInvitation storage method:", error);
+      throw error;
+    }
   }
 
   async getInvitationByToken(token: string): Promise<{ nutritionistId: string } | undefined> {
