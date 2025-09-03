@@ -15,7 +15,7 @@ import {
   type InsertMoodEntry,
 } from "../shared/schema.js";
 import { db } from "./db.js";
-import { eq, desc, and, gte, lte } from "drizzle-orm";
+import { eq, desc, and, gte, lte, sql } from "drizzle-orm";
 import { randomBytes } from "crypto";
 import { nanoid } from "nanoid";
 
@@ -411,30 +411,18 @@ export class DatabaseStorage implements IStorage {
         
         console.log("Creating patient with raw SQL (legacy schema)");
         
-        await db.execute({
-          sql: `INSERT INTO "patients" (
-                  "id", "owner_id", "user_id", "name", "email", "birth_date", 
-                  "sex", "height_cm", "weight_kg", "notes", "created_at", "updated_at"
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())`,
-          args: [
-            id,
-            patient.ownerId,
-            patient.userId || null,
-            patient.name,
-            patient.email || null,
-            patient.birthDate || null,
-            patient.sex || null,
-            patient.heightCm || null,
-            patient.weightKg || null,
-            patient.notes || null,
-          ],
-        });
+        await db.execute(sql`
+          INSERT INTO "patients" (
+            "id", "owner_id", "user_id", "name", "email", "birth_date", 
+            "sex", "height_cm", "weight_kg", "notes", "created_at", "updated_at"
+          ) VALUES (${id}, ${patient.ownerId}, ${patient.userId || null}, ${patient.name}, 
+                   ${patient.email || null}, ${patient.birthDate || null}, ${patient.sex || null}, 
+                   ${patient.heightCm || null}, ${patient.weightKg || null}, ${patient.notes || null}, 
+                   NOW(), NOW())
+        `);
         
         // Get the created patient
-        const [createdPatient] = await db.execute({
-          sql: `SELECT * FROM "patients" WHERE "id" = $1`,
-          args: [id],
-        });
+        const createdPatientResult = await db.execute(sql`SELECT * FROM "patients" WHERE "id" = ${id}`);
         
         // Return normalized data with legacy structure
         return this.normalizePatientData({
@@ -553,13 +541,13 @@ export class DatabaseStorage implements IStorage {
         
         console.log("Creating invitation with data (new schema):", invitationWithId);
         
-        const [newInvitation] = await db
+        const result = await db
           .insert(invitations)
           .values(invitationWithId)
-          .returning({ token: invitations.token });
+          .returning();
           
-        console.log("Invitation created successfully:", newInvitation);
-        return newInvitation;
+        console.log("Invitation created successfully:", result);
+        return { token: result[0].token };
       } catch (schemaError: any) {
         if (schemaError.message?.includes('column "email" of relation "invitations" does not exist')) {
           console.log("Email column doesn't exist, using legacy schema");
@@ -570,11 +558,11 @@ export class DatabaseStorage implements IStorage {
           
           console.log("Creating invitation with raw SQL (legacy schema):", { id, nutritionistId, token, expiresAt, status });
           
-          await db.execute({
-            sql: `INSERT INTO "invitations" ("id", "nutritionist_id", "token", "expires_at", "status", "created_at") 
-                  VALUES ($1, $2, $3, $4, $5, NOW())`,
-            args: [id, nutritionistId, token, expiresAt, status],
-          });
+          const result = await db.execute(sql`
+            INSERT INTO "invitations" ("id", "nutritionist_id", "token", "expires_at", "status", "created_at") 
+            VALUES (${id}, ${nutritionistId}, ${token}, ${expiresAt}, ${status}, NOW()) 
+            RETURNING "token"
+          `);
             
           console.log("Invitation created successfully (legacy)");
           return { token };
