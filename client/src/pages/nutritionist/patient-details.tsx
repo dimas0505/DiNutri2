@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, CheckCircle, Eye, FileText, Plus, Trash2, Users, XCircle } from "lucide-react";
+import { ArrowLeft, CheckCircle, Eye, FileText, Plus, Trash2, Users, XCircle, Link as LinkIcon, Copy, History } from "lucide-react";
 import { useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -8,15 +8,19 @@ import Header from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { DefaultMobileDrawer } from "@/components/layout/mobile-layout";
-import type { Patient, Prescription } from "@shared/schema";
+import type { Patient, Prescription, AnamnesisRecord } from "@shared/schema";
 
 export default function PatientDetails({ params }: { params: { id: string } }) {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [prescriptionToDelete, setPrescriptionToDelete] = useState<string | null>(null);
+  const [followUpLink, setFollowUpLink] = useState<string | null>(null);
 
   const { data: patient, isLoading: patientLoading } = useQuery<Patient>({
     queryKey: ["/api/patients", params.id],
@@ -24,6 +28,11 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
 
   const { data: prescriptions, isLoading: prescriptionsLoading } = useQuery<Prescription[]>({
     queryKey: ["/api/patients", params.id, "prescriptions"],
+    enabled: !!patient,
+  });
+
+  const { data: anamnesisHistory, isLoading: historyLoading } = useQuery<AnamnesisRecord[]>({
+    queryKey: ["/api/patients", params.id, "anamnesis-records"],
     enabled: !!patient,
   });
 
@@ -98,6 +107,21 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
       });
       setPrescriptionToDelete(null);
     },
+  });
+
+  const requestFollowUpMutation = useMutation({
+    mutationFn: () => apiRequest("POST", `/api/patients/${params.id}/request-follow-up`),
+    onSuccess: async (res) => {
+      const { followUpUrl } = await res.json();
+      setFollowUpLink(followUpUrl);
+    },
+    onError: () => {
+      toast({
+        title: "Erro",
+        description: "Falha ao gerar link de anamnese de retorno.",
+        variant: "destructive",
+      });
+    }
   });
 
   const calculateAge = (birthDate: string) => {
@@ -216,124 +240,185 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                 >
                   Editar Dados
                 </Button>
+                <Button 
+                  variant="outline" 
+                  className="mt-2 w-full text-sm"
+                  onClick={() => requestFollowUpMutation.mutate()}
+                  disabled={requestFollowUpMutation.isPending}
+                >
+                  {requestFollowUpMutation.isPending ? "Gerando link..." : "Solicitar Anamnese de Retorno"}
+                </Button>
               </CardContent>
             </Card>
 
-            {/* Anamnese Section */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Anamnese Nutricional</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4 text-sm">
-                  {patient.goal && (
-                    <div>
-                      <span className="text-muted-foreground font-medium">Objetivo:</span>
-                      <p className="mt-1">
-                        {patient.goal === 'lose_weight' ? 'Perder peso' : 
-                         patient.goal === 'maintain_weight' ? 'Manter peso' : 
-                         patient.goal === 'gain_weight' ? 'Ganhar peso' : patient.goal}
-                      </p>
-                    </div>
-                  )}
-                  
-                  {patient.activityLevel && (
-                    <div>
-                      <span className="text-muted-foreground font-medium">Nível de Atividade:</span>
-                      <p className="mt-1">
-                        {patient.activityLevel === '1' ? '1 - Sedentário' :
-                         patient.activityLevel === '2' ? '2 - Levemente ativo' :
-                         patient.activityLevel === '3' ? '3 - Moderadamente ativo' :
-                         patient.activityLevel === '4' ? '4 - Muito ativo' :
-                         patient.activityLevel === '5' ? '5 - Extremamente ativo' : patient.activityLevel}
-                      </p>
-                    </div>
-                  )}
+            {/* Anamnese Section with Tabs */}
+            <Tabs defaultValue="current" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="current">Anamnese Atual</TabsTrigger>
+                <TabsTrigger value="history">Histórico</TabsTrigger>
+              </TabsList>
+              <TabsContent value="current">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Anamnese Nutricional</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4 text-sm">
+                      {patient.goal && (
+                        <div>
+                          <span className="text-muted-foreground font-medium">Objetivo:</span>
+                          <p className="mt-1">
+                            {patient.goal === 'lose_weight' ? 'Perder peso' : 
+                             patient.goal === 'maintain_weight' ? 'Manter peso' : 
+                             patient.goal === 'gain_weight' ? 'Ganhar peso' : patient.goal}
+                          </p>
+                        </div>
+                      )}
+                      
+                      {patient.activityLevel && (
+                        <div>
+                          <span className="text-muted-foreground font-medium">Nível de Atividade:</span>
+                          <p className="mt-1">
+                            {patient.activityLevel === '1' ? '1 - Sedentário' :
+                             patient.activityLevel === '2' ? '2 - Levemente ativo' :
+                             patient.activityLevel === '3' ? '3 - Moderadamente ativo' :
+                             patient.activityLevel === '4' ? '4 - Muito ativo' :
+                             patient.activityLevel === '5' ? '5 - Extremamente ativo' : patient.activityLevel}
+                          </p>
+                        </div>
+                      )}
 
-                  {patient.biotype && (
-                    <div>
-                      <span className="text-muted-foreground font-medium">Biotipo:</span>
-                      <p className="mt-1">
-                        {patient.biotype === 'gain_weight_easily' ? 'Ganho peso facilmente' :
-                         patient.biotype === 'hard_to_gain' ? 'Dificuldade para ganhar peso' :
-                         patient.biotype === 'gain_muscle_easily' ? 'Ganho músculo facilmente' : patient.biotype}
-                      </p>
-                    </div>
-                  )}
+                      {patient.biotype && (
+                        <div>
+                          <span className="text-muted-foreground font-medium">Biotipo:</span>
+                          <p className="mt-1">
+                            {patient.biotype === 'gain_weight_easily' ? 'Ganho peso facilmente' :
+                             patient.biotype === 'hard_to_gain' ? 'Dificuldade para ganhar peso' :
+                             patient.biotype === 'gain_muscle_easily' ? 'Ganho músculo facilmente' : patient.biotype}
+                          </p>
+                        </div>
+                      )}
 
-                  {(patient.mealsPerDayCurrent || patient.mealsPerDayWilling) && (
-                    <div>
-                      <span className="text-muted-foreground font-medium">Refeições por dia:</span>
-                      <p className="mt-1">
-                        {patient.mealsPerDayCurrent && `Atual: ${patient.mealsPerDayCurrent}`}
-                        {patient.mealsPerDayCurrent && patient.mealsPerDayWilling && ' | '}
-                        {patient.mealsPerDayWilling && `Disposto: ${patient.mealsPerDayWilling}`}
-                      </p>
-                    </div>
-                  )}
+                      {(patient.mealsPerDayCurrent || patient.mealsPerDayWilling) && (
+                        <div>
+                          <span className="text-muted-foreground font-medium">Refeições por dia:</span>
+                          <p className="mt-1">
+                            {patient.mealsPerDayCurrent && `Atual: ${patient.mealsPerDayCurrent}`}
+                            {patient.mealsPerDayCurrent && patient.mealsPerDayWilling && ' | '}
+                            {patient.mealsPerDayWilling && `Disposto: ${patient.mealsPerDayWilling}`}
+                          </p>
+                        </div>
+                      )}
 
-                  {patient.alcoholConsumption && (
-                    <div>
-                      <span className="text-muted-foreground font-medium">Consumo de Álcool:</span>
-                      <p className="mt-1">
-                        {patient.alcoholConsumption === 'no' ? 'Não bebe' :
-                         patient.alcoholConsumption === 'moderate' ? 'Moderadamente' :
-                         patient.alcoholConsumption === 'yes' ? 'Sim, frequentemente' : patient.alcoholConsumption}
-                      </p>
-                    </div>
-                  )}
+                      {patient.alcoholConsumption && (
+                        <div>
+                          <span className="text-muted-foreground font-medium">Consumo de Álcool:</span>
+                          <p className="mt-1">
+                            {patient.alcoholConsumption === 'no' ? 'Não bebe' :
+                             patient.alcoholConsumption === 'moderate' ? 'Moderadamente' :
+                             patient.alcoholConsumption === 'yes' ? 'Sim, frequentemente' : patient.alcoholConsumption}
+                          </p>
+                        </div>
+                      )}
 
-                  {patient.canEatMorningSolids !== undefined && (
-                    <div>
-                      <span className="text-muted-foreground font-medium">Come sólidos pela manhã:</span>
-                      <p className="mt-1">{patient.canEatMorningSolids ? 'Sim' : 'Não'}</p>
-                    </div>
-                  )}
+                      {patient.canEatMorningSolids !== undefined && (
+                        <div>
+                          <span className="text-muted-foreground font-medium">Come sólidos pela manhã:</span>
+                          <p className="mt-1">{patient.canEatMorningSolids ? 'Sim' : 'Não'}</p>
+                        </div>
+                      )}
 
-                  {patient.likedHealthyFoods && Array.isArray(patient.likedHealthyFoods) && patient.likedHealthyFoods.length > 0 && (
-                    <div>
-                      <span className="text-muted-foreground font-medium">Alimentos saudáveis que gosta:</span>
-                      <p className="mt-1">{patient.likedHealthyFoods.join(', ')}</p>
-                    </div>
-                  )}
+                      {patient.likedHealthyFoods && Array.isArray(patient.likedHealthyFoods) && patient.likedHealthyFoods.length > 0 && (
+                        <div>
+                          <span className="text-muted-foreground font-medium">Alimentos saudáveis que gosta:</span>
+                          <p className="mt-1">{patient.likedHealthyFoods.join(', ')}</p>
+                        </div>
+                      )}
 
-                  {patient.dislikedFoods && Array.isArray(patient.dislikedFoods) && patient.dislikedFoods.length > 0 && (
-                    <div>
-                      <span className="text-muted-foreground font-medium">Alimentos que não gosta:</span>
-                      <p className="mt-1">{patient.dislikedFoods.join(', ')}</p>
-                    </div>
-                  )}
+                      {patient.dislikedFoods && Array.isArray(patient.dislikedFoods) && patient.dislikedFoods.length > 0 && (
+                        <div>
+                          <span className="text-muted-foreground font-medium">Alimentos que não gosta:</span>
+                          <p className="mt-1">{patient.dislikedFoods.join(', ')}</p>
+                        </div>
+                      )}
 
-                  {patient.hasIntolerance && patient.intolerances && Array.isArray(patient.intolerances) && patient.intolerances.length > 0 && (
-                    <div>
-                      <span className="text-muted-foreground font-medium">Intolerâncias:</span>
-                      <p className="mt-1">{patient.intolerances.join(', ')}</p>
-                    </div>
-                  )}
+                      {patient.hasIntolerance && patient.intolerances && Array.isArray(patient.intolerances) && patient.intolerances.length > 0 && (
+                        <div>
+                          <span className="text-muted-foreground font-medium">Intolerâncias:</span>
+                          <p className="mt-1">{patient.intolerances.join(', ')}</p>
+                        </div>
+                      )}
 
-                  {patient.diseases && (
-                    <div>
-                      <span className="text-muted-foreground font-medium">Doenças/Condições:</span>
-                      <p className="mt-1">{patient.diseases}</p>
-                    </div>
-                  )}
+                      {patient.diseases && (
+                        <div>
+                          <span className="text-muted-foreground font-medium">Doenças/Condições:</span>
+                          <p className="mt-1">{patient.diseases}</p>
+                        </div>
+                      )}
 
-                  {patient.medications && (
-                    <div>
-                      <span className="text-muted-foreground font-medium">Medicamentos:</span>
-                      <p className="mt-1">{patient.medications}</p>
-                    </div>
-                  )}
+                      {patient.medications && (
+                        <div>
+                          <span className="text-muted-foreground font-medium">Medicamentos:</span>
+                          <p className="mt-1">{patient.medications}</p>
+                        </div>
+                      )}
 
-                  {patient.supplements && (
-                    <div>
-                      <span className="text-muted-foreground font-medium">Suplementos:</span>
-                      <p className="mt-1">{patient.supplements}</p>
+                      {patient.supplements && (
+                        <div>
+                          <span className="text-muted-foreground font-medium">Suplementos:</span>
+                          <p className="mt-1">{patient.supplements}</p>
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+              <TabsContent value="history">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Histórico de Anamneses</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {historyLoading ? (
+                      <p>Carregando histórico...</p>
+                    ) : !anamnesisHistory || anamnesisHistory.length === 0 ? (
+                      <p>Nenhum registro encontrado.</p>
+                    ) : (
+                      <div className="space-y-4">
+                        {anamnesisHistory.map(record => (
+                          <div key={record.id} className="p-3 border rounded-md">
+                            <p className="font-medium">Data: {new Date(record.createdAt!).toLocaleDateString('pt-BR')}</p>
+                            <div className="text-sm space-y-1 mt-2">
+                              <p>Peso: {record.weightKg || 'N/A'} kg</p>
+                              {record.goal && (
+                                <p>Objetivo: {
+                                  record.goal === 'lose_weight' ? 'Perder peso' : 
+                                  record.goal === 'maintain_weight' ? 'Manter peso' : 
+                                  record.goal === 'gain_weight' ? 'Ganhar peso' : record.goal
+                                }</p>
+                              )}
+                              {record.protocolAdherence && (
+                                <p>Adesão ao protocolo: {
+                                  record.protocolAdherence === 'total' ? 'Total' :
+                                  record.protocolAdherence === 'partial' ? 'Parcial' :
+                                  record.protocolAdherence === 'low' ? 'Baixa' : record.protocolAdherence
+                                }</p>
+                              )}
+                              {record.nextProtocolRequests && (
+                                <div>
+                                  <p className="font-medium">Solicitações para próximo plano:</p>
+                                  <p className="text-muted-foreground">{record.nextProtocolRequests}</p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
 
             <Card>
               <CardHeader>
@@ -475,6 +560,22 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
           </div>
         </div>
       </main>
+
+      {/* Dialog for showing follow-up link */}
+      <Dialog open={!!followUpLink} onOpenChange={() => setFollowUpLink(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Link de Anamnese de Retorno</DialogTitle>
+            <DialogDescription>Envie este link para o paciente.</DialogDescription>
+          </DialogHeader>
+          <div className="flex items-center space-x-2">
+            <Input value={followUpLink || ""} readOnly />
+            <Button variant="outline" size="icon" onClick={() => navigator.clipboard.writeText(followUpLink!)}>
+              <Copy className="h-4 w-4" />
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

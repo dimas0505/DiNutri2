@@ -4,6 +4,7 @@ import {
   prescriptions,
   invitations,
   moodEntries,
+  anamnesisRecords,
   type User,
   type UpsertUser,
   type Patient,
@@ -13,6 +14,8 @@ import {
   type UpdatePrescription,
   type MoodEntry,
   type InsertMoodEntry,
+  type AnamnesisRecord,
+  insertAnamnesisRecordSchema,
 } from "../shared/schema.js";
 import { db } from "./db.js";
 import { eq, desc, and, gte, lte, sql, SQL } from "drizzle-orm";
@@ -68,6 +71,10 @@ export interface IStorage {
   updateMoodEntry(id: string, moodEntry: Partial<InsertMoodEntry>): Promise<MoodEntry>;
   getMoodEntriesByPatient(patientId: string, startDate?: string, endDate?: string): Promise<MoodEntry[]>;
   getMoodEntriesByPrescription(prescriptionId: string): Promise<MoodEntry[]>;
+
+  // Anamnesis Record operations
+  createAnamnesisRecord(record: any): Promise<AnamnesisRecord>;
+  getAnamnesisRecords(patientId: string): Promise<AnamnesisRecord[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -498,6 +505,20 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(moodEntries.date), desc(moodEntries.createdAt));
       
     return result as MoodEntry[];
+  }
+
+  async createAnamnesisRecord(record: any): Promise<AnamnesisRecord> {
+    const recordWithId = { id: nanoid(), ...record };
+    const [newRecord] = await db.insert(anamnesisRecords).values(recordWithId).returning();
+    return newRecord;
+  }
+
+  async getAnamnesisRecords(patientId: string): Promise<AnamnesisRecord[]> {
+    return await db
+      .select()
+      .from(anamnesisRecords)
+      .where(eq(anamnesisRecords.patientId, patientId))
+      .orderBy(desc(anamnesisRecords.createdAt));
   }
 }
 

@@ -4,7 +4,7 @@ import passport from "passport";
 import bcrypt from "bcrypt";
 import { storage } from "./storage.js";
 import { setupAuth, isAuthenticated } from "./auth.js";
-import { insertPatientSchema, updatePatientSchema, insertPrescriptionSchema, updatePrescriptionSchema, insertMoodEntrySchema } from "../shared/schema.js";
+import { insertPatientSchema, updatePatientSchema, insertPrescriptionSchema, updatePrescriptionSchema, insertMoodEntrySchema, insertAnamnesisRecordSchema } from "../shared/schema.js";
 import { z } from "zod";
 
 const SALT_ROUNDS = 10;
@@ -300,6 +300,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Erro ao buscar perfil do paciente:", error);
       res.status(500).json({ message: 'Falha ao buscar perfil do paciente.' });
+    }
+  });
+
+  app.post('/api/patients/:id/request-follow-up', isAuthenticated, async (req: any, res) => {
+    try {
+      // Futuramente, podemos gerar um token único aqui. Por simplicidade,
+      // por enquanto vamos apenas gerar uma URL simples.
+      const patientId = req.params.id;
+      const patient = await storage.getPatient(patientId);
+
+      if (!patient || patient.ownerId !== req.user.id) {
+        return res.status(404).json({ message: "Paciente não encontrado." });
+      }
+
+      // Este link não é seguro por token, mas serve para o fluxo inicial.
+      // Uma implementação robusta usaria um token de uso único.
+      const followUpUrl = `${req.protocol}://${req.get('host')}/anamnese/retorno?patientId=${patientId}`;
+      
+      res.json({ followUpUrl });
+    } catch (error) {
+      console.error("Erro ao solicitar anamnese de retorno:", error);
+      res.status(500).json({ message: "Falha ao gerar link." });
+    }
+  });
+
+  app.post('/api/patients/:id/anamnesis-records', isAuthenticated, async (req: any, res) => {
+    try {
+        const patientId = req.params.id;
+        // Apenas o próprio paciente (no futuro) ou o nutricionista dono podem adicionar um registro.
+        const patient = await storage.getPatient(patientId);
+        if (!patient || (req.user.role === 'nutritionist' && patient.ownerId !== req.user.id)) {
+            return res.status(403).json({ message: "Acesso negado." });
+        }
+
+        const recordData = insertAnamnesisRecordSchema.parse({
+            ...req.body,
+            patientId: patientId,
+        });
+        const newRecord = await storage.createAnamnesisRecord(recordData);
+        // Atualiza o peso mais recente na tabela principal do paciente para fácil acesso
+        if (recordData.weightKg) {
+            await storage.updatePatient(patientId, { weightKg: recordData.weightKg });
+        }
+        res.status(201).json(newRecord);
+    } catch (error) {
+        if (error instanceof z.ZodError) {
+            return res.status(400).json({ message: "Dados inválidos.", errors: error.flatten() });
+        }
+        console.error("Erro ao salvar anamnese de retorno:", error);
+        res.status(500).json({ message: "Falha ao salvar anamnese de retorno." });
+    }
+  });
+
+  app.get('/api/patients/:id/anamnesis-records', isAuthenticated, async (req: any, res) => {
+    try {
+        const patientId = req.params.id;
+        const patient = await storage.getPatient(patientId);
+        if (!patient || patient.ownerId !== req.user.id) {
+            return res.status(404).json({ message: "Paciente não encontrado." });
+        }
+        const records = await storage.getAnamnesisRecords(patientId);
+        res.json(records);
+    } catch (error) {
+        console.error("Erro ao buscar histórico:", error);
+        res.status(500).json({ message: "Falha ao buscar histórico de anamnese." });
     }
   });
 
