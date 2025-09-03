@@ -74,17 +74,30 @@ export default function NewPatientPage() {
   });
 
   const createInvitationMutation = useMutation({
-    mutationFn: () => apiRequest("POST", "/api/invitations"),
-    onSuccess: async (res) => {
-      const { token } = await res.json();
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/invitations");
+      return res.json();
+    },
+    onSuccess: (data: any) => {
+      const token = data?.token;
+      if (!token) {
+        toast({
+          title: "Erro",
+          description: "Resposta inválida do servidor ao gerar convite.",
+          variant: "destructive",
+        });
+        return;
+      }
       const fullUrl = `${window.location.origin}/anamnese?token=${token}`;
       setInvitationLink(fullUrl);
       toast({ title: "Link de convite gerado!" });
     },
-    onError: () => {
+    onError: (err: any) => {
+      console.error("Erro ao gerar convite:", err);
+      const errorMessage = err?.message || "Não foi possível gerar o link de convite.";
       toast({
         title: "Erro",
-        description: "Não foi possível gerar o link de convite.",
+        description: errorMessage,
         variant: "destructive",
       });
     },
@@ -96,10 +109,14 @@ export default function NewPatientPage() {
         ...data,
         ownerId: user?.id
       };
+      
+      // Normalize optional fields
       if (payload.weightKg === "") {
         delete payload.weightKg;
       }
-      return await apiRequest("POST", "/api/patients", payload);
+
+      const res = await apiRequest("POST", "/api/patients", payload);
+      return res.json();
     },
     onSuccess: () => {
       toast({
@@ -111,9 +128,9 @@ export default function NewPatientPage() {
     },
     onError: (error: any) => {
       console.error("Erro ao criar paciente:", error);
-      const errorMessage = error.message.includes("409")
+      const errorMessage = error?.message?.includes("409")
         ? "Já existe um usuário com este email."
-        : "Falha ao cadastrar paciente. Verifique os dados e tente novamente.";
+        : error?.message || "Falha ao cadastrar paciente. Verifique os dados e tente novamente.";
       toast({
         title: "Erro",
         description: errorMessage,
