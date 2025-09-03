@@ -281,21 +281,21 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                     </div>
                   )}
 
-                  {patient.likedHealthyFoods && patient.likedHealthyFoods.length > 0 && (
+                  {patient.likedHealthyFoods && Array.isArray(patient.likedHealthyFoods) && patient.likedHealthyFoods.length > 0 && (
                     <div>
                       <span className="text-muted-foreground font-medium">Alimentos saudáveis que gosta:</span>
                       <p className="mt-1">{patient.likedHealthyFoods.join(', ')}</p>
                     </div>
                   )}
 
-                  {patient.dislikedFoods && patient.dislikedFoods.length > 0 && (
+                  {patient.dislikedFoods && Array.isArray(patient.dislikedFoods) && patient.dislikedFoods.length > 0 && (
                     <div>
                       <span className="text-muted-foreground font-medium">Alimentos que não gosta:</span>
                       <p className="mt-1">{patient.dislikedFoods.join(', ')}</p>
                     </div>
                   )}
 
-                  {patient.hasIntolerance && patient.intolerances && patient.intolerances.length > 0 && (
+                  {patient.hasIntolerance && patient.intolerances && Array.isArray(patient.intolerances) && patient.intolerances.length > 0 && (
                     <div>
                       <span className="text-muted-foreground font-medium">Intolerâncias:</span>
                       <p className="mt-1">{patient.intolerances.join(', ')}</p>

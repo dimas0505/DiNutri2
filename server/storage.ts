@@ -67,6 +67,16 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
+  // Helper function to normalize patient data
+  private normalizePatientData(patient: Patient): Patient {
+    return {
+      ...patient,
+      likedHealthyFoods: patient.likedHealthyFoods || [],
+      dislikedFoods: patient.dislikedFoods || [],
+      intolerances: patient.intolerances || [],
+    };
+  }
+
   // User operations
   async getUser(id: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
@@ -222,40 +232,55 @@ export class DatabaseStorage implements IStorage {
 
   // Patient operations
   async getPatientsByOwner(ownerId: string): Promise<Patient[]> {
-    return await db
+    const patientList = await db
       .select()
       .from(patients)
       .where(eq(patients.ownerId, ownerId))
       .orderBy(desc(patients.createdAt));
+    
+    return patientList.map((patient: Patient) => this.normalizePatientData(patient));
   }
 
   async getPatient(id: string): Promise<Patient | undefined> {
     const [patient] = await db.select().from(patients).where(eq(patients.id, id));
-    return patient;
+    return patient ? this.normalizePatientData(patient) : undefined;
   }
 
   async getPatientByUserId(userId: string): Promise<Patient | undefined> {
     const [patient] = await db.select().from(patients).where(eq(patients.userId, userId));
-    return patient;
+    return patient ? this.normalizePatientData(patient) : undefined;
   }
 
   async createPatient(patient: InsertPatient): Promise<Patient> {
     const patientWithId = {
       id: nanoid(),
       ...patient,
+      // Ensure arrays have proper defaults
+      likedHealthyFoods: patient.likedHealthyFoods || [],
+      dislikedFoods: patient.dislikedFoods || [],
+      intolerances: patient.intolerances || [],
     };
     
     const [newPatient] = await db.insert(patients).values(patientWithId).returning();
-    return newPatient;
+    return this.normalizePatientData(newPatient);
   }
 
   async updatePatient(id: string, patient: Partial<InsertPatient>): Promise<Patient> {
+    const updateData = {
+      ...patient,
+      updatedAt: new Date(),
+      // Ensure arrays have proper defaults if provided
+      ...(patient.likedHealthyFoods !== undefined && { likedHealthyFoods: patient.likedHealthyFoods || [] }),
+      ...(patient.dislikedFoods !== undefined && { dislikedFoods: patient.dislikedFoods || [] }),
+      ...(patient.intolerances !== undefined && { intolerances: patient.intolerances || [] }),
+    };
+    
     const [updatedPatient] = await db
       .update(patients)
-      .set({ ...patient, updatedAt: new Date() })
+      .set(updateData)
       .where(eq(patients.id, id))
       .returning();
-    return updatedPatient;
+    return this.normalizePatientData(updatedPatient);
   }
   
   // Invitation operations
