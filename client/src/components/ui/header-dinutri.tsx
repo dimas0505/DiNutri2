@@ -16,7 +16,7 @@ interface HeaderDNutriProps {
 export function HeaderDNutri({ 
   className, 
   showGoalCard = true, 
-  goalText = "Déficit 1000 kcal",
+  goalText = "Seu Plano Alimentar",
   onProfileClick
 }: HeaderDNutriProps) {
   const { user } = useAuth();
