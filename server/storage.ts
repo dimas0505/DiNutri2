@@ -406,23 +406,48 @@ export class DatabaseStorage implements IStorage {
           error.message?.includes('column "liked_healthy_foods" does not exist')) {
         console.log("New anamnese columns don't exist, using legacy patient creation");
         
-        // Create with only basic fields that exist in legacy schema
-        const basicPatientData = {
-          id: nanoid(),
-          ownerId: patient.ownerId,
-          userId: patient.userId,
-          name: patient.name,
-          email: patient.email,
-          birthDate: patient.birthDate,
-          sex: patient.sex,
-          heightCm: patient.heightCm,
-          weightKg: patient.weightKg,
-          notes: patient.notes,
-        };
+        // Use raw SQL for legacy schema compatibility
+        const id = nanoid();
         
-        const [newPatient] = await db.insert(patients).values(basicPatientData).returning();
+        console.log("Creating patient with raw SQL (legacy schema)");
+        
+        await db.execute({
+          sql: `INSERT INTO "patients" (
+                  "id", "owner_id", "user_id", "name", "email", "birth_date", 
+                  "sex", "height_cm", "weight_kg", "notes", "created_at", "updated_at"
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())`,
+          args: [
+            id,
+            patient.ownerId,
+            patient.userId || null,
+            patient.name,
+            patient.email || null,
+            patient.birthDate || null,
+            patient.sex || null,
+            patient.heightCm || null,
+            patient.weightKg || null,
+            patient.notes || null,
+          ],
+        });
+        
+        // Get the created patient
+        const [createdPatient] = await db.execute({
+          sql: `SELECT * FROM "patients" WHERE "id" = $1`,
+          args: [id],
+        });
+        
+        // Return normalized data with legacy structure
         return this.normalizePatientData({
-          ...newPatient,
+          id,
+          ownerId: patient.ownerId,
+          userId: patient.userId || null,
+          name: patient.name,
+          email: patient.email || null,
+          birthDate: patient.birthDate || null,
+          sex: patient.sex || null,
+          heightCm: patient.heightCm || null,
+          weightKg: patient.weightKg || null,
+          notes: patient.notes || null,
           goal: null,
           activityLevel: null,
           likedHealthyFoods: [],
@@ -437,6 +462,8 @@ export class DatabaseStorage implements IStorage {
           diseases: null,
           medications: null,
           biotype: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
         });
       }
       throw error;
@@ -537,24 +564,20 @@ export class DatabaseStorage implements IStorage {
         if (schemaError.message?.includes('column "email" of relation "invitations" does not exist')) {
           console.log("Email column doesn't exist, using legacy schema");
           
-          // Fallback to old schema without email column
-          const legacyInvitation = {
-            id: nanoid(),
-            nutritionistId,
-            token,
-            expiresAt,
-            status: "pending" as const,
-          };
+          // Use raw SQL for legacy schema compatibility
+          const id = nanoid();
+          const status = "pending";
           
-          console.log("Creating invitation with data (legacy schema):", legacyInvitation);
+          console.log("Creating invitation with raw SQL (legacy schema):", { id, nutritionistId, token, expiresAt, status });
           
-          const [newInvitation] = await db
-            .insert(invitations)
-            .values(legacyInvitation)
-            .returning({ token: invitations.token });
+          await db.execute({
+            sql: `INSERT INTO "invitations" ("id", "nutritionist_id", "token", "expires_at", "status", "created_at") 
+                  VALUES ($1, $2, $3, $4, $5, NOW())`,
+            args: [id, nutritionistId, token, expiresAt, status],
+          });
             
-          console.log("Invitation created successfully (legacy):", newInvitation);
-          return newInvitation;
+          console.log("Invitation created successfully (legacy)");
+          return { token };
         }
         throw schemaError;
       }
