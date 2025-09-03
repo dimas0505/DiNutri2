@@ -1,4 +1,4 @@
-import { LogOut } from "lucide-react";
+import { LogOut, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -37,6 +37,14 @@ export default function Header({
     window.location.href = "/api/logout";
   };
 
+  const handleBack = () => {
+    if (onBack) {
+      onBack();
+    } else {
+      window.history.back();
+    }
+  };
+
   // On mobile, use the MobileHeader component
   if (isMobile) {
     return (
@@ -60,6 +68,18 @@ export default function Header({
     <header className={cn("bg-card border-b border-border px-4 py-3", className)}>
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         <div className="flex items-center space-x-4">
+          {showBack && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleBack}
+              title="Voltar"
+              className="h-8 w-8 p-0"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              <span className="sr-only">Voltar</span>
+            </Button>
+          )}
           {leftElement}
           {children ? (
             children

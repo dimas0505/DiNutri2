@@ -1,7 +1,18 @@
-import { pgTable, varchar, text, timestamp, boolean, integer, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, varchar, text, timestamp, boolean, integer, jsonb, index } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+
+// Session storage table (RE-ADICIONADA - ESSENCIAL PARA LOGIN)
+export const sessions = pgTable(
+  "sessions",
+  {
+    sid: varchar("sid").primaryKey(),
+    sess: jsonb("sess").notNull(),
+    expire: timestamp("expire").notNull(),
+  },
+  (table) => [index("IDX_session_expire").on(table.expire)],
+);
 
 // Users table
 export const users = pgTable("users", {
@@ -63,7 +74,7 @@ export const invitations = pgTable("invitations", {
 // Prescriptions table
 export const prescriptions = pgTable("prescriptions", {
   id: varchar("id").primaryKey(),
-  patientId: varchar("patient_id").references(() => patients.id).notNull(),
+  patientId: varchar("patient_id").references(() => patients.id, { onDelete: 'cascade' }).notNull(),
   nutritionistId: varchar("nutritionist_id").references(() => users.id).notNull(),
   title: text("title").notNull(),
   status: varchar("status", { enum: ["draft", "published"] }).notNull().default("draft"),
@@ -77,8 +88,8 @@ export const prescriptions = pgTable("prescriptions", {
 // Mood entries table
 export const moodEntries = pgTable("mood_entries", {
   id: varchar("id").primaryKey(),
-  patientId: varchar("patient_id").references(() => patients.id).notNull(),
-  prescriptionId: varchar("prescription_id").references(() => prescriptions.id).notNull(),
+  patientId: varchar("patient_id").references(() => patients.id, { onDelete: 'cascade' }).notNull(),
+  prescriptionId: varchar("prescription_id").references(() => prescriptions.id, { onDelete: 'cascade' }).notNull(),
   mealId: varchar("meal_id").notNull(), // ID da refeição dentro da prescrição
   moodBefore: varchar("mood_before", { enum: ["very_sad", "sad", "neutral", "happy", "very_happy"] }),
   moodAfter: varchar("mood_after", { enum: ["very_sad", "sad", "neutral", "happy", "very_happy"] }),

@@ -4,6 +4,7 @@ import { useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import Header from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -18,7 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 import { insertPatientSchema } from "@shared/schema";
-import { MobileLayout, DefaultMobileDrawer } from "@/components/layout/mobile-layout";
+import { DefaultMobileDrawer } from "@/components/layout/mobile-layout";
 import { Copy, LinkIcon } from "lucide-react";
 
 // O schema do formulário agora inclui todos os campos de anamnese
@@ -112,7 +113,7 @@ export default function NewPatientPage() {
       
       // Normalize optional fields
       if (payload.weightKg === "") {
-        delete payload.weightKg;
+        delete (payload as any).weightKg;
       }
 
       const res = await apiRequest("POST", "/api/patients", payload);
@@ -163,13 +164,14 @@ export default function NewPatientPage() {
   };
 
   return (
-    <MobileLayout 
-      title="Novo Paciente"
-      showBack={true}
-      onBack={() => setLocation("/patients")}
-      drawerContent={<DefaultMobileDrawer />}
-    >
-      <main className="max-w-4xl mx-auto">
+    <div className="min-h-screen bg-background">
+      <Header 
+        title="Novo Paciente"
+        showBack={true}
+        onBack={() => setLocation("/patients")}
+        drawerContent={<DefaultMobileDrawer />}
+      />
+      <main className="max-w-4xl mx-auto p-4 lg:p-6">
         <Card>
           <CardContent className="p-6">
             <div className="space-y-6">
@@ -494,6 +496,6 @@ export default function NewPatientPage() {
           </div>
         </DialogContent>
       </Dialog>
-    </MobileLayout>
+    </div>
   );
 }

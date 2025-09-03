@@ -15,9 +15,12 @@ import {
   type InsertMoodEntry,
 } from "../shared/schema.js";
 import { db } from "./db.js";
-import { eq, desc, and, gte, lte, sql } from "drizzle-orm";
+import { eq, desc, and, gte, lte, sql, SQL } from "drizzle-orm";
 import { randomBytes } from "crypto";
 import { nanoid } from "nanoid";
+import bcrypt from "bcrypt";
+
+const SALT_ROUNDS = 10;
 
 export interface IStorage {
   // User operations
@@ -39,11 +42,12 @@ export interface IStorage {
   getPatient(id: string): Promise<Patient | undefined>;
   getPatientByUserId(userId: string): Promise<Patient | undefined>;
   createPatient(patient: InsertPatient): Promise<Patient>;
+  createPatientFromInvitation(data: any): Promise<User>;
   updatePatient(id: string, patient: Partial<InsertPatient>): Promise<Patient>;
   
   // Invitation operations
   createInvitation(nutritionistId: string): Promise<{ token: string }>;
-  getInvitationByToken(token: string): Promise<{ nutritionistId: string } | undefined>;
+  getInvitationByToken(token: string): Promise<{ nutritionistId: string, status: string } | undefined>;
   updateInvitationStatus(token: string, status: 'accepted'): Promise<void>;
 
   // Prescription operations
@@ -68,12 +72,35 @@ export interface IStorage {
 
 export class DatabaseStorage implements IStorage {
   // Helper function to normalize patient data
-  private normalizePatientData(patient: Patient): Patient {
+  private normalizePatientData(patient: Partial<Patient>): Patient {
     return {
       ...patient,
+      id: patient.id!,
+      ownerId: patient.ownerId!,
+      userId: patient.userId ?? null,
+      name: patient.name!,
+      email: patient.email ?? null,
+      birthDate: patient.birthDate ?? null,
+      sex: patient.sex ?? null,
+      heightCm: patient.heightCm ?? null,
+      weightKg: patient.weightKg ?? null,
+      notes: patient.notes ?? null,
+      goal: patient.goal ?? null,
+      activityLevel: patient.activityLevel ?? null,
       likedHealthyFoods: patient.likedHealthyFoods || [],
       dislikedFoods: patient.dislikedFoods || [],
+      hasIntolerance: patient.hasIntolerance ?? null,
       intolerances: patient.intolerances || [],
+      canEatMorningSolids: patient.canEatMorningSolids ?? null,
+      mealsPerDayCurrent: patient.mealsPerDayCurrent ?? null,
+      mealsPerDayWilling: patient.mealsPerDayWilling ?? null,
+      alcoholConsumption: patient.alcoholConsumption ?? null,
+      supplements: patient.supplements ?? null,
+      diseases: patient.diseases ?? null,
+      medications: patient.medications ?? null,
+      biotype: patient.biotype ?? null,
+      createdAt: patient.createdAt ?? new Date(),
+      updatedAt: patient.updatedAt ?? new Date(),
     };
   }
 
@@ -113,7 +140,6 @@ export class DatabaseStorage implements IStorage {
       updatedAt: new Date()
     };
 
-    // Só inclui role se foi fornecido
     if (profileData.role) {
       updateData.role = profileData.role;
     }
@@ -128,23 +154,15 @@ export class DatabaseStorage implements IStorage {
 
   async deleteUser(id: string): Promise<void> {
     try {
-      // Primeiro, verificar se o usuário tem pacientes associados
       if (await this.userHasPatients(id)) {
         throw new Error("Não é possível excluir este usuário pois ele possui pacientes associados. Primeiro transfira ou exclua os pacientes.");
       }
-
-      // Verificar se o usuário tem prescrições associadas
       if (await this.userHasPrescriptions(id)) {
         throw new Error("Não é possível excluir este usuário pois ele possui prescrições associadas.");
       }
-
-      // NOVO: Excluir convites associados ao usuário (se houver)
       if (await this.userHasInvitations(id)) {
         await this.deleteUserInvitations(id);
-        console.log(`Deleted invitations for user ${id}`);
       }
-
-      // Se não há dependências críticas, excluir o usuário
       await db.delete(users).where(eq(users.id, id));
     } catch (error) {
       console.error("Error deleting user:", error);
@@ -153,30 +171,27 @@ export class DatabaseStorage implements IStorage {
   }
 
   async userHasPatients(userId: string): Promise<boolean> {
-    const patientCount = await db
-      .select({ count: patients.id })
+    const result = await db
+      .select({ count: sql<number>`count(*)` })
       .from(patients)
       .where(eq(patients.ownerId, userId));
-    
-    return patientCount.length > 0;
+    return result[0].count > 0;
   }
 
   async userHasPrescriptions(userId: string): Promise<boolean> {
-    const prescriptionCount = await db
-      .select({ count: prescriptions.id })
+    const result = await db
+      .select({ count: sql<number>`count(*)` })
       .from(prescriptions)
       .where(eq(prescriptions.nutritionistId, userId));
-    
-    return prescriptionCount.length > 0;
+    return result[0].count > 0;
   }
 
   async userHasInvitations(userId: string): Promise<boolean> {
-    const invitationCount = await db
-      .select({ count: invitations.id })
+    const result = await db
+      .select({ count: sql<number>`count(*)` })
       .from(invitations)
       .where(eq(invitations.nutritionistId, userId));
-    
-    return invitationCount.length > 0;
+    return result[0].count > 0;
   }
 
   async deleteUserInvitations(userId: string): Promise<void> {
@@ -196,22 +211,18 @@ export class DatabaseStorage implements IStorage {
   }
 
   async upsertUser(userData: Partial<UpsertUser>): Promise<User> {
-    // CORRIGIDO: Garantir que email seja sempre uma string válida
     if (!userData.email) {
       throw new Error("Email is required to upsert a user.");
     }
-    
-    // Criar objeto com tipos corretos, garantindo que email seja string
     const userWithId = {
       id: nanoid(),
-      email: userData.email, // Já validado acima
+      email: userData.email,
       firstName: userData.firstName ?? null,
       lastName: userData.lastName ?? null,
       profileImageUrl: userData.profileImageUrl ?? null,
       role: userData.role ?? "patient" as const,
       hashedPassword: userData.hashedPassword ?? null,
     };
-    
     const [user] = await db
       .insert(users)
       .values(userWithId)
@@ -232,291 +243,80 @@ export class DatabaseStorage implements IStorage {
 
   // Patient operations
   async getPatientsByOwner(ownerId: string): Promise<Patient[]> {
-    try {
-      // Try with full schema first, fallback to basic columns if new columns don't exist
-      const patientList = await db
-        .select()
-        .from(patients)
-        .where(eq(patients.ownerId, ownerId))
-        .orderBy(desc(patients.createdAt));
-      
-      return patientList.map((patient: Patient) => this.normalizePatientData(patient));
-    } catch (error: any) {
-      if (error.message?.includes('column "goal" does not exist')) {
-        console.log("New anamnese columns don't exist, using legacy patient schema");
-        
-        // Fallback to basic columns only
-        const basicPatientList = await db
-          .select({
-            id: patients.id,
-            ownerId: patients.ownerId,
-            userId: patients.userId,
-            name: patients.name,
-            email: patients.email,
-            birthDate: patients.birthDate,
-            sex: patients.sex,
-            heightCm: patients.heightCm,
-            weightKg: patients.weightKg,
-            notes: patients.notes,
-            createdAt: patients.createdAt,
-            updatedAt: patients.updatedAt,
-          })
-          .from(patients)
-          .where(eq(patients.ownerId, ownerId))
-          .orderBy(desc(patients.createdAt));
-        
-        // Convert to full patient objects with defaults for missing fields
-        return basicPatientList.map((patient: any) => this.normalizePatientData({
-          ...patient,
-          goal: null,
-          activityLevel: null,
-          likedHealthyFoods: [],
-          dislikedFoods: [],
-          hasIntolerance: null,
-          intolerances: [],
-          canEatMorningSolids: null,
-          mealsPerDayCurrent: null,
-          mealsPerDayWilling: null,
-          alcoholConsumption: null,
-          supplements: null,
-          diseases: null,
-          medications: null,
-          biotype: null,
-        }));
-      }
-      throw error;
-    }
+    const patientList = await db
+      .select()
+      .from(patients)
+      .where(eq(patients.ownerId, ownerId))
+      .orderBy(desc(patients.createdAt));
+    return patientList.map(p => this.normalizePatientData(p));
   }
 
   async getPatient(id: string): Promise<Patient | undefined> {
-    try {
-      const [patient] = await db.select().from(patients).where(eq(patients.id, id));
-      return patient ? this.normalizePatientData(patient) : undefined;
-    } catch (error: any) {
-      if (error.message?.includes('column "goal" does not exist')) {
-        console.log("New anamnese columns don't exist, using legacy patient schema for getPatient");
-        
-        const [basicPatient] = await db
-          .select({
-            id: patients.id,
-            ownerId: patients.ownerId,
-            userId: patients.userId,
-            name: patients.name,
-            email: patients.email,
-            birthDate: patients.birthDate,
-            sex: patients.sex,
-            heightCm: patients.heightCm,
-            weightKg: patients.weightKg,
-            notes: patients.notes,
-            createdAt: patients.createdAt,
-            updatedAt: patients.updatedAt,
-          })
-          .from(patients)
-          .where(eq(patients.id, id));
-        
-        if (!basicPatient) return undefined;
-        
-        return this.normalizePatientData({
-          ...basicPatient,
-          goal: null,
-          activityLevel: null,
-          likedHealthyFoods: [],
-          dislikedFoods: [],
-          hasIntolerance: null,
-          intolerances: [],
-          canEatMorningSolids: null,
-          mealsPerDayCurrent: null,
-          mealsPerDayWilling: null,
-          alcoholConsumption: null,
-          supplements: null,
-          diseases: null,
-          medications: null,
-          biotype: null,
-        });
-      }
-      throw error;
-    }
+    const [patient] = await db.select().from(patients).where(eq(patients.id, id));
+    return patient ? this.normalizePatientData(patient) : undefined;
   }
 
   async getPatientByUserId(userId: string): Promise<Patient | undefined> {
-    try {
-      const [patient] = await db.select().from(patients).where(eq(patients.userId, userId));
-      return patient ? this.normalizePatientData(patient) : undefined;
-    } catch (error: any) {
-      if (error.message?.includes('column "goal" does not exist')) {
-        console.log("New anamnese columns don't exist, using legacy patient schema for getPatientByUserId");
-        
-        const [basicPatient] = await db
-          .select({
-            id: patients.id,
-            ownerId: patients.ownerId,
-            userId: patients.userId,
-            name: patients.name,
-            email: patients.email,
-            birthDate: patients.birthDate,
-            sex: patients.sex,
-            heightCm: patients.heightCm,
-            weightKg: patients.weightKg,
-            notes: patients.notes,
-            createdAt: patients.createdAt,
-            updatedAt: patients.updatedAt,
-          })
-          .from(patients)
-          .where(eq(patients.userId, userId));
-        
-        if (!basicPatient) return undefined;
-        
-        return this.normalizePatientData({
-          ...basicPatient,
-          goal: null,
-          activityLevel: null,
-          likedHealthyFoods: [],
-          dislikedFoods: [],
-          hasIntolerance: null,
-          intolerances: [],
-          canEatMorningSolids: null,
-          mealsPerDayCurrent: null,
-          mealsPerDayWilling: null,
-          alcoholConsumption: null,
-          supplements: null,
-          diseases: null,
-          medications: null,
-          biotype: null,
-        });
-      }
-      throw error;
-    }
+    const [patient] = await db.select().from(patients).where(eq(patients.userId, userId));
+    return patient ? this.normalizePatientData(patient) : undefined;
   }
 
   async createPatient(patient: InsertPatient): Promise<Patient> {
+    const patientWithId = {
+      id: nanoid(),
+      ...patient,
+    };
     try {
-      const patientWithId = {
-        id: nanoid(),
-        ...patient,
-        // Ensure arrays have proper defaults
-        likedHealthyFoods: patient.likedHealthyFoods || [],
-        dislikedFoods: patient.dislikedFoods || [],
-        intolerances: patient.intolerances || [],
-      };
-      
       const [newPatient] = await db.insert(patients).values(patientWithId).returning();
       return this.normalizePatientData(newPatient);
     } catch (error: any) {
-      if (error.message?.includes('column "goal" does not exist') || 
-          error.message?.includes('column "liked_healthy_foods" does not exist')) {
-        console.log("New anamnese columns don't exist, using legacy patient creation");
-        
-        // Use raw SQL for legacy schema compatibility
-        const id = nanoid();
-        
-        console.log("Creating patient with raw SQL (legacy schema)");
-        
-        await db.execute(sql`
-          INSERT INTO "patients" (
-            "id", "owner_id", "user_id", "name", "email", "birth_date", 
-            "sex", "height_cm", "weight_kg", "notes", "created_at", "updated_at"
-          ) VALUES (${id}, ${patient.ownerId}, ${patient.userId || null}, ${patient.name}, 
-                   ${patient.email || null}, ${patient.birthDate || null}, ${patient.sex || null}, 
-                   ${patient.heightCm || null}, ${patient.weightKg || null}, ${patient.notes || null}, 
-                   NOW(), NOW())
-        `);
-        
-        // Get the created patient
-        const createdPatientResult = await db.execute(sql`SELECT * FROM "patients" WHERE "id" = ${id}`);
-        
-        // Return normalized data with legacy structure
-        return this.normalizePatientData({
-          id,
-          ownerId: patient.ownerId,
-          userId: patient.userId || null,
-          name: patient.name,
-          email: patient.email || null,
-          birthDate: patient.birthDate || null,
-          sex: patient.sex || null,
-          heightCm: patient.heightCm || null,
-          weightKg: patient.weightKg || null,
-          notes: patient.notes || null,
-          goal: null,
-          activityLevel: null,
-          likedHealthyFoods: [],
-          dislikedFoods: [],
-          hasIntolerance: null,
-          intolerances: [],
-          canEatMorningSolids: null,
-          mealsPerDayCurrent: null,
-          mealsPerDayWilling: null,
-          alcoholConsumption: null,
-          supplements: null,
-          diseases: null,
-          medications: null,
-          biotype: null,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        });
+      if (error.code === '42703') { // PostgreSQL error for undefined column
+        console.warn("Schema mismatch detected. Creating patient with legacy fields.");
+        const legacyPatientData = (({ goal, activityLevel, likedHealthyFoods, dislikedFoods, hasIntolerance, intolerances, canEatMorningSolids, mealsPerDayCurrent, mealsPerDayWilling, alcoholConsumption, supplements, diseases, medications, biotype, ...rest }) => rest)(patientWithId);
+        const [newPatient] = await db.insert(patients).values(legacyPatientData).returning();
+        return this.normalizePatientData(newPatient);
       }
       throw error;
     }
   }
 
+  async createPatientFromInvitation(data: any): Promise<User> {
+    const invitation = await this.getInvitationByToken(data.token);
+    if (!invitation || invitation.status !== 'pending') {
+      throw new Error("Convite inválido ou já utilizado.");
+    }
+    const existingUser = await this.getUserByEmail(data.email);
+    if (existingUser) {
+      throw new Error("409: Conflict - Email já cadastrado.");
+    }
+    const hashedPassword = await bcrypt.hash(data.password, SALT_ROUNDS);
+    const newUser = await this.upsertUser({
+      email: data.email,
+      firstName: data.name.split(' ')[0],
+      lastName: data.name.split(' ').slice(1).join(' '),
+      hashedPassword: hashedPassword,
+      role: "patient",
+    });
+    await this.createPatient({
+      ...data,
+      ownerId: invitation.nutritionistId,
+      userId: newUser.id,
+    });
+    await this.updateInvitationStatus(data.token, 'accepted');
+    return newUser;
+  }
+
   async updatePatient(id: string, patient: Partial<InsertPatient>): Promise<Patient> {
+    const updateData = { ...patient, updatedAt: new Date() };
     try {
-      const updateData = {
-        ...patient,
-        updatedAt: new Date(),
-        // Ensure arrays have proper defaults if provided
-        ...(patient.likedHealthyFoods !== undefined && { likedHealthyFoods: patient.likedHealthyFoods || [] }),
-        ...(patient.dislikedFoods !== undefined && { dislikedFoods: patient.dislikedFoods || [] }),
-        ...(patient.intolerances !== undefined && { intolerances: patient.intolerances || [] }),
-      };
-      
-      const [updatedPatient] = await db
-        .update(patients)
-        .set(updateData)
-        .where(eq(patients.id, id))
-        .returning();
+      const [updatedPatient] = await db.update(patients).set(updateData).where(eq(patients.id, id)).returning();
       return this.normalizePatientData(updatedPatient);
     } catch (error: any) {
-      if (error.message?.includes('column "goal" does not exist') || 
-          error.message?.includes('column "liked_healthy_foods" does not exist')) {
-        console.log("New anamnese columns don't exist, using legacy patient update");
-        
-        // Update with only basic fields that exist in legacy schema
-        const basicUpdateData: any = {
-          updatedAt: new Date(),
-        };
-        
-        // Only include basic fields that exist in legacy schema
-        if (patient.name !== undefined) basicUpdateData.name = patient.name;
-        if (patient.email !== undefined) basicUpdateData.email = patient.email;
-        if (patient.birthDate !== undefined) basicUpdateData.birthDate = patient.birthDate;
-        if (patient.sex !== undefined) basicUpdateData.sex = patient.sex;
-        if (patient.heightCm !== undefined) basicUpdateData.heightCm = patient.heightCm;
-        if (patient.weightKg !== undefined) basicUpdateData.weightKg = patient.weightKg;
-        if (patient.notes !== undefined) basicUpdateData.notes = patient.notes;
-        
-        const [updatedPatient] = await db
-          .update(patients)
-          .set(basicUpdateData)
-          .where(eq(patients.id, id))
-          .returning();
-          
-        return this.normalizePatientData({
-          ...updatedPatient,
-          goal: null,
-          activityLevel: null,
-          likedHealthyFoods: [],
-          dislikedFoods: [],
-          hasIntolerance: null,
-          intolerances: [],
-          canEatMorningSolids: null,
-          mealsPerDayCurrent: null,
-          mealsPerDayWilling: null,
-          alcoholConsumption: null,
-          supplements: null,
-          diseases: null,
-          medications: null,
-          biotype: null,
-        });
+      if (error.code === '42703') {
+        console.warn("Schema mismatch detected. Updating patient with legacy fields.");
+        const legacyPatientData = (({ goal, activityLevel, likedHealthyFoods, dislikedFoods, hasIntolerance, intolerances, canEatMorningSolids, mealsPerDayCurrent, mealsPerDayWilling, alcoholConsumption, supplements, diseases, medications, biotype, ...rest }) => rest)(updateData);
+        const [updatedPatient] = await db.update(patients).set(legacyPatientData).where(eq(patients.id, id)).returning();
+        return this.normalizePatientData(updatedPatient);
       }
       throw error;
     }
@@ -527,68 +327,38 @@ export class DatabaseStorage implements IStorage {
     try {
       const token = randomBytes(32).toString("hex");
       const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + 7); // Expira em 7 dias
-      
-      // Try with new schema first, fallback to old schema if column doesn't exist
-      try {
-        const invitationWithId = {
-          id: nanoid(),
-          nutritionistId,
-          token,
-          email: "placeholder@email.com", // Email temporário, será atualizado quando o paciente se registrar
-          expiresAt,
-        };
-        
-        console.log("Creating invitation with data (new schema):", invitationWithId);
-        
-        const result = await db
-          .insert(invitations)
-          .values(invitationWithId)
-          .returning();
-          
-        console.log("Invitation created successfully:", result);
-        return { token: result[0].token };
-      } catch (schemaError: any) {
-        if (schemaError.message?.includes('column "email" of relation "invitations" does not exist') ||
-            schemaError.message?.includes('column "expires_at" of relation "invitations" does not exist')) {
-          console.log("New schema columns don't exist, using legacy schema");
-          
-          // Use raw SQL for legacy schema compatibility (only use columns that exist in original schema)
-          const id = nanoid();
-          const status = "pending";
-          
-          console.log("Creating invitation with raw SQL (legacy schema):", { id, nutritionistId, token, status });
-          
-          const result = await db.execute(sql`
-            INSERT INTO "invitations" ("id", "nutritionist_id", "token", "status", "created_at") 
-            VALUES (${id}, ${nutritionistId}, ${token}, ${status}, NOW()) 
-            RETURNING "token"
-          `);
-            
-          console.log("Invitation created successfully (legacy)");
-          return { token };
-        }
-        throw schemaError;
+      expiresAt.setDate(expiresAt.getDate() + 7);
+      const invitationWithId = {
+        id: nanoid(),
+        nutritionistId,
+        token,
+        email: "placeholder@email.com",
+        role: "patient" as const,
+        expiresAt,
+      };
+      const [newInvitation] = await db.insert(invitations).values(invitationWithId).returning({ token: invitations.token });
+      if (!newInvitation) {
+        throw new Error("Falha ao criar o convite.");
       }
+      return newInvitation;
     } catch (error) {
-      console.error("Error in createInvitation storage method:", error);
-      throw error;
+      console.error("Erro em createInvitation:", error);
+      throw new Error("Não foi possível criar o convite.");
     }
   }
 
-  async getInvitationByToken(token: string): Promise<{ nutritionistId: string } | undefined> {
+  async getInvitationByToken(token: string): Promise<{ nutritionistId: string, status: string } | undefined> {
     const [invitation] = await db
-      .select({ nutritionistId: invitations.nutritionistId })
+      .select({ nutritionistId: invitations.nutritionistId, status: invitations.status })
       .from(invitations)
       .where(and(eq(invitations.token, token), eq(invitations.status, "pending")));
-    
-    return invitation;
+    return invitation as { nutritionistId: string, status: string } | undefined;
   }
 
   async updateInvitationStatus(token: string, status: 'accepted'): Promise<void> {
     await db
       .update(invitations)
-      .set({ status })
+      .set({ status, used: true })
       .where(eq(invitations.token, token));
   }
 
@@ -613,12 +383,7 @@ export class DatabaseStorage implements IStorage {
     const [prescription] = await db
       .select()
       .from(prescriptions)
-      .where(
-        and(
-          eq(prescriptions.patientId, patientId),
-          eq(prescriptions.status, "published")
-        )
-      )
+      .where(and(eq(prescriptions.patientId, patientId), eq(prescriptions.status, "published")))
       .orderBy(desc(prescriptions.publishedAt))
       .limit(1);
     return prescription;
@@ -631,7 +396,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getPublishedPrescriptionsForUser(userId: string): Promise<Prescription[]> {
-    const [patient] = await db.select({ id: patients.id }).from(patients).where(eq(patients.userId, userId));
+    const patient = await this.getPatientByUserId(userId);
     if (!patient) {
       return [];
     }
@@ -646,24 +411,16 @@ export class DatabaseStorage implements IStorage {
     const prescriptionWithId = {
       id: nanoid(),
       ...prescription,
-      meals: prescription.meals as any, // Type assertion for JSONB field
+      meals: prescription.meals as any,
     };
-    
-    const [newPrescription] = await db
-      .insert(prescriptions)
-      .values(prescriptionWithId)
-      .returning();
+    const [newPrescription] = await db.insert(prescriptions).values(prescriptionWithId).returning();
     return newPrescription;
   }
 
   async updatePrescription(id: string, prescription: UpdatePrescription): Promise<Prescription> {
     const [updatedPrescription] = await db
       .update(prescriptions)
-      .set({ 
-        ...prescription, 
-        updatedAt: new Date(),
-        meals: prescription.meals as any // Type assertion for JSONB field
-      })
+      .set({ ...prescription, updatedAt: new Date(), meals: prescription.meals as any })
       .where(eq(prescriptions.id, id))
       .returning();
     return updatedPrescription;
@@ -672,11 +429,7 @@ export class DatabaseStorage implements IStorage {
   async publishPrescription(id: string): Promise<Prescription> {
     const [publishedPrescription] = await db
       .update(prescriptions)
-      .set({
-        status: "published",
-        publishedAt: new Date(),
-        updatedAt: new Date(),
-      })
+      .set({ status: "published", publishedAt: new Date(), updatedAt: new Date() })
       .where(eq(prescriptions.id, id))
       .returning();
     return publishedPrescription;
@@ -684,24 +437,17 @@ export class DatabaseStorage implements IStorage {
 
   async duplicatePrescription(id: string, title: string): Promise<Prescription> {
     const original = await this.getPrescription(id);
-    if (!original) {
-      throw new Error("Prescription not found");
-    }
-
+    if (!original) throw new Error("Prescription not found");
     const duplicatedWithId = {
       id: nanoid(),
       patientId: original.patientId,
       nutritionistId: original.nutritionistId,
       title,
       status: "draft" as const,
-      meals: original.meals as any, // Type assertion for JSONB field
+      meals: original.meals as any,
       generalNotes: original.generalNotes,
     };
-
-    const [duplicated] = await db
-      .insert(prescriptions)
-      .values(duplicatedWithId)
-      .returning();
+    const [duplicated] = await db.insert(prescriptions).values(duplicatedWithId).returning();
     return duplicated;
   }
 
@@ -709,69 +455,49 @@ export class DatabaseStorage implements IStorage {
     await db.delete(prescriptions).where(eq(prescriptions.id, id));
   }
 
-  // Mood operations (NEW)
+  // Mood operations
   async getMoodEntry(prescriptionId: string, mealId: string, date: string): Promise<MoodEntry | undefined> {
-    const [moodEntry] = await db
-      .select()
-      .from(moodEntries)
-      .where(
-        and(
-          eq(moodEntries.prescriptionId, prescriptionId),
-          eq(moodEntries.mealId, mealId),
-          eq(moodEntries.date, date)
-        )
-      );
-    return moodEntry;
+    const [moodEntry] = await db.select().from(moodEntries).where(and(eq(moodEntries.prescriptionId, prescriptionId), eq(moodEntries.mealId, mealId), eq(moodEntries.date, date)));
+    return moodEntry as MoodEntry | undefined;
   }
 
   async createMoodEntry(moodEntry: InsertMoodEntry): Promise<MoodEntry> {
-    const moodEntryWithId = {
-      id: nanoid(),
-      ...moodEntry,
-    };
-    
-    const [newMoodEntry] = await db
-      .insert(moodEntries)
-      .values(moodEntryWithId)
-      .returning();
-    return newMoodEntry;
+    const moodEntryWithId = { id: nanoid(), ...moodEntry };
+    const [newMoodEntry] = await db.insert(moodEntries).values(moodEntryWithId).returning();
+    return newMoodEntry as MoodEntry;
   }
 
   async updateMoodEntry(id: string, moodEntry: Partial<InsertMoodEntry>): Promise<MoodEntry> {
-    const [updatedMoodEntry] = await db
-      .update(moodEntries)
-      .set({ 
-        ...moodEntry, 
-        updatedAt: new Date() 
-      })
-      .where(eq(moodEntries.id, id))
-      .returning();
-    return updatedMoodEntry;
+    const [updatedMoodEntry] = await db.update(moodEntries).set({ ...moodEntry, updatedAt: new Date() }).where(eq(moodEntries.id, id)).returning();
+    return updatedMoodEntry as MoodEntry;
   }
 
   async getMoodEntriesByPatient(patientId: string, startDate?: string, endDate?: string): Promise<MoodEntry[]> {
-    let whereConditions = [eq(moodEntries.patientId, patientId)];
-
-    if (startDate && endDate) {
+    let whereConditions: SQL[] = [eq(moodEntries.patientId, patientId)];
+    if (startDate) {
       whereConditions.push(gte(moodEntries.date, startDate));
+    }
+    if (endDate) {
       whereConditions.push(lte(moodEntries.date, endDate));
-    } else if (startDate) {
-      whereConditions.push(eq(moodEntries.date, startDate));
     }
 
-    return await db
+    const result = await db
       .select()
       .from(moodEntries)
       .where(and(...whereConditions))
       .orderBy(desc(moodEntries.createdAt));
+      
+    return result as MoodEntry[];
   }
 
   async getMoodEntriesByPrescription(prescriptionId: string): Promise<MoodEntry[]> {
-    return await db
+    const result = await db
       .select()
       .from(moodEntries)
       .where(eq(moodEntries.prescriptionId, prescriptionId))
       .orderBy(desc(moodEntries.date), desc(moodEntries.createdAt));
+      
+    return result as MoodEntry[];
   }
 }
 

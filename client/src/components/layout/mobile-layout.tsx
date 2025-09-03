@@ -3,7 +3,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { MobileHeader } from "@/components/mobile";
 import { BottomNavigation } from "@/components/mobile";
 import { useAuth } from "@/hooks/useAuth";
-import { Home, Users, FileText, User, Menu, LogOut } from "lucide-react";
+import { Home, Users, FileText, User, Menu, LogOut, Shield, UserPlus, Settings } from "lucide-react";
 import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 
@@ -122,7 +122,7 @@ interface DefaultMobileDrawerProps {
 }
 
 export function DefaultMobileDrawer({ onProfileClick }: DefaultMobileDrawerProps = {}) {
-  const { isNutritionist, isPatient } = useAuth();
+  const { isNutritionist, isPatient, isAdmin } = useAuth();
   const [, setLocation] = useLocation();
 
   const handleLogout = () => {
@@ -131,6 +131,11 @@ export function DefaultMobileDrawer({ onProfileClick }: DefaultMobileDrawerProps
   };
 
   const navigationItems = [
+    ...(isAdmin ? [
+      { label: 'Painel Principal', href: '/admin', icon: Shield, action: 'navigate' },
+      { label: 'Criar Usuário', href: '/admin/create-user', icon: UserPlus, action: 'navigate' },
+      { label: 'Meu Perfil', href: '/admin/profile', icon: Settings, action: 'navigate' },
+    ] : []),
     ...(isNutritionist ? [
       { label: 'Pacientes', href: '/patients', icon: Users, action: 'navigate' },
       { label: 'Nova Prescrição', href: '/patients/new', icon: FileText, action: 'navigate' },

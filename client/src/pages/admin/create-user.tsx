@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { MobileLayout, DefaultMobileDrawer } from "@/components/layout/mobile-layout";
+import { DefaultMobileDrawer } from "@/components/layout/mobile-layout";
 
 const createUserSchema = z.object({
   email: z.string().email("Email inválido."),
@@ -69,13 +69,14 @@ export default function CreateUserPage() {
   };
 
   return (
-    <MobileLayout
-      title="Criar Novo Usuário"
-      showBack={true}
-      onBack={() => setLocation("/admin")}
-      drawerContent={<DefaultMobileDrawer />}
-    >
-      <main className="max-w-2xl mx-auto">
+    <div className="min-h-screen bg-background">
+      <Header
+        title="Criar Novo Usuário"
+        showBack={true}
+        onBack={() => setLocation("/admin")}
+        drawerContent={<DefaultMobileDrawer />}
+      />
+      <main className="max-w-2xl mx-auto p-4 lg:p-6">
         <Card>
           <CardHeader>
             <CardTitle>Informações do Usuário</CardTitle>
@@ -184,6 +185,6 @@ export default function CreateUserPage() {
           </CardContent>
         </Card>
       </main>
-    </MobileLayout>
+    </div>
   );
 }

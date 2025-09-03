@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Plus, Copy } from "lucide-react";
+import Header from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -12,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import type { Prescription, Patient, MealData } from "@shared/schema";
 import { v4 as uuidv4 } from 'uuid';
-import { MobileLayout, DefaultMobileDrawer } from "@/components/layout/mobile-layout";
+import { DefaultMobileDrawer } from "@/components/layout/mobile-layout";
 
 interface PrescriptionEditorPageProps {
   params: { id: string };
@@ -133,33 +134,42 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
 
   if (isLoading) {
     return (
-      <MobileLayout title="Carregando..." drawerContent={<DefaultMobileDrawer />}>
-        <main className="max-w-4xl mx-auto">
+      <div className="min-h-screen bg-background">
+        <Header title="Carregando..." />
+        <main className="max-w-4xl mx-auto p-4 lg:p-6 text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
         </main>
-      </MobileLayout>
+      </div>
     );
   }
 
   if (!prescription) {
     return (
-      <MobileLayout title="Prescrição não encontrada" showBack={true} onBack={() => setLocation("/")} drawerContent={<DefaultMobileDrawer />}>
-        <main className="max-w-4xl mx-auto">
+      <div className="min-h-screen bg-background">
+        <Header 
+          title="Prescrição não encontrada"
+          showBack={true}
+          onBack={() => setLocation("/")}
+        />
+        <main className="max-w-4xl mx-auto p-4 lg:p-6">
           <p className="text-center text-muted-foreground">Prescrição não encontrada.</p>
         </main>
-      </MobileLayout>
+      </div>
     );
   }
 
+  const isSaving = updatePrescriptionMutation.isPending || publishPrescriptionMutation.isPending;
+
   return (
-    <MobileLayout
-      title={title || "Editor de Prescrição"}
-      subtitle={patient?.name}
-      showBack={true}
-      onBack={() => setLocation(`/patients/${prescription.patientId}`)}
-      drawerContent={<DefaultMobileDrawer />}
-    >
-      <main className="max-w-4xl mx-auto">
+    <div className="min-h-screen bg-background">
+      <Header
+        title={title || "Editor de Prescrição"}
+        subtitle={patient?.name}
+        showBack={true}
+        onBack={() => setLocation(`/patients/${prescription.patientId}`)}
+        drawerContent={<DefaultMobileDrawer />}
+      />
+      <main className="max-w-4xl mx-auto p-4 lg:p-6">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
           <div className="flex-1 w-full">
             <Input
@@ -169,28 +179,36 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
               placeholder="Título da prescrição"
               data-testid="input-prescription-title"
             />
-            <p className="text-sm text-muted-foreground mt-1">
+            <div className="text-sm text-muted-foreground mt-1">
               {patient?.name} • 
               <Badge variant={prescription.status === 'published' ? 'default' : 'secondary'} className="ml-2">
                 {prescription.status === 'published' ? 'Publicado' : 'Rascunho'}
               </Badge>
-            </p>
+            </div>
           </div>
           <div className="flex items-center space-x-3">
             <Button
               variant="secondary"
+              onClick={() => setLocation(`/patients/${prescription.patientId}`)}
+              disabled={isSaving}
+              data-testid="button-close-editor"
+            >
+              Fechar
+            </Button>
+            <Button
+              variant="secondary"
               onClick={handleSaveDraft}
-              disabled={updatePrescriptionMutation.isPending}
+              disabled={isSaving}
               data-testid="button-save-draft"
             >
-              Salvar Rascunho
+              {updatePrescriptionMutation.isPending ? "Salvando..." : "Salvar Rascunho"}
             </Button>
             <Button
               onClick={handlePublish}
-              disabled={publishPrescriptionMutation.isPending}
+              disabled={isSaving}
               data-testid="button-publish"
             >
-              Publicar
+              {publishPrescriptionMutation.isPending ? "Publicando..." : "Publicar"}
             </Button>
           </div>
         </div>
@@ -254,6 +272,6 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
           </CardContent>
         </Card>
       </main>
-    </MobileLayout>
+    </div>
   );
 }

@@ -4,11 +4,12 @@ import { ArrowLeft, CheckCircle, Eye, FileText, Plus, Trash2, Users, XCircle } f
 import { useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import Header from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { MobileLayout, DefaultMobileDrawer } from "@/components/layout/mobile-layout";
+import { DefaultMobileDrawer } from "@/components/layout/mobile-layout";
 import type { Patient, Prescription } from "@shared/schema";
 
 export default function PatientDetails({ params }: { params: { id: string } }) {
@@ -19,18 +20,11 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
 
   const { data: patient, isLoading: patientLoading } = useQuery<Patient>({
     queryKey: ["/api/patients", params.id],
-    queryFn: async () => {
-      const response = await apiRequest("GET", `/api/patients/${params.id}`);
-      return await response.json();
-    },
   });
 
   const { data: prescriptions, isLoading: prescriptionsLoading } = useQuery<Prescription[]>({
     queryKey: ["/api/patients", params.id, "prescriptions"],
-    queryFn: async () => {
-      const response = await apiRequest("GET", `/api/patients/${params.id}/prescriptions`);
-      return await response.json();
-    },
+    enabled: !!patient,
   });
 
   const createPrescriptionMutation = useMutation({
@@ -79,6 +73,9 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
   const deletePrescriptionMutation = useMutation({
     mutationFn: async (prescriptionId: string) => {
       const response = await apiRequest("DELETE", `/api/prescriptions/${prescriptionId}`);
+      if (response.status === 204) {
+        return null;
+      }
       return await response.json();
     },
     onSuccess: () => {
@@ -125,46 +122,54 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
 
   if (patientLoading) {
     return (
-      <MobileLayout title="Carregando..." drawerContent={<DefaultMobileDrawer />}>
-        <main className="max-w-7xl mx-auto">
+      <div className="min-h-screen bg-background">
+        <Header title="Carregando..." />
+        <main className="max-w-7xl mx-auto p-4 lg:p-6 text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
         </main>
-      </MobileLayout>
+      </div>
     );
   }
 
   if (!patient) {
     return (
-      <MobileLayout title="Paciente não encontrado" showBack={true} onBack={() => setLocation("/patients")} drawerContent={<DefaultMobileDrawer />}>
-        <main className="max-w-7xl mx-auto">
+      <div className="min-h-screen bg-background">
+        <Header 
+          title="Paciente não encontrado" 
+          showBack={true} 
+          onBack={() => setLocation("/patients")} 
+        />
+        <main className="max-w-7xl mx-auto p-4 lg:p-6">
           <p className="text-center text-muted-foreground">Paciente não encontrado.</p>
         </main>
-      </MobileLayout>
+      </div>
     );
   }
   
   const hasAccountLinked = !!patient.userId;
 
   return (
-    <MobileLayout
-      title={patient.name}
-      subtitle={patient.email || undefined}
-      showBack={true}
-      onBack={() => setLocation("/patients")}
-      drawerContent={<DefaultMobileDrawer />}
-    >
-      <div className="flex justify-end mb-4">
-        <Button
-          onClick={() => createPrescriptionMutation.mutate()}
-          disabled={createPrescriptionMutation.isPending || !hasAccountLinked}
-          title={!hasAccountLinked ? "Paciente precisa ter um login para criar prescrições" : "Nova Prescrição"}
-          data-testid="button-new-prescription"
-        >
-          Nova Prescrição
-        </Button>
-      </div>
+    <div className="min-h-screen bg-background">
+      <Header
+        title={patient.name}
+        subtitle={patient.email || undefined}
+        showBack={true}
+        onBack={() => setLocation("/patients")}
+        drawerContent={<DefaultMobileDrawer />}
+      />
+      
+      <main className="max-w-7xl mx-auto p-4 lg:p-6">
+        <div className="flex justify-end mb-4">
+          <Button
+            onClick={() => createPrescriptionMutation.mutate()}
+            disabled={createPrescriptionMutation.isPending || !hasAccountLinked}
+            title={!hasAccountLinked ? "Paciente precisa ter um login para criar prescrições" : "Nova Prescrição"}
+            data-testid="button-new-prescription"
+          >
+            Nova Prescrição
+          </Button>
+        </div>
 
-      <main className="max-w-7xl mx-auto">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Patient Info */}
           <div className="lg:col-span-1 space-y-6">
@@ -466,6 +471,6 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
           </div>
         </div>
       </main>
-    </MobileLayout>
+    </div>
   );
 }
