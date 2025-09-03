@@ -60,6 +60,18 @@ export default function PatientPrescriptionView() {
     retry: false,
   });
 
+  // Adicione esta lógica logo após o useQuery do currentPatient
+  const goalMap = {
+    lose_weight: "Perder Peso",
+    maintain_weight: "Manter Peso",
+    gain_weight: "Ganhar Peso",
+  };
+
+  const patientGoal = currentPatient?.goal as keyof typeof goalMap | undefined;
+  const goalText = patientGoal && goalMap[patientGoal] 
+    ? `Objetivo: ${goalMap[patientGoal]}` 
+    : "Seu Plano Alimentar";
+
   useEffect(() => {
     if (prescriptions.length > 0 && !selectedPrescription) {
       setSelectedPrescription(prescriptions[0]);
@@ -184,7 +196,10 @@ export default function PatientPrescriptionView() {
     return (
       <div className="min-h-screen bg-background">
         {/* Header customizado com gradiente */}
-        <HeaderDNutri onProfileClick={() => setIsProfileModalOpen(true)} />
+        <HeaderDNutri 
+          onProfileClick={() => setIsProfileModalOpen(true)} 
+          goalText={goalText} 
+        />
         
         {/* Área de conteúdo com cantos superiores arredondados */}
         <main className="bg-white rounded-t-2xl -mt-2 min-h-screen pt-6 pb-20">
