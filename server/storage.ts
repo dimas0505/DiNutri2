@@ -549,18 +549,19 @@ export class DatabaseStorage implements IStorage {
         console.log("Invitation created successfully:", result);
         return { token: result[0].token };
       } catch (schemaError: any) {
-        if (schemaError.message?.includes('column "email" of relation "invitations" does not exist')) {
-          console.log("Email column doesn't exist, using legacy schema");
+        if (schemaError.message?.includes('column "email" of relation "invitations" does not exist') ||
+            schemaError.message?.includes('column "expires_at" of relation "invitations" does not exist')) {
+          console.log("New schema columns don't exist, using legacy schema");
           
-          // Use raw SQL for legacy schema compatibility
+          // Use raw SQL for legacy schema compatibility (only use columns that exist in original schema)
           const id = nanoid();
           const status = "pending";
           
-          console.log("Creating invitation with raw SQL (legacy schema):", { id, nutritionistId, token, expiresAt, status });
+          console.log("Creating invitation with raw SQL (legacy schema):", { id, nutritionistId, token, status });
           
           const result = await db.execute(sql`
-            INSERT INTO "invitations" ("id", "nutritionist_id", "token", "expires_at", "status", "created_at") 
-            VALUES (${id}, ${nutritionistId}, ${token}, ${expiresAt}, ${status}, NOW()) 
+            INSERT INTO "invitations" ("id", "nutritionist_id", "token", "status", "created_at") 
+            VALUES (${id}, ${nutritionistId}, ${token}, ${status}, NOW()) 
             RETURNING "token"
           `);
             
