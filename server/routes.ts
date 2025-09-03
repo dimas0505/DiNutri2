@@ -4,7 +4,7 @@ import passport from "passport";
 import bcrypt from "bcrypt";
 import { storage } from "./storage.js";
 import { setupAuth, isAuthenticated } from "./auth.js";
-import { insertPatientSchema, insertPrescriptionSchema, updatePrescriptionSchema, insertMoodEntrySchema } from "../shared/schema.js";
+import { insertPatientSchema, updatePatientSchema, insertPrescriptionSchema, updatePrescriptionSchema, insertMoodEntrySchema } from "../shared/schema.js";
 import { z } from "zod";
 
 const SALT_ROUNDS = 10;
@@ -263,6 +263,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Erro ao buscar detalhes do paciente:", error);
       res.status(500).json({ message: "Falha ao buscar detalhes do paciente." });
+    }
+  });
+
+  app.put('/api/patients/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      // Valida os dados recebidos usando o novo schema
+      const patientData = updatePatientSchema.parse(req.body);
+
+      const patient = await storage.getPatient(req.params.id);
+      
+      // Garante que o nutricionista só possa editar seus próprios pacientes
+      if (!patient || patient.ownerId !== req.user.id) {
+        return res.status(404).json({ message: "Paciente não encontrado ou acesso não autorizado." });
+      }
+
+      const updatedPatient = await storage.updatePatient(req.params.id, patientData);
+      res.json(updatedPatient);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Dados do paciente inválidos.", errors: error.flatten() });
+      }
+      console.error("Erro ao atualizar paciente:", error);
+      res.status(500).json({ message: "Falha ao atualizar paciente." });
     }
   });
   
