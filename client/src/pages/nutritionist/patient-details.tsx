@@ -210,6 +210,122 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
               </CardContent>
             </Card>
 
+            {/* Anamnese Section */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Anamnese Nutricional</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4 text-sm">
+                  {patient.goal && (
+                    <div>
+                      <span className="text-muted-foreground font-medium">Objetivo:</span>
+                      <p className="mt-1">
+                        {patient.goal === 'lose_weight' ? 'Perder peso' : 
+                         patient.goal === 'maintain_weight' ? 'Manter peso' : 
+                         patient.goal === 'gain_weight' ? 'Ganhar peso' : patient.goal}
+                      </p>
+                    </div>
+                  )}
+                  
+                  {patient.activityLevel && (
+                    <div>
+                      <span className="text-muted-foreground font-medium">Nível de Atividade:</span>
+                      <p className="mt-1">
+                        {patient.activityLevel === '1' ? '1 - Sedentário' :
+                         patient.activityLevel === '2' ? '2 - Levemente ativo' :
+                         patient.activityLevel === '3' ? '3 - Moderadamente ativo' :
+                         patient.activityLevel === '4' ? '4 - Muito ativo' :
+                         patient.activityLevel === '5' ? '5 - Extremamente ativo' : patient.activityLevel}
+                      </p>
+                    </div>
+                  )}
+
+                  {patient.biotype && (
+                    <div>
+                      <span className="text-muted-foreground font-medium">Biotipo:</span>
+                      <p className="mt-1">
+                        {patient.biotype === 'gain_weight_easily' ? 'Ganho peso facilmente' :
+                         patient.biotype === 'hard_to_gain' ? 'Dificuldade para ganhar peso' :
+                         patient.biotype === 'gain_muscle_easily' ? 'Ganho músculo facilmente' : patient.biotype}
+                      </p>
+                    </div>
+                  )}
+
+                  {(patient.mealsPerDayCurrent || patient.mealsPerDayWilling) && (
+                    <div>
+                      <span className="text-muted-foreground font-medium">Refeições por dia:</span>
+                      <p className="mt-1">
+                        {patient.mealsPerDayCurrent && `Atual: ${patient.mealsPerDayCurrent}`}
+                        {patient.mealsPerDayCurrent && patient.mealsPerDayWilling && ' | '}
+                        {patient.mealsPerDayWilling && `Disposto: ${patient.mealsPerDayWilling}`}
+                      </p>
+                    </div>
+                  )}
+
+                  {patient.alcoholConsumption && (
+                    <div>
+                      <span className="text-muted-foreground font-medium">Consumo de Álcool:</span>
+                      <p className="mt-1">
+                        {patient.alcoholConsumption === 'no' ? 'Não bebe' :
+                         patient.alcoholConsumption === 'moderate' ? 'Moderadamente' :
+                         patient.alcoholConsumption === 'yes' ? 'Sim, frequentemente' : patient.alcoholConsumption}
+                      </p>
+                    </div>
+                  )}
+
+                  {patient.canEatMorningSolids !== undefined && (
+                    <div>
+                      <span className="text-muted-foreground font-medium">Come sólidos pela manhã:</span>
+                      <p className="mt-1">{patient.canEatMorningSolids ? 'Sim' : 'Não'}</p>
+                    </div>
+                  )}
+
+                  {patient.likedHealthyFoods && Array.isArray(patient.likedHealthyFoods) && patient.likedHealthyFoods.length > 0 && (
+                    <div>
+                      <span className="text-muted-foreground font-medium">Alimentos saudáveis que gosta:</span>
+                      <p className="mt-1">{patient.likedHealthyFoods.join(', ')}</p>
+                    </div>
+                  )}
+
+                  {patient.dislikedFoods && Array.isArray(patient.dislikedFoods) && patient.dislikedFoods.length > 0 && (
+                    <div>
+                      <span className="text-muted-foreground font-medium">Alimentos que não gosta:</span>
+                      <p className="mt-1">{patient.dislikedFoods.join(', ')}</p>
+                    </div>
+                  )}
+
+                  {patient.hasIntolerance && patient.intolerances && Array.isArray(patient.intolerances) && patient.intolerances.length > 0 && (
+                    <div>
+                      <span className="text-muted-foreground font-medium">Intolerâncias:</span>
+                      <p className="mt-1">{patient.intolerances.join(', ')}</p>
+                    </div>
+                  )}
+
+                  {patient.diseases && (
+                    <div>
+                      <span className="text-muted-foreground font-medium">Doenças/Condições:</span>
+                      <p className="mt-1">{patient.diseases}</p>
+                    </div>
+                  )}
+
+                  {patient.medications && (
+                    <div>
+                      <span className="text-muted-foreground font-medium">Medicamentos:</span>
+                      <p className="mt-1">{patient.medications}</p>
+                    </div>
+                  )}
+
+                  {patient.supplements && (
+                    <div>
+                      <span className="text-muted-foreground font-medium">Suplementos:</span>
+                      <p className="mt-1">{patient.supplements}</p>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
             <Card>
               <CardHeader>
                 <CardTitle>Acesso do Paciente</CardTitle>

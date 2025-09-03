@@ -208,7 +208,7 @@ export default function PatientPrescriptionView() {
         <ProfileModal 
           open={isProfileModalOpen}
           onOpenChange={setIsProfileModalOpen}
-          patient={currentPatient}
+          patient={currentPatient || null}
         />
 
         {/* Modal de substituições */}

@@ -67,6 +67,16 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
+  // Helper function to normalize patient data
+  private normalizePatientData(patient: Patient): Patient {
+    return {
+      ...patient,
+      likedHealthyFoods: patient.likedHealthyFoods || [],
+      dislikedFoods: patient.dislikedFoods || [],
+      intolerances: patient.intolerances || [],
+    };
+  }
+
   // User operations
   async getUser(id: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
@@ -222,61 +232,359 @@ export class DatabaseStorage implements IStorage {
 
   // Patient operations
   async getPatientsByOwner(ownerId: string): Promise<Patient[]> {
-    return await db
-      .select()
-      .from(patients)
-      .where(eq(patients.ownerId, ownerId))
-      .orderBy(desc(patients.createdAt));
+    try {
+      // Try with full schema first, fallback to basic columns if new columns don't exist
+      const patientList = await db
+        .select()
+        .from(patients)
+        .where(eq(patients.ownerId, ownerId))
+        .orderBy(desc(patients.createdAt));
+      
+      return patientList.map((patient: Patient) => this.normalizePatientData(patient));
+    } catch (error: any) {
+      if (error.message?.includes('column "goal" does not exist')) {
+        console.log("New anamnese columns don't exist, using legacy patient schema");
+        
+        // Fallback to basic columns only
+        const basicPatientList = await db
+          .select({
+            id: patients.id,
+            ownerId: patients.ownerId,
+            userId: patients.userId,
+            name: patients.name,
+            email: patients.email,
+            birthDate: patients.birthDate,
+            sex: patients.sex,
+            heightCm: patients.heightCm,
+            weightKg: patients.weightKg,
+            notes: patients.notes,
+            createdAt: patients.createdAt,
+            updatedAt: patients.updatedAt,
+          })
+          .from(patients)
+          .where(eq(patients.ownerId, ownerId))
+          .orderBy(desc(patients.createdAt));
+        
+        // Convert to full patient objects with defaults for missing fields
+        return basicPatientList.map((patient: any) => this.normalizePatientData({
+          ...patient,
+          goal: null,
+          activityLevel: null,
+          likedHealthyFoods: [],
+          dislikedFoods: [],
+          hasIntolerance: null,
+          intolerances: [],
+          canEatMorningSolids: null,
+          mealsPerDayCurrent: null,
+          mealsPerDayWilling: null,
+          alcoholConsumption: null,
+          supplements: null,
+          diseases: null,
+          medications: null,
+          biotype: null,
+        }));
+      }
+      throw error;
+    }
   }
 
   async getPatient(id: string): Promise<Patient | undefined> {
-    const [patient] = await db.select().from(patients).where(eq(patients.id, id));
-    return patient;
+    try {
+      const [patient] = await db.select().from(patients).where(eq(patients.id, id));
+      return patient ? this.normalizePatientData(patient) : undefined;
+    } catch (error: any) {
+      if (error.message?.includes('column "goal" does not exist')) {
+        console.log("New anamnese columns don't exist, using legacy patient schema for getPatient");
+        
+        const [basicPatient] = await db
+          .select({
+            id: patients.id,
+            ownerId: patients.ownerId,
+            userId: patients.userId,
+            name: patients.name,
+            email: patients.email,
+            birthDate: patients.birthDate,
+            sex: patients.sex,
+            heightCm: patients.heightCm,
+            weightKg: patients.weightKg,
+            notes: patients.notes,
+            createdAt: patients.createdAt,
+            updatedAt: patients.updatedAt,
+          })
+          .from(patients)
+          .where(eq(patients.id, id));
+        
+        if (!basicPatient) return undefined;
+        
+        return this.normalizePatientData({
+          ...basicPatient,
+          goal: null,
+          activityLevel: null,
+          likedHealthyFoods: [],
+          dislikedFoods: [],
+          hasIntolerance: null,
+          intolerances: [],
+          canEatMorningSolids: null,
+          mealsPerDayCurrent: null,
+          mealsPerDayWilling: null,
+          alcoholConsumption: null,
+          supplements: null,
+          diseases: null,
+          medications: null,
+          biotype: null,
+        });
+      }
+      throw error;
+    }
   }
 
   async getPatientByUserId(userId: string): Promise<Patient | undefined> {
-    const [patient] = await db.select().from(patients).where(eq(patients.userId, userId));
-    return patient;
+    try {
+      const [patient] = await db.select().from(patients).where(eq(patients.userId, userId));
+      return patient ? this.normalizePatientData(patient) : undefined;
+    } catch (error: any) {
+      if (error.message?.includes('column "goal" does not exist')) {
+        console.log("New anamnese columns don't exist, using legacy patient schema for getPatientByUserId");
+        
+        const [basicPatient] = await db
+          .select({
+            id: patients.id,
+            ownerId: patients.ownerId,
+            userId: patients.userId,
+            name: patients.name,
+            email: patients.email,
+            birthDate: patients.birthDate,
+            sex: patients.sex,
+            heightCm: patients.heightCm,
+            weightKg: patients.weightKg,
+            notes: patients.notes,
+            createdAt: patients.createdAt,
+            updatedAt: patients.updatedAt,
+          })
+          .from(patients)
+          .where(eq(patients.userId, userId));
+        
+        if (!basicPatient) return undefined;
+        
+        return this.normalizePatientData({
+          ...basicPatient,
+          goal: null,
+          activityLevel: null,
+          likedHealthyFoods: [],
+          dislikedFoods: [],
+          hasIntolerance: null,
+          intolerances: [],
+          canEatMorningSolids: null,
+          mealsPerDayCurrent: null,
+          mealsPerDayWilling: null,
+          alcoholConsumption: null,
+          supplements: null,
+          diseases: null,
+          medications: null,
+          biotype: null,
+        });
+      }
+      throw error;
+    }
   }
 
   async createPatient(patient: InsertPatient): Promise<Patient> {
-    const patientWithId = {
-      id: nanoid(),
-      ...patient,
-    };
-    
-    const [newPatient] = await db.insert(patients).values(patientWithId).returning();
-    return newPatient;
+    try {
+      const patientWithId = {
+        id: nanoid(),
+        ...patient,
+        // Ensure arrays have proper defaults
+        likedHealthyFoods: patient.likedHealthyFoods || [],
+        dislikedFoods: patient.dislikedFoods || [],
+        intolerances: patient.intolerances || [],
+      };
+      
+      const [newPatient] = await db.insert(patients).values(patientWithId).returning();
+      return this.normalizePatientData(newPatient);
+    } catch (error: any) {
+      if (error.message?.includes('column "goal" does not exist') || 
+          error.message?.includes('column "liked_healthy_foods" does not exist')) {
+        console.log("New anamnese columns don't exist, using legacy patient creation");
+        
+        // Use raw SQL for legacy schema compatibility
+        const id = nanoid();
+        
+        console.log("Creating patient with raw SQL (legacy schema)");
+        
+        await db.execute({
+          sql: `INSERT INTO "patients" (
+                  "id", "owner_id", "user_id", "name", "email", "birth_date", 
+                  "sex", "height_cm", "weight_kg", "notes", "created_at", "updated_at"
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())`,
+          args: [
+            id,
+            patient.ownerId,
+            patient.userId || null,
+            patient.name,
+            patient.email || null,
+            patient.birthDate || null,
+            patient.sex || null,
+            patient.heightCm || null,
+            patient.weightKg || null,
+            patient.notes || null,
+          ],
+        });
+        
+        // Get the created patient
+        const [createdPatient] = await db.execute({
+          sql: `SELECT * FROM "patients" WHERE "id" = $1`,
+          args: [id],
+        });
+        
+        // Return normalized data with legacy structure
+        return this.normalizePatientData({
+          id,
+          ownerId: patient.ownerId,
+          userId: patient.userId || null,
+          name: patient.name,
+          email: patient.email || null,
+          birthDate: patient.birthDate || null,
+          sex: patient.sex || null,
+          heightCm: patient.heightCm || null,
+          weightKg: patient.weightKg || null,
+          notes: patient.notes || null,
+          goal: null,
+          activityLevel: null,
+          likedHealthyFoods: [],
+          dislikedFoods: [],
+          hasIntolerance: null,
+          intolerances: [],
+          canEatMorningSolids: null,
+          mealsPerDayCurrent: null,
+          mealsPerDayWilling: null,
+          alcoholConsumption: null,
+          supplements: null,
+          diseases: null,
+          medications: null,
+          biotype: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+      }
+      throw error;
+    }
   }
 
   async updatePatient(id: string, patient: Partial<InsertPatient>): Promise<Patient> {
-    const [updatedPatient] = await db
-      .update(patients)
-      .set({ ...patient, updatedAt: new Date() })
-      .where(eq(patients.id, id))
-      .returning();
-    return updatedPatient;
+    try {
+      const updateData = {
+        ...patient,
+        updatedAt: new Date(),
+        // Ensure arrays have proper defaults if provided
+        ...(patient.likedHealthyFoods !== undefined && { likedHealthyFoods: patient.likedHealthyFoods || [] }),
+        ...(patient.dislikedFoods !== undefined && { dislikedFoods: patient.dislikedFoods || [] }),
+        ...(patient.intolerances !== undefined && { intolerances: patient.intolerances || [] }),
+      };
+      
+      const [updatedPatient] = await db
+        .update(patients)
+        .set(updateData)
+        .where(eq(patients.id, id))
+        .returning();
+      return this.normalizePatientData(updatedPatient);
+    } catch (error: any) {
+      if (error.message?.includes('column "goal" does not exist') || 
+          error.message?.includes('column "liked_healthy_foods" does not exist')) {
+        console.log("New anamnese columns don't exist, using legacy patient update");
+        
+        // Update with only basic fields that exist in legacy schema
+        const basicUpdateData: any = {
+          updatedAt: new Date(),
+        };
+        
+        // Only include basic fields that exist in legacy schema
+        if (patient.name !== undefined) basicUpdateData.name = patient.name;
+        if (patient.email !== undefined) basicUpdateData.email = patient.email;
+        if (patient.birthDate !== undefined) basicUpdateData.birthDate = patient.birthDate;
+        if (patient.sex !== undefined) basicUpdateData.sex = patient.sex;
+        if (patient.heightCm !== undefined) basicUpdateData.heightCm = patient.heightCm;
+        if (patient.weightKg !== undefined) basicUpdateData.weightKg = patient.weightKg;
+        if (patient.notes !== undefined) basicUpdateData.notes = patient.notes;
+        
+        const [updatedPatient] = await db
+          .update(patients)
+          .set(basicUpdateData)
+          .where(eq(patients.id, id))
+          .returning();
+          
+        return this.normalizePatientData({
+          ...updatedPatient,
+          goal: null,
+          activityLevel: null,
+          likedHealthyFoods: [],
+          dislikedFoods: [],
+          hasIntolerance: null,
+          intolerances: [],
+          canEatMorningSolids: null,
+          mealsPerDayCurrent: null,
+          mealsPerDayWilling: null,
+          alcoholConsumption: null,
+          supplements: null,
+          diseases: null,
+          medications: null,
+          biotype: null,
+        });
+      }
+      throw error;
+    }
   }
   
   // Invitation operations
   async createInvitation(nutritionistId: string): Promise<{ token: string }> {
-    const token = randomBytes(32).toString("hex");
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7); // Expira em 7 dias
-    
-    const invitationWithId = {
-      id: nanoid(),
-      nutritionistId,
-      token,
-      email: "placeholder@email.com", // Email temporário, será atualizado quando o paciente se registrar
-      expiresAt,
-    };
-    
-    const [newInvitation] = await db
-      .insert(invitations)
-      .values(invitationWithId)
-      .returning({ token: invitations.token });
-    return newInvitation;
+    try {
+      const token = randomBytes(32).toString("hex");
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 7); // Expira em 7 dias
+      
+      // Try with new schema first, fallback to old schema if column doesn't exist
+      try {
+        const invitationWithId = {
+          id: nanoid(),
+          nutritionistId,
+          token,
+          email: "placeholder@email.com", // Email temporário, será atualizado quando o paciente se registrar
+          expiresAt,
+        };
+        
+        console.log("Creating invitation with data (new schema):", invitationWithId);
+        
+        const [newInvitation] = await db
+          .insert(invitations)
+          .values(invitationWithId)
+          .returning({ token: invitations.token });
+          
+        console.log("Invitation created successfully:", newInvitation);
+        return newInvitation;
+      } catch (schemaError: any) {
+        if (schemaError.message?.includes('column "email" of relation "invitations" does not exist')) {
+          console.log("Email column doesn't exist, using legacy schema");
+          
+          // Use raw SQL for legacy schema compatibility
+          const id = nanoid();
+          const status = "pending";
+          
+          console.log("Creating invitation with raw SQL (legacy schema):", { id, nutritionistId, token, expiresAt, status });
+          
+          await db.execute({
+            sql: `INSERT INTO "invitations" ("id", "nutritionist_id", "token", "expires_at", "status", "created_at") 
+                  VALUES ($1, $2, $3, $4, $5, NOW())`,
+            args: [id, nutritionistId, token, expiresAt, status],
+          });
+            
+          console.log("Invitation created successfully (legacy)");
+          return { token };
+        }
+        throw schemaError;
+      }
+    } catch (error) {
+      console.error("Error in createInvitation storage method:", error);
+      throw error;
+    }
   }
 
   async getInvitationByToken(token: string): Promise<{ nutritionistId: string } | undefined> {
