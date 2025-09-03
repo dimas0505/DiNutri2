@@ -211,7 +211,7 @@ export default function NewPatientPage() {
                             <FormItem>
                               <FormLabel>E-mail *</FormLabel>
                               <FormControl>
-                                <Input type="email" placeholder="email@exemplo.com" {...field} />
+                                <Input type="email" placeholder="email@exemplo.com" value={field.value || ""} onChange={field.onChange} onBlur={field.onBlur} name={field.name} ref={field.ref} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -370,7 +370,7 @@ export default function NewPatientPage() {
                             <FormItem className="flex flex-row items-start space-x-3 space-y-0 pt-6">
                               <FormControl>
                                 <Checkbox
-                                  checked={field.value}
+                                  checked={field.value || false}
                                   onCheckedChange={field.onChange}
                                 />
                               </FormControl>

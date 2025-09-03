@@ -188,7 +188,7 @@ export default function AnamnesePage() {
                         <FormItem>
                           <FormLabel>E-mail</FormLabel>
                           <FormControl>
-                            <Input type="email" placeholder="seu@email.com" {...field} />
+                            <Input type="email" placeholder="seu@email.com" value={field.value || ""} onChange={field.onChange} onBlur={field.onBlur} name={field.name} ref={field.ref} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -437,7 +437,7 @@ export default function AnamnesePage() {
                         <FormItem className="flex flex-row items-start space-x-3 space-y-0">
                           <FormControl>
                             <Checkbox
-                              checked={field.value}
+                              checked={field.value || false}
                               onCheckedChange={field.onChange}
                             />
                           </FormControl>
@@ -481,7 +481,7 @@ export default function AnamnesePage() {
                       <FormItem className="flex flex-row items-start space-x-3 space-y-0">
                         <FormControl>
                           <Checkbox
-                            checked={field.value}
+                            checked={field.value || false}
                             onCheckedChange={field.onChange}
                           />
                         </FormControl>

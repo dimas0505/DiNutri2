@@ -165,7 +165,7 @@ export default function PatientRegisterPage() {
                         <FormItem>
                           <FormLabel>Email</FormLabel>
                           <FormControl>
-                            <Input type="email" placeholder="seu@email.com" {...field} />
+                            <Input type="email" placeholder="seu@email.com" value={field.value || ""} onChange={field.onChange} onBlur={field.onBlur} name={field.name} ref={field.ref} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
