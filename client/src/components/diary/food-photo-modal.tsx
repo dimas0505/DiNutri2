@@ -29,22 +29,53 @@ export default function FoodPhotoModal({ isOpen, onClose, meal, prescriptionId }
     mutationFn: async () => {
       if (!file) throw new Error("Nenhum arquivo selecionado.");
 
-      // 1. Faz o upload do arquivo usando o novo fluxo do Vercel Blob client.
-      // Ele automaticamente chama nosso endpoint /api/food-diary/upload-url.
-      const blob = await upload(file.name, file, {
-        access: 'public',
-        handleUploadUrl: '/api/food-diary/upload-url',
-      });
+      // Check if Vercel Blob is available by trying the upload-url endpoint first
+      try {
+        // Try Vercel Blob approach first (for production)
+        const blob = await upload(file.name, file, {
+          access: 'public',
+          handleUploadUrl: '/api/food-diary/upload-url',
+        });
 
-      // 2. Salva a entrada no diário no nosso DB com a URL retornada.
-      const entryPayload = {
-        prescriptionId,
-        mealId: meal.id,
-        imageUrl: blob.url,
-        notes,
-        date: new Date().toISOString().split('T')[0],
-      };
-      await apiRequest("POST", "/api/food-diary/entries", entryPayload);
+        // 2. Salva a entrada no diário no nosso DB com a URL retornada.
+        const entryPayload = {
+          prescriptionId,
+          mealId: meal.id,
+          imageUrl: blob.url,
+          notes,
+          date: new Date().toISOString().split('T')[0],
+        };
+        await apiRequest("POST", "/api/food-diary/entries", entryPayload);
+      } catch (vercelBlobError) {
+        console.log("Vercel Blob not available, falling back to local upload:", vercelBlobError);
+        
+        // Fallback to local file upload
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const uploadResponse = await fetch('/api/food-diary/upload', {
+          method: 'POST',
+          body: formData,
+          credentials: 'include'
+        });
+
+        if (!uploadResponse.ok) {
+          const errorText = await uploadResponse.text();
+          throw new Error(`Upload failed: ${errorText}`);
+        }
+
+        const uploadResult = await uploadResponse.json();
+
+        // 2. Salva a entrada no diário no nosso DB com a URL retornada.
+        const entryPayload = {
+          prescriptionId,
+          mealId: meal.id,
+          imageUrl: uploadResult.url,
+          notes,
+          date: new Date().toISOString().split('T')[0],
+        };
+        await apiRequest("POST", "/api/food-diary/entries", entryPayload);
+      }
     },
     onSuccess: () => {
       toast({ title: "Sucesso!", description: "Foto da refeição enviada." });
