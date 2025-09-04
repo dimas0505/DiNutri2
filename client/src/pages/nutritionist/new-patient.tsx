@@ -20,7 +20,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 import { insertPatientSchema } from "@shared/schema";
 import { DefaultMobileDrawer } from "@/components/layout/mobile-layout";
-import { Copy, LinkIcon } from "lucide-react";
+import { Copy, LinkIcon, UserPlus, User, Calendar, Activity, ClipboardList } from "lucide-react";
 
 // O schema do formulário agora inclui todos os campos de anamnese
 const formSchema = insertPatientSchema.omit({ ownerId: true, userId: true }).extend({
@@ -164,182 +164,388 @@ export default function NewPatientPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header 
-        title="Novo Paciente"
-        showBack={true}
-        onBack={() => setLocation("/patients")}
-        drawerContent={<DefaultMobileDrawer />}
-      />
-      <main className="max-w-4xl mx-auto p-4 lg:p-6">
-        <Card>
-          <CardContent className="p-6">
-            <div className="space-y-6">
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="use-invitation"
-                  checked={useInvitationLink}
-                  onCheckedChange={setUseInvitationLink}
-                />
-                <Label htmlFor="use-invitation">
-                  Enviar link de anamnese ao invés de preencher manualmente
-                </Label>
-              </div>
-              
-              {useInvitationLink ? (
-                <div className="space-y-4">
-                  <p className="text-sm text-muted-foreground">
-                    Ao gerar um link de convite, o paciente receberá um formulário completo de anamnese para preencher, 
-                    criando automaticamente sua conta após o envio.
-                  </p>
-                  
-                  <Button
-                    onClick={handleGenerateInvite}
-                    disabled={createInvitationMutation.isPending}
-                    className="w-full"
-                  >
-                    <LinkIcon className="h-4 w-4 mr-2" />
-                    {createInvitationMutation.isPending ? "Gerando..." : "Gerar Link de Anamnese"}
-                  </Button>
+    <>
+      {/* CSS Animations */}
+      <style>{`
+        @keyframes blob {
+          0% {
+            transform: translate(0px, 0px) scale(1);
+          }
+          33% {
+            transform: translate(30px, -50px) scale(1.1);
+          }
+          66% {
+            transform: translate(-20px, 20px) scale(0.9);
+          }
+          100% {
+            transform: translate(0px, 0px) scale(1);
+          }
+        }
+        .animate-blob {
+          animation: blob 8s infinite;
+        }
+        .animation-delay-2000 {
+          animation-delay: 2s;
+        }
+        .animation-delay-4000 {
+          animation-delay: 4s;
+        }
+      `}</style>
+
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-100 relative overflow-hidden">
+        {/* Enhanced Background decorative elements */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute -top-40 -right-40 w-96 h-96 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob"></div>
+          <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-gradient-to-br from-purple-400 to-indigo-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-2000"></div>
+          <div className="absolute top-40 left-40 w-80 h-80 bg-gradient-to-br from-indigo-400 to-blue-500 rounded-full mix-blend-multiply filter blur-xl opacity-15 animate-blob animation-delay-4000"></div>
+          <div className="absolute top-1/2 right-1/3 w-64 h-64 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-full mix-blend-multiply filter blur-xl opacity-15 animate-blob animation-delay-2000"></div>
+        </div>
+
+        <Header 
+          title="Novo Paciente"
+          showBack={true}
+          onBack={() => setLocation("/patients")}
+          drawerContent={<DefaultMobileDrawer />}
+        />
+        
+        <main className="max-w-4xl mx-auto p-4 lg:p-6 relative z-10">
+          {/* Enhanced Header Section */}
+          <div className="mb-8">
+            <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-8 text-white shadow-xl">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm">
+                  <UserPlus className="h-8 w-8" />
                 </div>
-              ) : (
-                <Form {...form}>
-                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                    
-                    {/* Dados Pessoais */}
-                    <div className="space-y-4">
-                      <h3 className="text-lg font-semibold">Dados Pessoais</h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <FormField
-                          control={form.control}
-                          name="name"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Nome Completo *</FormLabel>
-                              <FormControl>
-                                <Input placeholder="Nome do paciente" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="email"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>E-mail *</FormLabel>
-                              <FormControl>
-                                <Input type="email" placeholder="email@exemplo.com" value={field.value || ""} onChange={field.onChange} onBlur={field.onBlur} name={field.name} ref={field.ref} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
+                <div>
+                  <h1 className="text-3xl font-bold mb-2">Adicionar Novo Paciente</h1>
+                  <p className="text-blue-100 text-lg opacity-90">Cadastre um novo paciente ou envie um convite para anamnese</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <Card className="shadow-2xl border-0 bg-white/95 backdrop-blur-lg rounded-2xl overflow-hidden relative">
+            {/* Card gradient border effect */}
+            <div className="absolute inset-0 bg-gradient-to-r from-blue-500 via-purple-500 to-indigo-500 rounded-2xl blur-sm opacity-10"></div>
+            <div className="relative bg-white/90 backdrop-blur-md rounded-2xl">
+              <CardContent className="p-8">
+                <div className="space-y-8">
+                  <div className="flex items-center space-x-3 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border border-blue-100">
+                    <Switch
+                      id="use-invitation"
+                      checked={useInvitationLink}
+                      onCheckedChange={setUseInvitationLink}
+                      className="data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-blue-500 data-[state=checked]:to-purple-500"
+                    />
+                    <Label htmlFor="use-invitation" className="text-gray-700 font-medium cursor-pointer">
+                      Enviar link de anamnese ao invés de preencher manualmente
+                    </Label>
+                  </div>
+                  
+                  {useInvitationLink ? (
+                    <div className="space-y-6 text-center py-8">
+                      <div className="mx-auto w-20 h-20 bg-gradient-to-r from-blue-100 to-purple-100 rounded-full flex items-center justify-center mb-6">
+                        <LinkIcon className="h-10 w-10 text-blue-600" />
                       </div>
-
-                      <FormField
-                        control={form.control}
-                        name="password"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Senha de Acesso *</FormLabel>
-                            <FormControl>
-                              <Input type="password" placeholder="••••••••" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <FormField
-                          control={form.control}
-                          name="birthDate"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Data de Nascimento</FormLabel>
-                              <FormControl>
-                                <Input type="date" {...field} value={field.value || ""} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="sex"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Sexo</FormLabel>
-                              <Select onValueChange={field.onChange} value={field.value || ""}>
-                                <FormControl>
-                                  <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  <SelectItem value="F">Feminino</SelectItem>
-                                  <SelectItem value="M">Masculino</SelectItem>
-                                  <SelectItem value="Outro">Outro</SelectItem>
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="goal"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Objetivo</FormLabel>
-                              <Select onValueChange={field.onChange} value={field.value || ""}>
-                                <FormControl>
-                                  <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  <SelectItem value="lose_weight">Perder peso</SelectItem>
-                                  <SelectItem value="maintain_weight">Manter peso</SelectItem>
-                                  <SelectItem value="gain_weight">Ganhar peso</SelectItem>
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
+                      <div className="space-y-4">
+                        <h3 className="text-xl font-semibold text-gray-900">Convite por Link de Anamnese</h3>
+                        <p className="text-gray-600 max-w-md mx-auto leading-relaxed">
+                          Ao gerar um link de convite, o paciente receberá um formulário completo de anamnese para preencher, 
+                          criando automaticamente sua conta após o envio.
+                        </p>
                       </div>
+                      
+                      <Button
+                        onClick={handleGenerateInvite}
+                        disabled={createInvitationMutation.isPending}
+                        className="h-14 px-8 text-base bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 rounded-xl shadow-lg transition-all duration-200 transform hover:scale-[1.02] font-medium"
+                      >
+                        <LinkIcon className="h-5 w-5 mr-3" />
+                        {createInvitationMutation.isPending ? "Gerando..." : "Gerar Link de Anamnese"}
+                      </Button>
+                    </div>
+                  ) : (
+                    <Form {...form}>
+                      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+                        
+                        {/* Dados Pessoais Section */}
+                        <div className="space-y-6">
+                          <div className="bg-gradient-to-r from-blue-500 to-indigo-500 rounded-xl p-4 text-white">
+                            <div className="flex items-center gap-3">
+                              <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
+                                <User className="h-5 w-5" />
+                              </div>
+                              <h3 className="text-lg font-semibold">Dados Pessoais</h3>
+                            </div>
+                          </div>
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <FormField
+                              control={form.control}
+                              name="name"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="text-gray-700 font-semibold">Nome Completo *</FormLabel>
+                                  <FormControl>
+                                    <Input 
+                                      placeholder="Nome do paciente" 
+                                      className="h-12 border-2 border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500 focus:ring-opacity-20 transition-all duration-300 rounded-xl text-base bg-white/80 backdrop-blur-sm"
+                                      {...field} 
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            <FormField
+                              control={form.control}
+                              name="email"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="text-gray-700 font-semibold">E-mail *</FormLabel>
+                                  <FormControl>
+                                    <Input 
+                                      type="email" 
+                                      placeholder="email@exemplo.com" 
+                                      className="h-12 border-2 border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500 focus:ring-opacity-20 transition-all duration-300 rounded-xl text-base bg-white/80 backdrop-blur-sm"
+                                      value={field.value || ""} 
+                                      onChange={field.onChange} 
+                                      onBlur={field.onBlur} 
+                                      name={field.name} 
+                                      ref={field.ref} 
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <FormField
-                          control={form.control}
-                          name="heightCm"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Altura (cm)</FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="number"
-                                  placeholder="170"
-                                  value={field.value ?? ""}
-                                  onChange={(e) => field.onChange(e.target.value === "" ? undefined : Number(e.target.value))}
-                                  onBlur={field.onBlur}
-                                  name={field.name}
-                                  ref={field.ref}
-                                />
-                              </FormControl>
-                              <FormDescription>Altura em centímetros (opcional)</FormDescription>
-                              <FormMessage />
-                            </FormItem>
+                          <FormField
+                            control={form.control}
+                            name="password"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-gray-700 font-semibold">Senha de Acesso *</FormLabel>
+                                <FormControl>
+                                  <Input 
+                                    type="password" 
+                                    placeholder="••••••••" 
+                                    className="h-12 border-2 border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500 focus:ring-opacity-20 transition-all duration-300 rounded-xl text-base bg-white/80 backdrop-blur-sm"
+                                    {...field} 
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <FormField
+                              control={form.control}
+                              name="birthDate"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="text-gray-700 font-semibold">Data de Nascimento</FormLabel>
+                                  <FormControl>
+                                    <Input 
+                                      type="date" 
+                                      className="h-12 border-2 border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500 focus:ring-opacity-20 transition-all duration-300 rounded-xl text-base bg-white/80 backdrop-blur-sm"
+                                      {...field} 
+                                      value={field.value || ""} 
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            <FormField
+                              control={form.control}
+                              name="sex"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="text-gray-700 font-semibold">Sexo</FormLabel>
+                                  <Select onValueChange={field.onChange} value={field.value || ""}>
+                                    <FormControl>
+                                      <SelectTrigger className="h-12 border-2 border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500 focus:ring-opacity-20 transition-all duration-300 rounded-xl text-base bg-white/80 backdrop-blur-sm">
+                                        <SelectValue placeholder="Selecionar" />
+                                      </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                      <SelectItem value="F">Feminino</SelectItem>
+                                      <SelectItem value="M">Masculino</SelectItem>
+                                      <SelectItem value="Outro">Outro</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            <FormField
+                              control={form.control}
+                              name="goal"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="text-gray-700 font-semibold">Objetivo</FormLabel>
+                                  <Select onValueChange={field.onChange} value={field.value || ""}>
+                                    <FormControl>
+                                      <SelectTrigger className="h-12 border-2 border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500 focus:ring-opacity-20 transition-all duration-300 rounded-xl text-base bg-white/80 backdrop-blur-sm">
+                                        <SelectValue placeholder="Selecionar" />
+                                      </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                      <SelectItem value="lose_weight">Perder peso</SelectItem>
+                                      <SelectItem value="maintain_weight">Manter peso</SelectItem>
+                                      <SelectItem value="gain_weight">Ganhar peso</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <FormField
+                              control={form.control}
+                              name="heightCm"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="text-gray-700 font-semibold">Altura (cm)</FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      type="number"
+                                      placeholder="170"
+                                      className="h-12 border-2 border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500 focus:ring-opacity-20 transition-all duration-300 rounded-xl text-base bg-white/80 backdrop-blur-sm"
+                                      value={field.value ?? ""}
+                                      onChange={(e) => field.onChange(e.target.value === "" ? undefined : Number(e.target.value))}
+                                      onBlur={field.onBlur}
+                                      name={field.name}
+                                      ref={field.ref}
+                                    />
+                                  </FormControl>
+                                  <FormDescription className="text-gray-500">Altura em centímetros (opcional)</FormDescription>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            <FormField
+                              control={form.control}
+                              name="weightKg"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="text-gray-700 font-semibold">Peso (kg)</FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      placeholder="70.5"
+                                      className="h-12 border-2 border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500 focus:ring-opacity-20 transition-all duration-300 rounded-xl text-base bg-white/80 backdrop-blur-sm"
+                                      value={field.value || ""}
+                                      onChange={field.onChange}
+                                      onBlur={field.onBlur}
+                                      name={field.name}
+                                      ref={field.ref}
+                                    />
+                                  </FormControl>
+                                  <FormDescription className="text-gray-500">Formato: 70.5 (opcional)</FormDescription>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Anamnese Básica Section */}
+                        <div className="space-y-6">
+                          <div className="bg-gradient-to-r from-emerald-500 to-teal-500 rounded-xl p-4 text-white">
+                            <div className="flex items-center gap-3">
+                              <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
+                                <ClipboardList className="h-5 w-5" />
+                              </div>
+                              <h3 className="text-lg font-semibold">Anamnese Básica</h3>
+                            </div>
+                          </div>
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <FormField
+                              control={form.control}
+                              name="activityLevel"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="text-gray-700 font-semibold">Nível de Atividade</FormLabel>
+                                  <Select onValueChange={field.onChange} value={field.value || ""}>
+                                    <FormControl>
+                                      <SelectTrigger className="h-12 border-2 border-gray-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500 focus:ring-opacity-20 transition-all duration-300 rounded-xl text-base bg-white/80 backdrop-blur-sm">
+                                        <SelectValue placeholder="Selecionar" />
+                                      </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                      <SelectItem value="1">1 - Sedentário</SelectItem>
+                                      <SelectItem value="2">2 - Levemente ativo</SelectItem>
+                                      <SelectItem value="3">3 - Moderadamente ativo</SelectItem>
+                                      <SelectItem value="4">4 - Muito ativo</SelectItem>
+                                      <SelectItem value="5">5 - Extremamente ativo</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            <FormField
+                              control={form.control}
+                              name="hasIntolerance"
+                              render={({ field }) => (
+                                <FormItem className="flex flex-row items-start space-x-3 space-y-0 pt-8">
+                                  <FormControl>
+                                    <Checkbox
+                                      checked={field.value || false}
+                                      onCheckedChange={field.onChange}
+                                      className="data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
+                                    />
+                                  </FormControl>
+                                  <div className="space-y-1 leading-none">
+                                    <FormLabel className="text-gray-700 font-semibold cursor-pointer">Possui intolerância alimentar?</FormLabel>
+                                  </div>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+
+                          {form.watch("hasIntolerance") && (
+                            <FormField
+                              control={form.control}
+                              name="intolerances"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="text-gray-700 font-semibold">Quais intolerâncias? (separar por vírgula)</FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      placeholder="Lactose, glúten, etc."
+                                      className="h-12 border-2 border-gray-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500 focus:ring-opacity-20 transition-all duration-300 rounded-xl text-base bg-white/80 backdrop-blur-sm"
+                                      value={field.value?.join(", ") || ""}
+                                      onChange={(e) => field.onChange(e.target.value.split(",").map(s => s.trim()).filter(Boolean))}
+                                      onBlur={field.onBlur}
+                                      name={field.name}
+                                      ref={field.ref}
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
                           )}
-                        />
+                        </div>
+
                         <FormField
                           control={form.control}
-                          name="weightKg"
+                          name="notes"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Peso (kg)</FormLabel>
+                              <FormLabel className="text-gray-700 font-semibold">Observações</FormLabel>
                               <FormControl>
-                                <Input
-                                  placeholder="70.5"
+                                <Textarea 
+                                  placeholder="Observações sobre o paciente..."
+                                  className="min-h-[120px] border-2 border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500 focus:ring-opacity-20 transition-all duration-300 rounded-xl text-base bg-white/80 backdrop-blur-sm resize-none"
                                   value={field.value || ""}
                                   onChange={field.onChange}
                                   onBlur={field.onBlur}
@@ -347,155 +553,75 @@ export default function NewPatientPage() {
                                   ref={field.ref}
                                 />
                               </FormControl>
-                              <FormDescription>Formato: 70.5 (opcional)</FormDescription>
                               <FormMessage />
                             </FormItem>
                           )}
                         />
-                      </div>
-                    </div>
 
-                    {/* Anamnese Simplificada */}
-                    <div className="space-y-4">
-                      <h3 className="text-lg font-semibold">Anamnese Básica</h3>
-                      
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <FormField
-                          control={form.control}
-                          name="activityLevel"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Nível de Atividade</FormLabel>
-                              <Select onValueChange={field.onChange} value={field.value || ""}>
-                                <FormControl>
-                                  <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  <SelectItem value="1">1 - Sedentário</SelectItem>
-                                  <SelectItem value="2">2 - Levemente ativo</SelectItem>
-                                  <SelectItem value="3">3 - Moderadamente ativo</SelectItem>
-                                  <SelectItem value="4">4 - Muito ativo</SelectItem>
-                                  <SelectItem value="5">5 - Extremamente ativo</SelectItem>
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="hasIntolerance"
-                          render={({ field }) => (
-                            <FormItem className="flex flex-row items-start space-x-3 space-y-0 pt-6">
-                              <FormControl>
-                                <Checkbox
-                                  checked={field.value || false}
-                                  onCheckedChange={field.onChange}
-                                />
-                              </FormControl>
-                              <div className="space-y-1 leading-none">
-                                <FormLabel>Possui intolerância alimentar?</FormLabel>
-                              </div>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-
-                      {form.watch("hasIntolerance") && (
-                        <FormField
-                          control={form.control}
-                          name="intolerances"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Quais intolerâncias? (separar por vírgula)</FormLabel>
-                              <FormControl>
-                                <Input
-                                  placeholder="Lactose, glúten, etc."
-                                  value={field.value?.join(", ") || ""}
-                                  onChange={(e) => field.onChange(e.target.value.split(",").map(s => s.trim()).filter(Boolean))}
-                                  onBlur={field.onBlur}
-                                  name={field.name}
-                                  ref={field.ref}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      )}
-                    </div>
-
-                    <FormField
-                      control={form.control}
-                      name="notes"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Observações</FormLabel>
-                          <FormControl>
-                            <Textarea 
-                              placeholder="Observações sobre o paciente..."
-                              className="min-h-[100px]"
-                              value={field.value || ""}
-                              onChange={field.onChange}
-                              onBlur={field.onBlur}
-                              name={field.name}
-                              ref={field.ref}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <div className="flex justify-end space-x-4">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => setLocation("/patients")}
-                      >
-                        Cancelar
-                      </Button>
-                      <Button 
-                        type="submit"
-                        disabled={createPatientMutation.isPending}
-                      >
-                        {createPatientMutation.isPending ? "Criando..." : "Criar Paciente"}
-                      </Button>
-                    </div>
-                  </form>
-                </Form>
-              )}
+                        <div className="flex flex-col sm:flex-row justify-end gap-4 pt-6 border-t border-gray-200">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setLocation("/patients")}
+                            className="h-12 px-8 text-base border-2 border-gray-300 hover:border-gray-400 hover:bg-gray-50 transition-all duration-200 rounded-xl font-medium"
+                          >
+                            Cancelar
+                          </Button>
+                          <Button 
+                            type="submit"
+                            disabled={createPatientMutation.isPending}
+                            className="h-12 px-8 text-base bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 rounded-xl shadow-lg transition-all duration-200 transform hover:scale-[1.02] font-medium"
+                          >
+                            {createPatientMutation.isPending ? "Criando..." : "Criar Paciente"}
+                          </Button>
+                        </div>
+                      </form>
+                    </Form>
+                  )}
+                </div>
+              </CardContent>
             </div>
-          </CardContent>
-        </Card>
-      </main>
+          </Card>
+        </main>
 
-      {/* Dialog for invitation link */}
-      <Dialog open={!!invitationLink} onOpenChange={() => setInvitationLink(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Link de Anamnese Gerado</DialogTitle>
-            <DialogDescription>
-              Envie este link para o paciente preencher sua anamnese nutricional completa.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="p-3 bg-muted rounded-md font-mono text-sm break-all">
-              {invitationLink}
+        {/* Enhanced Dialog for invitation link */}
+        <Dialog open={!!invitationLink} onOpenChange={() => setInvitationLink(null)}>
+          <DialogContent className="sm:max-w-md bg-white/95 backdrop-blur-lg border-0 shadow-2xl rounded-2xl">
+            <DialogHeader className="text-center space-y-4 pb-4">
+              <div className="mx-auto w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
+                <LinkIcon className="h-8 w-8 text-white" />
+              </div>
+              <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-gray-900 via-blue-900 to-purple-900 bg-clip-text text-transparent">
+                Link de Anamnese Gerado
+              </DialogTitle>
+              <DialogDescription className="text-gray-600 text-base">
+                Envie este link para o paciente preencher sua anamnese nutricional completa.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-6">
+              <div className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border border-blue-100 font-mono text-sm break-all overflow-auto max-h-32">
+                {invitationLink}
+              </div>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setInvitationLink(null)}
+                  className="flex-1 h-12 border-2 border-gray-300 hover:border-gray-400 hover:bg-gray-50 transition-all duration-200 rounded-xl font-medium"
+                >
+                  Fechar
+                </Button>
+                <Button 
+                  onClick={copyToClipboard}
+                  className="flex-1 h-12 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 rounded-xl shadow-lg transition-all duration-200 transform hover:scale-[1.02] font-medium"
+                >
+                  <Copy className="h-4 w-4 mr-2" />
+                  Copiar Link
+                </Button>
+              </div>
             </div>
-            <div className="flex justify-end space-x-2">
-              <Button variant="outline" onClick={() => setInvitationLink(null)}>
-                Fechar
-              </Button>
-              <Button onClick={copyToClipboard}>
-                <Copy className="h-4 w-4 mr-2" />
-                Copiar Link
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-    </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+    </>
   );
 }
