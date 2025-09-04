@@ -2,10 +2,9 @@ import { useState, useEffect } from "react";
 import { Info, ChevronDown, ChevronUp, Heart, MessageSquare, Camera, Maximize2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { useToast } from "@/hooks/use-toast";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import MoodRegistrationModal from "@/components/mood/mood-registration-modal";
+import FoodPhotoModal from "@/components/diary/food-photo-modal";
 import MealMenuScreen from "@/components/meal/meal-menu-screen";
 import type { MealData } from "@shared/schema";
 
@@ -42,32 +41,27 @@ async function apiRequest(method: string, url: string, data?: any) {
 }
 
 export default function MealViewer({ meal, prescriptionId, patientId, autoExpand = false }: MealViewerProps) {
-  // Se autoExpand for true, começar expandido
   const [isExpanded, setIsExpanded] = useState(autoExpand);
   const [showMoodModal, setShowMoodModal] = useState(false);
+  const [showPhotoModal, setShowPhotoModal] = useState(false);
   const [showFullScreenMenu, setShowFullScreenMenu] = useState(false);
   const [showSubstitutes, setShowSubstitutes] = useState<{ [key: string]: boolean }>({});
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
 
   const today = new Date().toISOString().split('T')[0];
 
-  // Expandir automaticamente quando autoExpand for true
   useEffect(() => {
     if (autoExpand) {
       setIsExpanded(true);
     }
   }, [autoExpand]);
 
-  // Buscar entrada de humor do dia atual para esta refeição
-  const { data: moodEntry, isLoading } = useQuery<MoodEntry>({
+  const { data: moodEntry } = useQuery<MoodEntry>({
     queryKey: ["/api/mood-entries", prescriptionId, meal.id, today],
     queryFn: async () => {
       if (!prescriptionId) return null;
       try {
         return await apiRequest("GET", `/api/mood-entries/${prescriptionId}/${meal.id}/${today}`);
       } catch (error) {
-        // Se não encontrou entrada, retorna null
         return null;
       }
     },
@@ -75,10 +69,7 @@ export default function MealViewer({ meal, prescriptionId, patientId, autoExpand
   });
 
   const handlePhotoAction = () => {
-    toast({
-      title: "Foto para diário alimentar",
-      description: "Funcionalidade em desenvolvimento!",
-    });
+    setShowPhotoModal(true);
   };
 
   const handleMoodRegistration = () => {
@@ -106,14 +97,12 @@ export default function MealViewer({ meal, prescriptionId, patientId, autoExpand
               {meal.name}
             </CardTitle>
             <div className="flex items-center space-x-2">
-              {/* Indicador se já tem registro de humor hoje */}
               {moodEntry && (
                 <div className="flex items-center space-x-1 text-sm text-muted-foreground">
                   <Heart className="h-4 w-4 text-pink-500" />
                   <span>Registrado</span>
                 </div>
               )}
-              {/* Só mostrar setas se não for autoExpand */}
               {!autoExpand && (
                 isExpanded ? (
                   <ChevronUp className="h-5 w-5 text-muted-foreground" />
@@ -128,7 +117,6 @@ export default function MealViewer({ meal, prescriptionId, patientId, autoExpand
         <CardContent className="p-4">
           {isExpanded && (
             <>
-              {/* Menu da refeição - Botões de ação */}
               <div className="mb-4">
                 <div className="flex items-center justify-between mb-3">
                   <h4 className="text-sm font-medium text-muted-foreground">Menu da refeição</h4>
@@ -167,7 +155,6 @@ export default function MealViewer({ meal, prescriptionId, patientId, autoExpand
                 </div>
               </div>
 
-              {/* Alimentos */}
               <div className="space-y-4">
                 <h4 className="text-sm font-medium text-muted-foreground">Alimentos</h4>
                 
@@ -185,7 +172,6 @@ export default function MealViewer({ meal, prescriptionId, patientId, autoExpand
                         </div>
                       </div>
                       
-                      {/* Opções de substituição */}
                       {item.substitutes && item.substitutes.length > 0 && (
                         <div className="ml-4">
                           <button
@@ -212,7 +198,6 @@ export default function MealViewer({ meal, prescriptionId, patientId, autoExpand
                 ))}
               </div>
 
-              {/* Notas da refeição */}
               {meal.notes && (
                 <div className="mt-6 bg-muted/30 p-3 rounded-md">
                   <p className="text-sm text-muted-foreground flex items-start space-x-2" data-testid={`text-meal-notes-${meal.id}`}>
@@ -226,7 +211,6 @@ export default function MealViewer({ meal, prescriptionId, patientId, autoExpand
         </CardContent>
       </Card>
 
-      {/* Modal de registro de humor */}
       {prescriptionId && (
         <MoodRegistrationModal
           isOpen={showMoodModal}
@@ -236,8 +220,16 @@ export default function MealViewer({ meal, prescriptionId, patientId, autoExpand
           patientId={patientId || ""}
         />
       )}
+      
+      {prescriptionId && (
+        <FoodPhotoModal
+          isOpen={showPhotoModal}
+          onClose={() => setShowPhotoModal(false)}
+          meal={meal}
+          prescriptionId={prescriptionId}
+        />
+      )}
 
-      {/* Tela completa do menu da refeição */}
       {showFullScreenMenu && prescriptionId && (
         <MealMenuScreen
           meal={meal}

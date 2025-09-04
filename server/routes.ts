@@ -570,21 +570,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // --- FOOD DIARY ROUTES ---
   app.post('/api/food-diary/upload-url', isAuthenticated, async (req: any, res) => {
-    const { filename, contentType } = req.body; //  Capturar o contentType
+    const { filename, contentType } = req.body;
     if (!filename || !contentType) {
         return res.status(400).json({ message: 'Filename and contentType are required' });
     }
-
+  
     try {
         const blobPath = `food-diary/${req.user.id}/${Date.now()}-${filename}`;
         
-        const blob = await put(blobPath, 'dummy-body', {
+        // Esta função `put` do Vercel Blob, quando usada sem um `body`,
+        // na verdade gera uma URL pré-assinada para o cliente usar.
+        // O `dummy-body` é um placeholder; o corpo real será enviado pelo cliente.
+        const blob = await put(blobPath, "dummy-body-to-get-presigned-url", {
             access: 'public',
             addRandomSuffix: false,
-            contentType: contentType, // Passar o contentType para resolver CORS
+            contentType: contentType,
         });
-
-        res.status(200).json(blob);
+  
+        // Retornamos a URL de upload (`url`) e a URL final do arquivo (`downloadUrl`).
+        res.status(200).json({ url: blob.url, downloadUrl: blob.downloadUrl });
     } catch (error: any) {
         console.error("Error generating upload URL:", error);
         res.status(500).json({ message: error.message || 'Failed to generate upload URL.' });
