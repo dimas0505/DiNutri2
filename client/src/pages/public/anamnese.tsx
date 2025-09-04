@@ -147,26 +147,150 @@ export default function AnamnesePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
-      <div className="flex justify-center mb-6">
-        <DiNutriLogo variant="full" className="h-16" />
-      </div>
-      <main className="max-w-4xl mx-auto">
-        <Card>
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl">Anamnese Nutricional</CardTitle>
-            <CardDescription>
-              Parabéns pela escolha de cuidar da sua saúde! Este formulário nos ajudará a criar um plano nutricional personalizado.
-              Trabalhe com profissionais capacitados para alcançar seus objetivos.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                
-                {/* Dados Pessoais */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold">Dados Pessoais</h3>
+    <>
+      {/* Estilos para os blobs animados e efeitos 3D dos cards */}
+      <style>{`
+        @keyframes blob {
+          0% { transform: translate(0px, 0px) scale(1); }
+          33% { transform: translate(30px, -50px) scale(1.1); }
+          66% { transform: translate(-20px, 20px) scale(0.9); }
+          100% { transform: translate(0px, 0px) scale(1); }
+        }
+        .animate-blob { animation: blob 7s infinite; }
+        .animation-delay-2000 { animation-delay: 2s; }
+        .animation-delay-4000 { animation-delay: 4s; }
+        
+        /* Efeitos 3D para os cards */
+        .card-3d {
+          perspective: 1000px;
+          transform-style: preserve-3d;
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .card-3d:hover {
+          transform: translateY(-8px) rotateX(2deg) rotateY(-2deg);
+        }
+        
+        .card-3d::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(147, 51, 234, 0.05) 100%);
+          border-radius: inherit;
+          opacity: 0;
+          transition: opacity 0.3s ease;
+          pointer-events: none;
+          z-index: 1;
+        }
+        
+        .card-3d:hover::before {
+          opacity: 1;
+        }
+        
+        .card-3d > * {
+          position: relative;
+          z-index: 2;
+        }
+        
+        /* Sombras aprimoradas */
+        .shadow-3d {
+          box-shadow: 
+            0 4px 6px -1px rgba(0, 0, 0, 0.1),
+            0 2px 4px -1px rgba(0, 0, 0, 0.06),
+            0 10px 25px -3px rgba(59, 130, 246, 0.1),
+            0 0 0 1px rgba(255, 255, 255, 0.05);
+        }
+        
+        .shadow-3d:hover {
+          box-shadow: 
+            0 20px 25px -5px rgba(0, 0, 0, 0.1),
+            0 10px 10px -5px rgba(0, 0, 0, 0.04),
+            0 25px 50px -12px rgba(59, 130, 246, 0.25),
+            0 0 0 1px rgba(255, 255, 255, 0.1);
+        }
+        
+        /* Gradientes sutis para diferentes cards */
+        .card-personal {
+          background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.95) 100%);
+          border: 1px solid rgba(59, 130, 246, 0.1);
+        }
+        
+        .card-goals {
+          background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(240, 253, 244, 0.95) 100%);
+          border: 1px solid rgba(34, 197, 94, 0.1);
+        }
+        
+        .card-preferences {
+          background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 247, 237, 0.95) 100%);
+          border: 1px solid rgba(251, 146, 60, 0.1);
+        }
+        
+        .card-health {
+          background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(252, 231, 243, 0.95) 100%);
+          border: 1px solid rgba(236, 72, 153, 0.1);
+        }
+        
+        /* Animação de entrada suave */
+        .card-enter {
+          animation: cardSlideIn 0.6s ease-out forwards;
+        }
+        
+        @keyframes cardSlideIn {
+          from {
+            opacity: 0;
+            transform: translateY(30px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        
+        .card-enter:nth-child(1) { animation-delay: 0.1s; }
+        .card-enter:nth-child(2) { animation-delay: 0.2s; }
+        .card-enter:nth-child(3) { animation-delay: 0.3s; }
+        .card-enter:nth-child(4) { animation-delay: 0.4s; }
+        .card-enter:nth-child(5) { animation-delay: 0.5s; }
+      `}</style>
+
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex flex-col items-center justify-center p-4 relative overflow-hidden">
+        {/* Elementos decorativos do fundo */}
+        <div className="absolute inset-0 overflow-hidden -z-10">
+          <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-400 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob"></div>
+          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-purple-400 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-2000"></div>
+        </div>
+
+        {/* Logo Destacada */}
+        <div className="flex justify-center mb-6 mt-8">
+          <DiNutriLogo variant="full" className="h-24" />
+        </div>
+
+        <main className="w-full max-w-4xl mx-auto space-y-8">
+          <Card className="card-3d shadow-3d rounded-3xl border-0 bg-white/95 backdrop-blur-md card-enter">
+            <CardHeader className="text-center pb-6">
+              <CardTitle className="text-3xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
+                Anamnese Nutricional
+              </CardTitle>
+              <CardDescription className="text-lg text-muted-foreground mt-2">
+                Parabéns pela escolha de cuidar da sua saúde! Preencha os campos abaixo para criarmos seu plano.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+              
+              <Card className="card-3d card-personal shadow-3d rounded-3xl border-0 backdrop-blur-md card-enter">
+                <CardHeader className="pb-6">
+                  <CardTitle className="text-xl font-semibold text-slate-800 flex items-center gap-3">
+                    <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-sm">1</div>
+                    Dados Pessoais e Acesso
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
@@ -261,29 +385,6 @@ export default function AnamnesePage() {
                     />
                     <FormField
                       control={form.control}
-                      name="goal"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Objetivo</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value || ""}>
-                            <FormControl>
-                              <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="lose_weight">Perder peso</SelectItem>
-                              <SelectItem value="maintain_weight">Manter peso</SelectItem>
-                              <SelectItem value="gain_weight">Ganhar peso</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
                       name="heightCm"
                       render={({ field }) => (
                         <FormItem>
@@ -304,6 +405,9 @@ export default function AnamnesePage() {
                         </FormItem>
                       )}
                     />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
                       name="weightKg"
@@ -326,12 +430,38 @@ export default function AnamnesePage() {
                       )}
                     />
                   </div>
-                </div>
+                </CardContent>
+              </Card>
 
-                {/* Perfil de Atividade */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold">Perfil de Atividade</h3>
+              <Card className="card-3d card-goals shadow-3d rounded-3xl border-0 backdrop-blur-md card-enter">
+                <CardHeader className="pb-6">
+                  <CardTitle className="text-xl font-semibold text-slate-800 flex items-center gap-3">
+                    <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center text-white font-bold text-sm">2</div>
+                    Objetivos e Hábitos
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="goal"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Objetivo</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value || ""}>
+                            <FormControl>
+                              <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="lose_weight">Perder peso</SelectItem>
+                              <SelectItem value="maintain_weight">Manter peso</SelectItem>
+                              <SelectItem value="gain_weight">Ganhar peso</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                     <FormField
                       control={form.control}
                       name="activityLevel"
@@ -354,6 +484,9 @@ export default function AnamnesePage() {
                         </FormItem>
                       )}
                     />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
                       name="biotype"
@@ -374,13 +507,6 @@ export default function AnamnesePage() {
                         </FormItem>
                       )}
                     />
-                  </div>
-                </div>
-
-                {/* Hábitos Alimentares */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold">Hábitos Alimentares</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
                       name="mealsPerDayCurrent"
@@ -404,6 +530,9 @@ export default function AnamnesePage() {
                         </FormItem>
                       )}
                     />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
                       name="mealsPerDayWilling"
@@ -427,9 +556,6 @@ export default function AnamnesePage() {
                         </FormItem>
                       )}
                     />
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
                       name="canEatMorningSolids"
@@ -448,32 +574,39 @@ export default function AnamnesePage() {
                         </FormItem>
                       )}
                     />
-                    <FormField
-                      control={form.control}
-                      name="alcoholConsumption"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Consumo de Álcool</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value || ""}>
-                            <FormControl>
-                              <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="no">Não bebo</SelectItem>
-                              <SelectItem value="moderate">Moderadamente</SelectItem>
-                              <SelectItem value="yes">Sim, frequentemente</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
                   </div>
-                </div>
 
-                {/* Preferências e Restrições */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold">Preferências e Restrições</h3>
+                  <FormField
+                    control={form.control}
+                    name="alcoholConsumption"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Consumo de Álcool</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value || ""}>
+                          <FormControl>
+                            <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="no">Não bebo</SelectItem>
+                            <SelectItem value="moderate">Moderadamente</SelectItem>
+                            <SelectItem value="yes">Sim, frequentemente</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </CardContent>
+              </Card>
+
+              <Card className="card-3d card-preferences shadow-3d rounded-3xl border-0 backdrop-blur-md card-enter">
+                <CardHeader className="pb-6">
+                  <CardTitle className="text-xl font-semibold text-slate-800 flex items-center gap-3">
+                    <div className="w-8 h-8 bg-gradient-to-br from-orange-500 to-orange-600 rounded-full flex items-center justify-center text-white font-bold text-sm">3</div>
+                    Preferências e Restrições
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
                   <FormField
                     control={form.control}
                     name="hasIntolerance"
@@ -557,11 +690,17 @@ export default function AnamnesePage() {
                       </FormItem>
                     )}
                   />
-                </div>
-
-                {/* Saúde e Medicamentos */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold">Saúde e Medicamentos</h3>
+                </CardContent>
+              </Card>
+              
+              <Card className="card-3d card-health shadow-3d rounded-3xl border-0 backdrop-blur-md card-enter">
+                <CardHeader className="pb-6">
+                  <CardTitle className="text-xl font-semibold text-slate-800 flex items-center gap-3">
+                    <div className="w-8 h-8 bg-gradient-to-br from-pink-500 to-pink-600 rounded-full flex items-center justify-center text-white font-bold text-sm">4</div>
+                    Saúde e Informações Adicionais
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
                   <FormField
                     control={form.control}
                     name="diseases"
@@ -624,48 +763,49 @@ export default function AnamnesePage() {
                       </FormItem>
                     )}
                   />
-                </div>
 
-                {/* Observações */}
-                <FormField
-                  control={form.control}
-                  name="notes"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Observações Adicionais</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Compartilhe qualquer informação adicional que possa ser relevante..."
-                          className="min-h-[100px]"
-                          value={field.value || ""}
-                          onChange={field.onChange}
-                          onBlur={field.onBlur}
-                          name={field.name}
-                          ref={field.ref}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                  <FormField
+                    control={form.control}
+                    name="notes"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Observações Adicionais</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Compartilhe qualquer informação adicional que possa ser relevante..."
+                            className="min-h-[100px]"
+                            value={field.value || ""}
+                            onChange={field.onChange}
+                            onBlur={field.onBlur}
+                            name={field.name}
+                            ref={field.ref}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </CardContent>
+              </Card>
 
-                <div className="flex justify-end space-x-4 pt-4">
-                  <Button asChild variant="outline">
-                    <Link to="/">Cancelar</Link>
-                  </Button>
-                  <Button
-                    type="submit"
-                    disabled={registerPatientMutation.isPending}
-                    className="min-w-[120px]"
-                  >
-                    {registerPatientMutation.isPending ? "Criando conta..." : "Concluir Anamnese"}
-                  </Button>
-                </div>
-              </form>
-            </Form>
-          </CardContent>
-        </Card>
-      </main>
-    </div>
+              <div className="flex justify-end space-x-4 pt-6 pb-8">
+                <Button asChild variant="ghost" className="px-8 py-3 text-lg rounded-2xl">
+                  <Link to="/">Cancelar</Link>
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={registerPatientMutation.isPending}
+                  className="min-w-[200px] text-lg py-6 px-8 rounded-2xl bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300"
+                  size="lg"
+                >
+                  {registerPatientMutation.isPending ? "Finalizando..." : "Concluir e Criar Conta"}
+                </Button>
+              </div>
+
+            </form>
+          </Form>
+        </main>
+      </div>
+    </>
   );
 }
