@@ -147,26 +147,48 @@ export default function AnamnesePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
-      <div className="flex justify-center mb-6">
-        <DiNutriLogo variant="full" className="h-16" />
-      </div>
-      <main className="max-w-4xl mx-auto">
-        <Card>
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl">Anamnese Nutricional</CardTitle>
-            <CardDescription>
-              Parabéns pela escolha de cuidar da sua saúde! Este formulário nos ajudará a criar um plano nutricional personalizado.
-              Trabalhe com profissionais capacitados para alcançar seus objetivos.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                
-                {/* Dados Pessoais */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold">Dados Pessoais</h3>
+    <>
+      {/* Estilos para os blobs animados, copiados da landing page */}
+      <style>{`
+        @keyframes blob {
+          0% { transform: translate(0px, 0px) scale(1); }
+          33% { transform: translate(30px, -50px) scale(1.1); }
+          66% { transform: translate(-20px, 20px) scale(0.9); }
+          100% { transform: translate(0px, 0px) scale(1); }
+        }
+        .animate-blob { animation: blob 7s infinite; }
+        .animation-delay-2000 { animation-delay: 2s; }
+        .animation-delay-4000 { animation-delay: 4s; }
+      `}</style>
+
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex flex-col items-center justify-center p-4 relative overflow-hidden">
+        {/* Elementos decorativos do fundo */}
+        <div className="absolute inset-0 overflow-hidden -z-10">
+          <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-400 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob"></div>
+          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-purple-400 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-2000"></div>
+        </div>
+
+        {/* Logo Destacada */}
+        <div className="flex justify-center mb-6 mt-8">
+          <DiNutriLogo variant="full" className="h-24" />
+        </div>
+
+        <main className="w-full max-w-4xl mx-auto space-y-6">
+          <Card className="shadow-lg border-0 bg-white/90 backdrop-blur-md">
+            <CardHeader className="text-center">
+              <CardTitle className="text-3xl font-bold">Anamnese Nutricional</CardTitle>
+              <CardDescription className="text-md text-muted-foreground">
+                Parabéns pela escolha de cuidar da sua saúde! Preencha os campos abaixo para criarmos seu plano.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              
+              <Card className="shadow-lg border-0 bg-white/90 backdrop-blur-md">
+                <CardHeader><CardTitle>1. Dados Pessoais e Acesso</CardTitle></CardHeader>
+                <CardContent className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
@@ -261,29 +283,6 @@ export default function AnamnesePage() {
                     />
                     <FormField
                       control={form.control}
-                      name="goal"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Objetivo</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value || ""}>
-                            <FormControl>
-                              <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="lose_weight">Perder peso</SelectItem>
-                              <SelectItem value="maintain_weight">Manter peso</SelectItem>
-                              <SelectItem value="gain_weight">Ganhar peso</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
                       name="heightCm"
                       render={({ field }) => (
                         <FormItem>
@@ -304,6 +303,9 @@ export default function AnamnesePage() {
                         </FormItem>
                       )}
                     />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
                       name="weightKg"
@@ -326,12 +328,33 @@ export default function AnamnesePage() {
                       )}
                     />
                   </div>
-                </div>
+                </CardContent>
+              </Card>
 
-                {/* Perfil de Atividade */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold">Perfil de Atividade</h3>
+              <Card className="shadow-lg border-0 bg-white/90 backdrop-blur-md">
+                <CardHeader><CardTitle>2. Objetivos e Hábitos</CardTitle></CardHeader>
+                <CardContent className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="goal"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Objetivo</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value || ""}>
+                            <FormControl>
+                              <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="lose_weight">Perder peso</SelectItem>
+                              <SelectItem value="maintain_weight">Manter peso</SelectItem>
+                              <SelectItem value="gain_weight">Ganhar peso</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                     <FormField
                       control={form.control}
                       name="activityLevel"
@@ -354,6 +377,9 @@ export default function AnamnesePage() {
                         </FormItem>
                       )}
                     />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
                       name="biotype"
@@ -374,13 +400,6 @@ export default function AnamnesePage() {
                         </FormItem>
                       )}
                     />
-                  </div>
-                </div>
-
-                {/* Hábitos Alimentares */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold">Hábitos Alimentares</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
                       name="mealsPerDayCurrent"
@@ -404,6 +423,9 @@ export default function AnamnesePage() {
                         </FormItem>
                       )}
                     />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
                       name="mealsPerDayWilling"
@@ -427,9 +449,6 @@ export default function AnamnesePage() {
                         </FormItem>
                       )}
                     />
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
                       name="canEatMorningSolids"
@@ -448,32 +467,34 @@ export default function AnamnesePage() {
                         </FormItem>
                       )}
                     />
-                    <FormField
-                      control={form.control}
-                      name="alcoholConsumption"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Consumo de Álcool</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value || ""}>
-                            <FormControl>
-                              <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="no">Não bebo</SelectItem>
-                              <SelectItem value="moderate">Moderadamente</SelectItem>
-                              <SelectItem value="yes">Sim, frequentemente</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
                   </div>
-                </div>
 
-                {/* Preferências e Restrições */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold">Preferências e Restrições</h3>
+                  <FormField
+                    control={form.control}
+                    name="alcoholConsumption"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Consumo de Álcool</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value || ""}>
+                          <FormControl>
+                            <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="no">Não bebo</SelectItem>
+                            <SelectItem value="moderate">Moderadamente</SelectItem>
+                            <SelectItem value="yes">Sim, frequentemente</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </CardContent>
+              </Card>
+
+              <Card className="shadow-lg border-0 bg-white/90 backdrop-blur-md">
+                <CardHeader><CardTitle>3. Preferências e Restrições</CardTitle></CardHeader>
+                <CardContent className="space-y-4">
                   <FormField
                     control={form.control}
                     name="hasIntolerance"
@@ -557,11 +578,12 @@ export default function AnamnesePage() {
                       </FormItem>
                     )}
                   />
-                </div>
-
-                {/* Saúde e Medicamentos */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold">Saúde e Medicamentos</h3>
+                </CardContent>
+              </Card>
+              
+              <Card className="shadow-lg border-0 bg-white/90 backdrop-blur-md">
+                <CardHeader><CardTitle>4. Saúde e Informações Adicionais</CardTitle></CardHeader>
+                <CardContent className="space-y-4">
                   <FormField
                     control={form.control}
                     name="diseases"
@@ -624,48 +646,49 @@ export default function AnamnesePage() {
                       </FormItem>
                     )}
                   />
-                </div>
 
-                {/* Observações */}
-                <FormField
-                  control={form.control}
-                  name="notes"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Observações Adicionais</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Compartilhe qualquer informação adicional que possa ser relevante..."
-                          className="min-h-[100px]"
-                          value={field.value || ""}
-                          onChange={field.onChange}
-                          onBlur={field.onBlur}
-                          name={field.name}
-                          ref={field.ref}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                  <FormField
+                    control={form.control}
+                    name="notes"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Observações Adicionais</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Compartilhe qualquer informação adicional que possa ser relevante..."
+                            className="min-h-[100px]"
+                            value={field.value || ""}
+                            onChange={field.onChange}
+                            onBlur={field.onBlur}
+                            name={field.name}
+                            ref={field.ref}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </CardContent>
+              </Card>
 
-                <div className="flex justify-end space-x-4 pt-4">
-                  <Button asChild variant="outline">
-                    <Link to="/">Cancelar</Link>
-                  </Button>
-                  <Button
-                    type="submit"
-                    disabled={registerPatientMutation.isPending}
-                    className="min-w-[120px]"
-                  >
-                    {registerPatientMutation.isPending ? "Criando conta..." : "Concluir Anamnese"}
-                  </Button>
-                </div>
-              </form>
-            </Form>
-          </CardContent>
-        </Card>
-      </main>
-    </div>
+              <div className="flex justify-end space-x-4 pt-4 pb-8">
+                <Button asChild variant="ghost">
+                  <Link to="/">Cancelar</Link>
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={registerPatientMutation.isPending}
+                  className="min-w-[180px] text-lg py-6"
+                  size="lg"
+                >
+                  {registerPatientMutation.isPending ? "Finalizando..." : "Concluir e Criar Conta"}
+                </Button>
+              </div>
+
+            </form>
+          </Form>
+        </main>
+      </div>
+    </>
   );
 }
