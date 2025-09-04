@@ -570,26 +570,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // --- FOOD DIARY ROUTES ---
   app.post('/api/food-diary/upload-url', isAuthenticated, async (req: any, res) => {
-    const { filename } = req.body;
-    if (!filename) {
-        return res.status(400).json({ message: 'Filename is required' });
+    const { filename, contentType } = req.body; //  Capturar o contentType
+    if (!filename || !contentType) {
+        return res.status(400).json({ message: 'Filename and contentType are required' });
     }
 
     try {
-        // Gera um caminho único para o arquivo no Blob Storage
         const blobPath = `food-diary/${req.user.id}/${Date.now()}-${filename}`;
         
-        // Gera uma URL pré-assinada para o cliente fazer o upload
-        const blob = await put(blobPath, 'dummy-body', { // O corpo é um placeholder, não é usado aqui
+        const blob = await put(blobPath, 'dummy-body', {
             access: 'public',
-            addRandomSuffix: false, // Usamos nosso próprio sufixo de data
+            addRandomSuffix: false,
+            contentType: contentType, // Passar o contentType para resolver CORS
         });
 
-        // Retornamos o objeto blob que contém a `url` de upload
         res.status(200).json(blob);
     } catch (error: any) {
         console.error("Error generating upload URL:", error);
-        // Retorna a mensagem de erro específica do Blob se existir
         res.status(500).json({ message: error.message || 'Failed to generate upload URL.' });
     }
   });

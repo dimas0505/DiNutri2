@@ -32,7 +32,7 @@ export default function FoodPhotoModal({ isOpen, onClose, meal, prescriptionId }
       const response = await fetch('/api/food-diary/upload-url', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ filename: file.name }),
+        body: JSON.stringify({ filename: file.name, contentType: file.type }),
       });
       if (!response.ok) {
         throw new Error('Falha ao obter URL de upload.');
