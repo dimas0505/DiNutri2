@@ -129,6 +129,18 @@ export const anamnesisRecords = pgTable("anamnesis_records", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Food Diary Entries table
+export const foodDiaryEntries = pgTable("food_diary_entries", {
+  id: varchar("id").primaryKey(),
+  patientId: varchar("patient_id").references(() => patients.id, { onDelete: 'cascade' }).notNull(),
+  prescriptionId: varchar("prescription_id").references(() => prescriptions.id, { onDelete: 'cascade' }).notNull(),
+  mealId: varchar("meal_id").notNull(),
+  imageUrl: text("image_url").notNull(),
+  notes: text("notes"),
+  date: varchar("date").notNull(), // Format: YYYY-MM-DD
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ one, many }) => ({
   patientProfile: one(patients, {
@@ -153,6 +165,7 @@ export const patientsRelations = relations(patients, ({ one, many }) => ({
   prescriptions: many(prescriptions),
   moodEntries: many(moodEntries),
   anamnesisRecords: many(anamnesisRecords),
+  foodDiaryEntries: many(foodDiaryEntries),
 }));
 
 export const invitationsRelations = relations(invitations, ({ one }) => ({
@@ -172,6 +185,7 @@ export const prescriptionsRelations = relations(prescriptions, ({ one, many }) =
     references: [users.id],
   }),
   moodEntries: many(moodEntries),
+  foodDiaryEntries: many(foodDiaryEntries),
 }));
 
 export const moodEntriesRelations = relations(moodEntries, ({ one }) => ({
@@ -189,6 +203,17 @@ export const anamnesisRecordsRelations = relations(anamnesisRecords, ({ one }) =
   patient: one(patients, {
     fields: [anamnesisRecords.patientId],
     references: [patients.id],
+  }),
+}));
+
+export const foodDiaryEntriesRelations = relations(foodDiaryEntries, ({ one }) => ({
+  patient: one(patients, {
+    fields: [foodDiaryEntries.patientId],
+    references: [patients.id],
+  }),
+  prescription: one(prescriptions, {
+    fields: [foodDiaryEntries.prescriptionId],
+    references: [prescriptions.id],
   }),
 }));
 
@@ -265,6 +290,11 @@ export const insertAnamnesisRecordSchema = createInsertSchema(anamnesisRecords).
   createdAt: true,
 });
 
+export const insertFoodDiaryEntrySchema = createInsertSchema(foodDiaryEntries).omit({
+  id: true,
+  createdAt: true,
+});
+
 export const updatePatientSchema = insertPatientSchema.partial();
 
 // Types
@@ -279,3 +309,4 @@ export type Prescription = typeof prescriptions.$inferSelect;
 export type Invitation = typeof invitations.$inferSelect;
 export type InsertMoodEntry = z.infer<typeof insertMoodEntrySchema>;
 export type AnamnesisRecord = typeof anamnesisRecords.$inferSelect;
+export type FoodDiaryEntry = typeof foodDiaryEntries.$inferSelect;

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import MoodRegistrationModal from "@/components/mood/mood-registration-modal";
 import MealSubstitutionModal from "@/components/meal/meal-substitution-modal";
+import FoodPhotoModal from "@/components/diary/food-photo-modal";
 import type { MealData, MealItemData } from "@shared/schema";
 
 interface MealMenuScreenProps {
@@ -21,14 +22,12 @@ export default function MealMenuScreen({
 }: MealMenuScreenProps) {
   const [showMoodModal, setShowMoodModal] = useState(false);
   const [showSubstitutionModal, setShowSubstitutionModal] = useState(false);
+  const [showPhotoModal, setShowPhotoModal] = useState(false);
   const [selectedItemForSubstitution, setSelectedItemForSubstitution] = useState<MealItemData | null>(null);
   const { toast } = useToast();
 
   const handlePhotoAction = () => {
-    toast({
-      title: "Foto para o diário",
-      description: "Funcionalidade em desenvolvimento",
-    });
+    setShowPhotoModal(true);
   };
 
   const handleMoodAction = () => {
@@ -152,6 +151,13 @@ export default function MealMenuScreen({
         onClose={handleSubstitutionModalClose}
         foodName={selectedItemForSubstitution?.description || ""}
         substitutes={selectedItemForSubstitution?.substitutes || []}
+      />
+
+      <FoodPhotoModal
+        isOpen={showPhotoModal}
+        onClose={() => setShowPhotoModal(false)}
+        meal={meal}
+        prescriptionId={prescriptionId}
       />
     </div>
   );

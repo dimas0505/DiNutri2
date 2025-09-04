@@ -1,11 +1,57 @@
 import type { Express } from "express";
+import express from "express";
 import { createServer, type Server } from "http";
 import passport from "passport";
 import bcrypt from "bcrypt";
 import { storage } from "./storage.js";
 import { setupAuth, isAuthenticated } from "./auth.js";
-import { insertPatientSchema, updatePatientSchema, insertPrescriptionSchema, updatePrescriptionSchema, insertMoodEntrySchema, insertAnamnesisRecordSchema } from "../shared/schema.js";
+import { insertPatientSchema, updatePatientSchema, insertPrescriptionSchema, updatePrescriptionSchema, insertMoodEntrySchema, insertAnamnesisRecordSchema, insertFoodDiaryEntrySchema } from "../shared/schema.js";
 import { z } from "zod";
+import { handleUpload, type HandleUploadBody, put } from '@vercel/blob/client';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Create uploads directory if it doesn't exist
+const uploadsDir = path.join(__dirname, '..', 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+// Configure multer for local file storage fallback
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const userDir = path.join(uploadsDir, req.user?.id || 'anonymous');
+    if (!fs.existsSync(userDir)) {
+      fs.mkdirSync(userDir, { recursive: true });
+    }
+    cb(null, userDir);
+  },
+  filename: (req, file, cb) => {
+    const timestamp = Date.now();
+    const filename = `${timestamp}-${file.originalname}`;
+    cb(null, filename);
+  }
+});
+
+const upload = multer({ 
+  storage: storage,
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Tipo de arquivo não permitido. Use JPEG, PNG, GIF ou WebP.'));
+    }
+  }
+});
 
 const SALT_ROUNDS = 10;
 
@@ -20,6 +66,9 @@ const isAdmin = (req: any, res: any, next: any) => {
 export async function registerRoutes(app: Express): Promise<Server> {
   await setupAuth(app);
 
+  // --- STATIC FILE SERVING FOR UPLOADS ---
+  app.use('/uploads', express.static(uploadsDir));
+
   // --- AUTHENTICATION ROUTES ---
   app.post('/api/login', passport.authenticate('local'), (req, res) => {
     res.json(req.user);
@@ -27,10 +76,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/logout", (req, res, next) => {
     req.logout((err) => {
-      if (err) { return next(err); }
-      req.session.destroy(() => {
+      if (err) { 
+        console.error("Error during logout:", err);
+        // Still continue with logout even if passport logout fails
+      }
+      
+      // Try to destroy session, but don't let database errors prevent logout
+      req.session.destroy((destroyErr) => {
+        if (destroyErr) {
+          console.error("Error destroying session:", destroyErr);
+          // Continue with logout even if session destruction fails
+        }
+        
+        // Always clear the cookie and redirect, regardless of session store errors
         res.clearCookie('connect.sid');
-        // Redireciona para a página inicial após o logout
         res.redirect('/');
       });
     });
@@ -564,6 +623,90 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching mood entries for prescription:", error);
       res.status(500).json({ message: "Failed to fetch mood entries" });
+    }
+  });
+
+  // --- FOOD DIARY ROUTES ---
+  // Check if Vercel Blob is available (production)
+  const hasVercelBlobToken = !!process.env.BLOB_READ_WRITE_TOKEN;
+
+  if (hasVercelBlobToken) {
+    // Use Vercel Blob in production
+    app.post('/api/food-diary/upload-url', isAuthenticated, async (req: any, res) => {
+      const body = req.body as HandleUploadBody;
+
+      try {
+          const jsonResponse = await handleUpload({
+              body,
+              request: req,
+              onBeforeGenerateToken: async (pathname: string) => {
+                  // Gera um caminho de arquivo único para evitar colisões
+                  const filename = `food-diary/${req.user.id}/${Date.now()}-${pathname}`;
+                  return {
+                      allowedContentTypes: ['image/jpeg', 'image/png', 'image/gif', 'image/webp'],
+                      tokenPayload: JSON.stringify({
+                          // Opcional: passe metadados se necessário
+                      }),
+                      pathname: filename,
+                  };
+              },
+              onUploadCompleted: async ({ blob, tokenPayload }) => {
+                  // Callback executado após o upload ser concluído
+                  console.log('Blob upload completed', blob, tokenPayload);
+              },
+          });
+
+          res.status(200).json(jsonResponse);
+      } catch (error) {
+          console.error("Error generating upload URL:", error);
+          res.status(500).json({ message: 'Failed to generate upload URL.' });
+      }
+    });
+  }
+
+  // Fallback upload endpoint for development (local file storage)
+  app.post('/api/food-diary/upload', isAuthenticated, upload.single('file'), async (req: any, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: 'Nenhum arquivo enviado.' });
+      }
+
+      // Generate URL for the uploaded file
+      const baseUrl = process.env.BASE_URL || `http://localhost:5000`;
+      const fileUrl = `${baseUrl}/uploads/${req.user.id}/${req.file.filename}`;
+
+      res.status(200).json({
+        url: fileUrl,
+        filename: req.file.filename,
+        size: req.file.size,
+        mimetype: req.file.mimetype
+      });
+    } catch (error) {
+      console.error("Error uploading file:", error);
+      res.status(500).json({ message: 'Failed to upload file.' });
+    }
+  });
+
+  app.post('/api/food-diary/entries', isAuthenticated, async (req: any, res) => {
+    try {
+        const patientProfile = await storage.getPatientByUserId(req.user.id);
+        if (!patientProfile) {
+            return res.status(403).json({ message: "Perfil de paciente não encontrado." });
+        }
+        
+        const entryData = insertFoodDiaryEntrySchema.parse({
+            ...req.body,
+            patientId: patientProfile.id,
+        });
+
+        const newEntry = await storage.createFoodDiaryEntry(entryData);
+        res.status(201).json(newEntry);
+    } catch (error) {
+        if (error instanceof z.ZodError) {
+            return res.status(400).json({ message: "Dados inválidos.", errors: error.flatten() });
+        }
+        console.error("Erro ao criar entrada do diário alimentar:", error);
+        res.status(500).json({ message: "Falha ao criar entrada do diário alimentar." });
     }
   });
 
