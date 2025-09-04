@@ -111,8 +111,10 @@ export default function Header({
             onClick={handleLogout}
             title="Sair"
             data-testid="button-logout"
+            className="h-8 w-8 p-2"
           >
             <LogOut className="h-4 w-4" />
+            <span className="sr-only">Sair</span>
           </Button>
         </div>
       </div>
