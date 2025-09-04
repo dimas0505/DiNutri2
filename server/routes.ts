@@ -575,7 +575,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // --- FOOD DIARY ROUTES ---
   app.post('/api/food-diary/upload', isAuthenticated, async (req: any, res) => {
     try {
-        const body = (await req.json()) as HandleUploadBody;
+        const body = req.body as HandleUploadBody;
     
         const jsonResponse = await handleUpload({
           body,
