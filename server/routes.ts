@@ -28,10 +28,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/logout", (req, res, next) => {
     req.logout((err) => {
-      if (err) { return next(err); }
-      req.session.destroy(() => {
+      if (err) { 
+        console.error("Error during logout:", err);
+        // Still continue with logout even if passport logout fails
+      }
+      
+      // Try to destroy session, but don't let database errors prevent logout
+      req.session.destroy((destroyErr) => {
+        if (destroyErr) {
+          console.error("Error destroying session:", destroyErr);
+          // Continue with logout even if session destruction fails
+        }
+        
+        // Always clear the cookie and redirect, regardless of session store errors
         res.clearCookie('connect.sid');
-        // Redireciona para a página inicial após o logout
         res.redirect('/');
       });
     });
