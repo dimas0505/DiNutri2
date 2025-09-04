@@ -2,11 +2,12 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import passport from "passport";
 import bcrypt from "bcrypt";
+import bodyParser from "body-parser";
 import { storage } from "./storage.js";
 import { setupAuth, isAuthenticated } from "./auth.js";
 import { insertPatientSchema, updatePatientSchema, insertPrescriptionSchema, updatePrescriptionSchema, insertMoodEntrySchema, insertAnamnesisRecordSchema, insertFoodDiaryEntrySchema } from "../shared/schema.js";
 import { z } from "zod";
-import { put } from '@vercel/blob';
+import { handleUpload, type HandleUploadBody } from '@vercel/blob/client';
 
 const SALT_ROUNDS = 10;
 
@@ -20,6 +21,9 @@ const isAdmin = (req: any, res: any, next: any) => {
 
 export async function registerRoutes(app: Express): Promise<Server> {
   await setupAuth(app);
+  
+  // Middleware para parsear o corpo da requisição de upload
+  app.use(bodyParser.json());
 
   // --- AUTHENTICATION ROUTES ---
   app.post('/api/login', passport.authenticate('local'), (req, res) => {
@@ -569,30 +573,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // --- FOOD DIARY ROUTES ---
-  app.post('/api/food-diary/upload-url', isAuthenticated, async (req: any, res) => {
-    const { filename, contentType } = req.body;
-    if (!filename || !contentType) {
-        return res.status(400).json({ message: 'Filename and contentType are required' });
-    }
-  
+  app.post('/api/food-diary/upload', isAuthenticated, async (req: any, res) => {
     try {
-        const blobPath = `food-diary/${req.user.id}/${Date.now()}-${filename}`;
-        
-        // Esta função `put` do Vercel Blob, quando usada sem um `body`,
-        // na verdade gera uma URL pré-assinada para o cliente usar.
-        // O `dummy-body` é um placeholder; o corpo real será enviado pelo cliente.
-        const blob = await put(blobPath, "dummy-body-to-get-presigned-url", {
-            access: 'public',
-            addRandomSuffix: false,
-            contentType: contentType,
+        const body = (await req.json()) as HandleUploadBody;
+    
+        const jsonResponse = await handleUpload({
+          body,
+          request: req,
+          onBeforeGenerateToken: async (pathname: string) => {
+            const blobPath = `food-diary/${req.user.id}/${pathname}`;
+            return {
+              allowedContentTypes: ['image/jpeg', 'image/png', 'image/gif', 'image/webp'],
+              pathname: blobPath,
+              tokenPayload: JSON.stringify({
+                userId: req.user.id,
+              }),
+            };
+          },
+          onUploadCompleted: async ({ blob, tokenPayload }) => {
+            console.log('blob upload completed', blob, tokenPayload);
+          },
         });
-  
-        // Retornamos a URL de upload (`url`) e a URL final do arquivo (`downloadUrl`).
-        res.status(200).json({ url: blob.url, downloadUrl: blob.downloadUrl });
-    } catch (error: any) {
-        console.error("Error generating upload URL:", error);
-        res.status(500).json({ message: error.message || 'Failed to generate upload URL.' });
-    }
+    
+        return res.status(200).json(jsonResponse);
+      } catch (error) {
+        console.error("Error in upload handler:", error);
+        return res.status(400).json({ error: (error as Error).message });
+      }
   });
 
   app.post('/api/food-diary/entries', isAuthenticated, async (req: any, res) => {

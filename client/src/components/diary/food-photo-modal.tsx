@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { upload } from '@vercel/blob/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,7 +26,6 @@ export default function FoodPhotoModal({ isOpen, onClose, meal, prescriptionId }
   const queryClient = useQueryClient();
 
   const handleClose = () => {
-    // Reset state when closing the modal
     setFile(null);
     if (previewUrl) {
       URL.revokeObjectURL(previewUrl);
@@ -39,35 +39,18 @@ export default function FoodPhotoModal({ isOpen, onClose, meal, prescriptionId }
     mutationFn: async () => {
       if (!file) throw new Error("Nenhum arquivo selecionado.");
 
-      // ETAPA 1: Obter a URL de upload pré-assinada do nosso backend.
-      const response = await fetch('/api/food-diary/upload-url', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ filename: file.name, contentType: file.type }),
-      });
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Falha ao obter URL de upload.');
-      }
-      const presignedData = await response.json();
-      const { url: uploadUrl, downloadUrl } = presignedData;
-
-      // ETAPA 2: Fazer o upload do arquivo diretamente para a URL fornecida pelo Vercel Blob.
-      const uploadResponse = await fetch(uploadUrl, {
-        method: 'PUT',
-        headers: { 'Content-Type': file.type },
-        body: file,
+      // ETAPA 1: O SDK do Vercel Blob faz o upload, chamando a rota do nosso backend
+      // que lida com a autorização de forma segura e à prova de CORS.
+      const newBlob = await upload(file.name, file, {
+        access: 'public',
+        handleUploadUrl: '/api/food-diary/upload',
       });
 
-      if (!uploadResponse.ok) {
-        throw new Error('Falha no upload da imagem para o armazenamento.');
-      }
-
-      // ETAPA 3: Salvar a entrada no diário no nosso DB com a URL final (downloadUrl).
+      // ETAPA 2: Salvar a URL final no nosso banco de dados.
       const entryPayload = {
         prescriptionId,
         mealId: meal.id,
-        imageUrl: downloadUrl,
+        imageUrl: newBlob.url,
         notes,
         date: new Date().toISOString().split('T')[0],
       };
@@ -87,8 +70,7 @@ export default function FoodPhotoModal({ isOpen, onClose, meal, prescriptionId }
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
     if (selectedFile) {
-      // Vercel Hobby plan has a 4.5MB limit
-      if (selectedFile.size > 4.5 * 1024 * 1024) {
+      if (selectedFile.size > 4.5 * 1024 * 1024) { // Limite de 4.5MB do plano Hobby da Vercel
         toast({
           title: "Arquivo muito grande",
           description: "O tamanho máximo do arquivo é de 4.5MB.",
