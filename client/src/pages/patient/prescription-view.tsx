@@ -124,21 +124,41 @@ export default function PatientPrescriptionView() {
   const pageContent = () => {
     if (isLoading || prescriptionLoading) {
       return (
-        <div className="text-center p-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Carregando prescrições...</p>
+        <div className="text-center p-12">
+          <div className="relative mx-auto w-16 h-16 mb-6">
+            <div className="animate-spin rounded-full h-16 w-16 border-4 border-purple-200"></div>
+            <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-purple-600 absolute top-0 left-0"></div>
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">
+            Carregando suas prescrições...
+          </h3>
+          <p className="text-gray-600 text-sm">
+            Aguarde enquanto preparamos seu plano alimentar
+          </p>
         </div>
       );
     }
   
     if (prescriptions.length === 0) {
       return (
-        <Card className="mt-6">
-          <CardContent className="p-8 text-center">
-            <p className="text-muted-foreground mb-4">Você ainda não possui uma prescrição publicada.</p>
-            <p className="text-sm text-muted-foreground">Entre em contato com seu nutricionista.</p>
-          </CardContent>
-        </Card>
+        <div className="text-center p-12">
+          <div className="mx-auto w-20 h-20 bg-gradient-to-br from-purple-100 to-purple-200 rounded-full flex items-center justify-center mb-6">
+            <svg className="w-10 h-10 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+          </div>
+          <h3 className="text-xl font-semibold text-gray-900 mb-3">
+            Nenhuma prescrição encontrada
+          </h3>
+          <p className="text-gray-600 mb-6 max-w-sm mx-auto leading-relaxed">
+            Você ainda não possui uma prescrição nutricional publicada. Entre em contato com seu nutricionista para receber seu plano alimentar personalizado.
+          </p>
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 max-w-md mx-auto">
+            <p className="text-blue-800 text-sm">
+              💡 <strong>Dica:</strong> Assim que seu nutricionista publicar sua prescrição, ela aparecerá aqui automaticamente.
+            </p>
+          </div>
+        </div>
       );
     }
 
@@ -156,25 +176,89 @@ export default function PatientPrescriptionView() {
 
     // Lista de refeições
     return (
-      <div className="p-4 md:p-0">
-        <Tabs value={selectedPrescription?.id} onValueChange={handleSelectPrescription} className="w-full">
-          <TabsList>
-            {prescriptions.map(p => (
-              <TabsTrigger key={p.id} value={p.id}>{p.title}</TabsTrigger>
-            ))}
-          </TabsList>
-        
-          <div className="space-y-4 mt-6">
-            {selectedPrescription?.meals.map(meal => (
-              <MealCard
+      <div className="p-4 md:p-6">
+        {/* Header section with prescription selection */}
+        <div className="mb-8">
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">
+              Minha Prescrição Nutricional
+            </h1>
+            <p className="text-gray-600 text-sm">
+              Selecione uma prescrição e navegue pelas suas refeições
+            </p>
+          </div>
+          
+          {prescriptions.length > 1 && (
+            <Tabs value={selectedPrescription?.id} onValueChange={handleSelectPrescription} className="w-full">
+              <TabsList className="grid w-full grid-cols-2 md:grid-cols-3 bg-gray-100 p-1 rounded-xl">
+                {prescriptions.map(p => (
+                  <TabsTrigger 
+                    key={p.id} 
+                    value={p.id}
+                    className="rounded-lg font-medium text-sm py-2.5 data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all duration-200"
+                  >
+                    {p.title}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
+          )}
+        </div>
+
+        {/* Meals grid section */}
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-gray-900">
+              Suas Refeições ({selectedPrescription?.meals.length || 0})
+            </h2>
+            <div className="text-sm text-gray-500">
+              Toque para ver detalhes
+            </div>
+          </div>
+          
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-1">
+            {selectedPrescription?.meals.map((meal, index) => (
+              <div
                 key={meal.id}
-                title={meal.name}
-                icon={Utensils}
-                onClick={() => handleMealClick(meal)}
-              />
+                className="group relative"
+              >
+                {/* Meal number badge */}
+                <div className="absolute -top-2 -left-2 z-10 bg-gradient-to-r from-purple-500 to-purple-600 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center shadow-lg">
+                  {index + 1}
+                </div>
+                
+                <MealCard
+                  title={meal.name}
+                  icon={Utensils}
+                  onClick={() => handleMealClick(meal)}
+                  className="transform transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] shadow-sm hover:shadow-lg border-l-4 border-l-purple-400 bg-gradient-to-r from-white to-purple-50/30"
+                />
+                
+                {/* Meal items count */}
+                <div className="absolute bottom-2 right-4 text-xs text-white/90 bg-black/20 px-2 py-1 rounded-full backdrop-blur-sm">
+                  {meal.items.length} {meal.items.length === 1 ? 'item' : 'itens'}
+                </div>
+              </div>
             ))}
           </div>
-        </Tabs>
+          
+          {/* General notes section */}
+          {selectedPrescription?.generalNotes && (
+            <div className="mt-8 p-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
+              <div className="flex items-start gap-3">
+                <Info className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                <div>
+                  <h3 className="font-semibold text-blue-900 mb-2">
+                    Observações Gerais
+                  </h3>
+                  <p className="text-blue-800 text-sm leading-relaxed">
+                    {selectedPrescription.generalNotes}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     );
   };
@@ -202,7 +286,7 @@ export default function PatientPrescriptionView() {
         />
         
         {/* Área de conteúdo com cantos superiores arredondados */}
-        <main className="bg-white rounded-t-2xl -mt-2 min-h-screen pt-6 pb-20">
+        <main className="bg-white rounded-t-2xl -mt-2 min-h-screen pt-8 pb-24 px-1">
           {pageContent()}
         </main>
 
@@ -259,7 +343,7 @@ export default function PatientPrescriptionView() {
           </Button>
         }
       />
-      <main className="max-w-xl mx-auto p-4 lg:p-6">
+      <main className="max-w-4xl mx-auto p-4 lg:p-8">
         {pageContent()}
       </main>
 

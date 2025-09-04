@@ -45,6 +45,12 @@
   --dn-header-to: #A855F7;
   --dn-meal-from: #FF7A7A;
   --dn-meal-to: #FFB366;
+  
+  /* Enhanced gradient variations */
+  --dn-meal-secondary-from: #8B5CF6;
+  --dn-meal-secondary-to: #EC4899;
+  --dn-accent-emerald: #10B981;
+  --dn-accent-pink: #EC4899;
   --shadow-2xs: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00);
   --shadow-xs: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00);
   --shadow-sm: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00), 0px 1px 2px -1px hsl(202.8169 89.1213% 53.1373% / 0.00);
