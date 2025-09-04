@@ -4,8 +4,9 @@ import passport from "passport";
 import bcrypt from "bcrypt";
 import { storage } from "./storage.js";
 import { setupAuth, isAuthenticated } from "./auth.js";
-import { insertPatientSchema, updatePatientSchema, insertPrescriptionSchema, updatePrescriptionSchema, insertMoodEntrySchema, insertAnamnesisRecordSchema } from "../shared/schema.js";
+import { insertPatientSchema, updatePatientSchema, insertPrescriptionSchema, updatePrescriptionSchema, insertMoodEntrySchema, insertAnamnesisRecordSchema, insertFoodDiaryEntrySchema } from "../shared/schema.js";
 import { z } from "zod";
+import { put } from '@vercel/blob';
 
 const SALT_ROUNDS = 10;
 
@@ -564,6 +565,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching mood entries for prescription:", error);
       res.status(500).json({ message: "Failed to fetch mood entries" });
+    }
+  });
+
+  // --- FOOD DIARY ROUTES ---
+  app.post('/api/food-diary/upload', isAuthenticated, async (req: any, res) => {
+    const { filename } = req.body;
+    if (!filename) {
+        return res.status(400).json({ message: 'Filename is required' });
+    }
+
+    try {
+        // Gera um caminho único para o arquivo
+        const blobPath = `food-diary/${req.user.id}/${Date.now()}-${filename}`;
+        
+        const blob = await put(blobPath, req, {
+            access: 'public',
+            // Define o content-type no lado do cliente antes de chamar este endpoint
+            contentType: req.headers['content-type'],
+        });
+
+        res.status(200).json(blob);
+    } catch (error) {
+        console.error("Error uploading to blob storage:", error);
+        res.status(500).json({ message: 'Failed to upload file.' });
+    }
+  });
+
+  app.post('/api/food-diary/entries', isAuthenticated, async (req: any, res) => {
+    try {
+        const patientProfile = await storage.getPatientByUserId(req.user.id);
+        if (!patientProfile) {
+            return res.status(403).json({ message: "Perfil de paciente não encontrado." });
+        }
+        
+        const entryData = insertFoodDiaryEntrySchema.parse({
+            ...req.body,
+            patientId: patientProfile.id,
+        });
+
+        const newEntry = await storage.createFoodDiaryEntry(entryData);
+        res.status(201).json(newEntry);
+    } catch (error) {
+        if (error instanceof z.ZodError) {
+            return res.status(400).json({ message: "Dados inválidos.", errors: error.flatten() });
+        }
+        console.error("Erro ao criar entrada do diário alimentar:", error);
+        res.status(500).json({ message: "Falha ao criar entrada do diário alimentar." });
     }
   });
 

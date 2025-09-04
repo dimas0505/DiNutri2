@@ -5,6 +5,7 @@ import {
   invitations,
   moodEntries,
   anamnesisRecords,
+  foodDiaryEntries,
   type User,
   type UpsertUser,
   type Patient,
@@ -15,6 +16,7 @@ import {
   type MoodEntry,
   type InsertMoodEntry,
   type AnamnesisRecord,
+  type FoodDiaryEntry,
   insertAnamnesisRecordSchema,
 } from "../shared/schema.js";
 import { db } from "./db.js";
@@ -75,6 +77,9 @@ export interface IStorage {
   // Anamnesis Record operations
   createAnamnesisRecord(record: any): Promise<AnamnesisRecord>;
   getAnamnesisRecords(patientId: string): Promise<AnamnesisRecord[]>;
+
+  // Food Diary operations
+  createFoodDiaryEntry(entry: any): Promise<FoodDiaryEntry>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -519,6 +524,12 @@ export class DatabaseStorage implements IStorage {
       .from(anamnesisRecords)
       .where(eq(anamnesisRecords.patientId, patientId))
       .orderBy(desc(anamnesisRecords.createdAt));
+  }
+
+  async createFoodDiaryEntry(entry: any): Promise<FoodDiaryEntry> {
+    const entryWithId = { id: nanoid(), ...entry };
+    const [newEntry] = await db.insert(foodDiaryEntries).values(entryWithId).returning();
+    return newEntry;
   }
 }
 
