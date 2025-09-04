@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import type { MealData } from "@shared/schema";
 import { Upload, CheckCircle } from "lucide-react";
+import { upload } from '@vercel/blob/client';
 
 interface FoodPhotoModalProps {
   isOpen: boolean;
@@ -28,17 +29,14 @@ export default function FoodPhotoModal({ isOpen, onClose, meal, prescriptionId }
     mutationFn: async () => {
       if (!file) throw new Error("Nenhum arquivo selecionado.");
 
-      // 1. Fazer o upload do arquivo para o Vercel Blob
-      const uploadResponse = await fetch('/api/food-diary/upload', {
-        method: 'POST',
-        headers: { 'Content-Type': file.type },
-        body: file,
+      // 1. Faz o upload do arquivo usando o novo fluxo do Vercel Blob client.
+      // Ele automaticamente chama nosso endpoint /api/food-diary/upload-url.
+      const blob = await upload(file.name, file, {
+        access: 'public',
+        handleUploadUrl: '/api/food-diary/upload-url',
       });
 
-      if (!uploadResponse.ok) throw new Error("Falha no upload da imagem.");
-      const blob = await uploadResponse.json();
-
-      // 2. Salvar a entrada no diário no nosso DB
+      // 2. Salva a entrada no diário no nosso DB com a URL retornada.
       const entryPayload = {
         prescriptionId,
         mealId: meal.id,
@@ -50,7 +48,7 @@ export default function FoodPhotoModal({ isOpen, onClose, meal, prescriptionId }
     },
     onSuccess: () => {
       toast({ title: "Sucesso!", description: "Foto da refeição enviada." });
-      // Invalidar queries do diário no futuro
+      queryClient.invalidateQueries({ queryKey: ['/api/food-diary/entries'] }); // Invalidate para futuras listagens
       onClose();
       // Resetar estado
       setFile(null);

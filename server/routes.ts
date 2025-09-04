@@ -6,7 +6,7 @@ import { storage } from "./storage.js";
 import { setupAuth, isAuthenticated } from "./auth.js";
 import { insertPatientSchema, updatePatientSchema, insertPrescriptionSchema, updatePrescriptionSchema, insertMoodEntrySchema, insertAnamnesisRecordSchema, insertFoodDiaryEntrySchema } from "../shared/schema.js";
 import { z } from "zod";
-import { put } from '@vercel/blob';
+import { handleUpload, type HandleUploadBody } from '@vercel/blob/client';
 
 const SALT_ROUNDS = 10;
 
@@ -569,26 +569,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // --- FOOD DIARY ROUTES ---
-  app.post('/api/food-diary/upload', isAuthenticated, async (req: any, res) => {
-    const { filename } = req.body;
-    if (!filename) {
-        return res.status(400).json({ message: 'Filename is required' });
-    }
+  app.post('/api/food-diary/upload-url', isAuthenticated, async (req: any, res) => {
+    const body = req.body as HandleUploadBody;
 
     try {
-        // Gera um caminho único para o arquivo
-        const blobPath = `food-diary/${req.user.id}/${Date.now()}-${filename}`;
-        
-        const blob = await put(blobPath, req, {
-            access: 'public',
-            // Define o content-type no lado do cliente antes de chamar este endpoint
-            contentType: req.headers['content-type'],
+        const jsonResponse = await handleUpload({
+            body,
+            request: req,
+            onBeforeGenerateToken: async (pathname: string) => {
+                // Gera um caminho de arquivo único para evitar colisões
+                const filename = `food-diary/${req.user.id}/${Date.now()}-${pathname}`;
+                return {
+                    allowedContentTypes: ['image/jpeg', 'image/png', 'image/gif', 'image/webp'],
+                    tokenPayload: JSON.stringify({
+                        // Opcional: passe metadados se necessário
+                    }),
+                    pathname: filename,
+                };
+            },
+            onUploadCompleted: async ({ blob, tokenPayload }) => {
+                // Callback executado após o upload ser concluído
+                console.log('Blob upload completed', blob, tokenPayload);
+            },
         });
 
-        res.status(200).json(blob);
+        res.status(200).json(jsonResponse);
     } catch (error) {
-        console.error("Error uploading to blob storage:", error);
-        res.status(500).json({ message: 'Failed to upload file.' });
+        console.error("Error generating upload URL:", error);
+        res.status(500).json({ message: 'Failed to generate upload URL.' });
     }
   });
 
