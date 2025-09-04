@@ -6,7 +6,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -195,11 +195,12 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Patient Info */}
+          {/* COLUNA DA ESQUERDA (INFORMAÇÕES E ANAMNESE) */}
           <div className="lg:col-span-1 space-y-6">
             <Card>
               <CardHeader>
                 <CardTitle>Informações do Paciente</CardTitle>
+                <CardDescription>{patient.email}</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3 text-sm">
@@ -251,7 +252,6 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
               </CardContent>
             </Card>
 
-            {/* Anamnese Section with Tabs */}
             <Tabs defaultValue="current" className="w-full">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="current">Anamnese Atual</TabsTrigger>
@@ -261,6 +261,7 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                 <Card>
                   <CardHeader>
                     <CardTitle>Anamnese Nutricional</CardTitle>
+                    <CardDescription>Dados mais recentes fornecidos.</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4 text-sm">
@@ -377,6 +378,7 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                 <Card>
                   <CardHeader>
                     <CardTitle>Histórico de Anamneses</CardTitle>
+                    <CardDescription>Acompanhe a evolução do paciente.</CardDescription>
                   </CardHeader>
                   <CardContent>
                     {historyLoading ? (
@@ -445,13 +447,12 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
             </Card>
           </div>
 
-          {/* Prescriptions */}
+          {/* COLUNA DA DIREITA (PRESCRIÇÕES) */}
           <div className="lg:col-span-2">
             <Card>
               <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle>Prescrições</CardTitle>
-                </div>
+                <CardTitle>Prescrições</CardTitle>
+                <CardDescription>Histórico de planos alimentares do paciente.</CardDescription>
               </CardHeader>
               <CardContent>
                 {prescriptionsLoading ? (

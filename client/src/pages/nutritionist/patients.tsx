@@ -7,7 +7,8 @@ import { MobileLayout, DefaultMobileDrawer } from "@/components/layout/mobile-la
 import { MobileCard, MobileCardHeader, MobileCardTitle, MobileCardContent } from "@/components/mobile/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
@@ -21,64 +22,62 @@ function PatientCard({ patient, onViewDetails, onNewPrescription }: {
   onViewDetails: () => void;
   onNewPrescription: () => void;
 }) {
-  const calculateAge = (birthDate: string) => {
+  const calculateAge = (birthDate: string | null) => {
     if (!birthDate) return null;
     const birth = new Date(birthDate);
     const today = new Date();
-    const age = today.getFullYear() - birth.getFullYear();
+    let age = today.getFullYear() - birth.getFullYear();
     const monthDiff = today.getMonth() - birth.getMonth();
     if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
-      return age - 1;
+      age--;
     }
     return age;
   };
 
+  const age = calculateAge(patient.birthDate);
+
   return (
-    <MobileCard interactive className="p-4" onClick={onViewDetails}>
-      <div className="flex items-start justify-between">
+    <Card 
+      className="cursor-pointer transition-all hover:shadow-md hover:border-primary/50"
+      onClick={onViewDetails}
+      data-testid={`card-patient-${patient.id}`}
+    >
+      <CardContent className="p-4 flex items-center justify-between">
         <div className="flex-1 min-w-0">
-          <h3 className="font-medium text-foreground truncate" data-testid={`text-patient-name-${patient.id}`}>
+          <p className="text-base font-semibold text-foreground truncate" data-testid={`text-patient-name-${patient.id}`}>
             {patient.name}
-          </h3>
+          </p>
           <p className="text-sm text-muted-foreground truncate" data-testid={`text-patient-email-${patient.id}`}>
             {patient.email}
           </p>
-          <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
-            {patient.birthDate && (
-              <span>{calculateAge(patient.birthDate)} anos</span>
-            )}
-            <span className={cn(
-              "px-2 py-1 rounded-full text-xs font-medium",
-              patient.userId 
-                ? "bg-green-100 text-green-700" 
-                : "bg-gray-100 text-gray-600"
-            )}>
-              {patient.userId ? "Ativo" : "Pendente"}
-            </span>
+          <div className="flex items-center gap-2 mt-2">
+            <Badge variant={patient.userId ? "default" : "secondary"}>
+              {patient.userId ? "Ativo" : "Cadastro Pendente"}
+            </Badge>
+            {age !== null && <Badge variant="outline">{age} anos</Badge>}
           </div>
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={(e) => e.stopPropagation()}>
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 ml-2 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
               <MoreVertical className="h-4 w-4" />
+              <span className="sr-only">Opções</span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={onViewDetails}>
-              <Eye className="h-4 w-4 mr-2" />
-              Ver detalhes
+            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onViewDetails(); }}>
+              <Eye className="h-4 w-4 mr-2" /> Ver detalhes
             </DropdownMenuItem>
             <DropdownMenuItem 
               onClick={(e) => { e.stopPropagation(); onNewPrescription(); }}
               disabled={!patient.userId}
             >
-              <FileText className="h-4 w-4 mr-2" />
-              Nova prescrição
+              <FileText className="h-4 w-4 mr-2" /> Nova prescrição
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-      </div>
-    </MobileCard>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -243,82 +242,88 @@ export default function PatientsPage() {
           </div>
         </div>
         <Card>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-muted/50">
-                <tr>
-                  <th className="text-left p-4 font-medium text-muted-foreground">Paciente</th>
-                  <th className="text-left p-4 font-medium text-muted-foreground hidden sm:table-cell">Idade</th>
-                  <th className="text-left p-4 font-medium text-muted-foreground hidden md:table-cell">Acesso</th>
-                  <th className="text-left p-4 font-medium text-muted-foreground">Ações</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {isLoading ? (
+          <CardHeader>
+            <CardTitle>Lista de Pacientes</CardTitle>
+            <CardDescription>Gerencie seus pacientes e acesse seus detalhes.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto border rounded-lg">
+              <table className="w-full">
+                <thead className="bg-muted/50">
                   <tr>
-                    <td colSpan={4} className="p-8 text-center">
-                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto mb-2"></div>
-                      <p className="text-muted-foreground">Carregando pacientes...</p>
-                    </td>
+                    <th className="text-left p-4 font-medium text-muted-foreground">Paciente</th>
+                    <th className="text-left p-4 font-medium text-muted-foreground hidden sm:table-cell">Idade</th>
+                    <th className="text-left p-4 font-medium text-muted-foreground hidden md:table-cell">Acesso</th>
+                    <th className="text-left p-4 font-medium text-muted-foreground">Ações</th>
                   </tr>
-                ) : filteredPatients.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="p-8 text-center">
-                      <p className="text-muted-foreground">
-                        {searchQuery ? "Nenhum paciente encontrado." : "Nenhum paciente cadastrado."}
-                      </p>
-                    </td>
-                  </tr>
-                ) : (
-                  filteredPatients.map((patient) => (
-                    <tr key={patient.id} className="hover:bg-muted/20 transition-colors">
-                      <td className="p-4">
-                        <div>
-                          <div className="font-medium" data-testid={`text-patient-name-${patient.id}`}>
-                            {patient.name}
-                          </div>
-                          <div className="text-sm text-muted-foreground" data-testid={`text-patient-email-${patient.id}`}>
-                            {patient.email}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="p-4 hidden sm:table-cell text-muted-foreground">
-                        {patient.birthDate ? `${calculateAge(patient.birthDate)} anos` : "-"}
-                      </td>
-                      <td className="p-4 hidden md:table-cell">
-                        <span className={`text-sm ${patient.userId ? 'text-green-600' : 'text-muted-foreground'}`}>
-                          {patient.userId ? "Ativo" : "Pendente"}
-                        </span>
-                      </td>
-                      <td className="p-4">
-                        <div className="flex items-center space-x-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setLocation(`/patients/${patient.id}`)}
-                            title="Ver detalhes"
-                            data-testid={`button-view-patient-${patient.id}`}
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            disabled={!patient.userId}
-                            title={!patient.userId ? "Paciente precisa ter um login" : "Nova prescrição"}
-                            onClick={() => setLocation(`/patients/${patient.id}`)}
-                            data-testid={`button-new-prescription-${patient.id}`}
-                          >
-                            <FileText className="h-4 w-4" />
-                          </Button>
-                        </div>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {isLoading ? (
+                    <tr>
+                      <td colSpan={4} className="p-8 text-center">
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto mb-2"></div>
+                        <p className="text-muted-foreground">Carregando pacientes...</p>
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+                  ) : filteredPatients.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="p-8 text-center">
+                        <p className="text-muted-foreground">
+                          {searchQuery ? "Nenhum paciente encontrado." : "Nenhum paciente cadastrado."}
+                        </p>
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredPatients.map((patient) => (
+                      <tr key={patient.id} className="hover:bg-muted/20 transition-colors">
+                        <td className="p-4">
+                          <div>
+                            <div className="font-medium" data-testid={`text-patient-name-${patient.id}`}>
+                              {patient.name}
+                            </div>
+                            <div className="text-sm text-muted-foreground" data-testid={`text-patient-email-${patient.id}`}>
+                              {patient.email}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="p-4 hidden sm:table-cell text-muted-foreground">
+                          {patient.birthDate ? `${calculateAge(patient.birthDate)} anos` : "-"}
+                        </td>
+                        <td className="p-4 hidden md:table-cell">
+                          <span className={`text-sm ${patient.userId ? 'text-green-600' : 'text-muted-foreground'}`}>
+                            {patient.userId ? "Ativo" : "Pendente"}
+                          </span>
+                        </td>
+                        <td className="p-4">
+                          <div className="flex items-center space-x-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setLocation(`/patients/${patient.id}`)}
+                              title="Ver detalhes"
+                              data-testid={`button-view-patient-${patient.id}`}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              disabled={!patient.userId}
+                              title={!patient.userId ? "Paciente precisa ter um login" : "Nova prescrição"}
+                              onClick={() => setLocation(`/patients/${patient.id}`)}
+                              data-testid={`button-new-prescription-${patient.id}`}
+                            >
+                              <FileText className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
         </Card>
       </main>
     </div>
