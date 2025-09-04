@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, CheckCircle, Eye, FileText, Plus, Trash2, Users, XCircle, Link as LinkIcon, Copy, History, User, Calendar, Ruler, Weight, Target, Activity, Heart, Stethoscope, Pill, Camera, Image } from "lucide-react";
+import { ArrowLeft, CheckCircle, Eye, FileText, Plus, Trash2, Users, XCircle, Link as LinkIcon, Copy, History, User, Calendar, Ruler, Weight, Target, Activity, Heart, Stethoscope, Pill, Camera, Image, Smile } from "lucide-react";
 import { useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -13,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { DefaultMobileDrawer } from "@/components/layout/mobile-layout";
-import type { Patient, Prescription, AnamnesisRecord, FoodDiaryEntryWithPrescription, MealData } from "@shared/schema";
+import type { Patient, Prescription, AnamnesisRecord, FoodDiaryEntryWithPrescription, MealData, MoodType } from "@shared/schema";
 
 export default function PatientDetails({ params }: { params: { id: string } }) {
   const [, setLocation] = useLocation();
@@ -143,6 +143,30 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('pt-BR');
+  };
+
+  const getMoodEmoji = (mood: MoodType | null | undefined) => {
+    if (!mood) return null;
+    switch (mood) {
+      case 'very_sad': return '😢';
+      case 'sad': return '😟';
+      case 'neutral': return '😐';
+      case 'happy': return '😊';
+      case 'very_happy': return '😄';
+      default: return null;
+    }
+  };
+
+  const getMoodLabel = (mood: MoodType | null | undefined) => {
+    if (!mood) return null;
+    switch (mood) {
+      case 'very_sad': return 'Muito triste';
+      case 'sad': return 'Triste';
+      case 'neutral': return 'Neutro';
+      case 'happy': return 'Feliz';
+      case 'very_happy': return 'Muito feliz';
+      default: return null;
+    }
   };
 
   const handleDeletePrescription = (prescriptionId: string) => {
@@ -810,10 +834,42 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                               </span>
                             </div>
                           )}
+                          
+                          {/* Mood Information */}
+                          {(entry.moodBefore || entry.moodAfter) && (
+                            <div className="mb-3 p-3 rounded-lg bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 border border-blue-200/50 dark:border-blue-700/50">
+                              <div className="flex items-center gap-2 mb-2">
+                                <Smile className="h-4 w-4 text-purple-600 dark:text-purple-300" />
+                                <span className="text-sm font-medium text-gray-700 dark:text-gray-200">Humor</span>
+                              </div>
+                              <div className="space-y-1 text-sm">
+                                {entry.moodBefore && (
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs text-gray-500 dark:text-gray-400">Antes:</span>
+                                    <span className="text-lg">{getMoodEmoji(entry.moodBefore)}</span>
+                                    <span className="text-gray-700 dark:text-gray-300">{getMoodLabel(entry.moodBefore)}</span>
+                                  </div>
+                                )}
+                                {entry.moodAfter && (
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs text-gray-500 dark:text-gray-400">Depois:</span>
+                                    <span className="text-lg">{getMoodEmoji(entry.moodAfter)}</span>
+                                    <span className="text-gray-700 dark:text-gray-300">{getMoodLabel(entry.moodAfter)}</span>
+                                  </div>
+                                )}
+                              </div>
+                              {entry.moodNotes && (
+                                <div className="mt-2 text-xs text-gray-600 dark:text-gray-400">
+                                  <span className="font-medium">Observações do humor:</span> {entry.moodNotes}
+                                </div>
+                              )}
+                            </div>
+                          )}
+
                           {entry.notes && (
                             <div className="mt-2">
                               <p className="text-sm text-gray-600 dark:text-gray-300">
-                                <span className="font-medium">Observações:</span> {entry.notes}
+                                <span className="font-medium">Observações da refeição:</span> {entry.notes}
                               </p>
                             </div>
                           )}
