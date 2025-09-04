@@ -45,6 +45,18 @@
   --dn-header-to: #A855F7;
   --dn-meal-from: #FF7A7A;
   --dn-meal-to: #FFB366;
+  
+  /* Modern Design System Variables */
+  --dn-glass-bg: rgba(255, 255, 255, 0.1);
+  --dn-glass-border: rgba(255, 255, 255, 0.2);
+  --dn-emerald-from: #10B981;
+  --dn-emerald-to: #059669;
+  --dn-rose-from: #F43F5E;
+  --dn-rose-to: #E11D48;
+  --dn-blue-from: #3B82F6;
+  --dn-blue-to: #2563EB;
+  --dn-amber-from: #F59E0B;
+  --dn-amber-to: #D97706;
   --shadow-2xs: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00);
   --shadow-xs: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00);
   --shadow-sm: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00), 0px 1px 2px -1px hsl(202.8169 89.1213% 53.1373% / 0.00);
