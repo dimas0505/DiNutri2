@@ -22,6 +22,7 @@ import AdminDashboard from "@/pages/admin/dashboard";
 import CreateUserPage from "@/pages/admin/create-user";
 import AdminProfilePage from "@/pages/admin/profile";
 import EditUserPage from "@/pages/admin/edit-user";
+import PrescriptionDemo from "@/pages/demo/prescription-demo";
 
 function Router() {
   const { isAuthenticated, isLoading, isAdmin, isNutritionist, isPatient } = useAuth();
@@ -43,6 +44,9 @@ function Router() {
       <Route path="/" component={isAuthenticated ? Home : Landing} />
       <Route path="/anamnese" component={AnamnesePage} />
       <Route path="/anamnese/retorno" component={FollowUpAnamnesePage} />
+      
+      {/* Demo Routes - Public access */}
+      <Route path="/demo/prescription" component={PrescriptionDemo} />
 
       {/* Rota de Registro do Paciente (após login com convite) */}
       {isAuthenticated && isPatient && (

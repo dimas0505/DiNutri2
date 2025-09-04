@@ -45,99 +45,129 @@ export default function MealMenuScreen({
   };
 
   return (
-    <div className="fixed inset-0 bg-white z-50 flex flex-col">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-4 shadow-lg">
-        <div className="flex items-center justify-between">
-          <h1 className="text-xl font-semibold">{meal.name}</h1>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onClose}
-            className="text-white hover:bg-white/20 p-2"
-          >
-            <X className="h-6 w-6" />
-          </Button>
+    <div className="fixed inset-0 bg-gray-50 z-50 flex flex-col">
+      {/* Enhanced Header with gradient and better typography */}
+      <div className="bg-gradient-to-r from-purple-600 to-purple-700 text-white shadow-xl">
+        <div className="p-4 pb-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onClose}
+                className="text-white hover:bg-white/20 p-2 rounded-xl"
+              >
+                <X className="h-6 w-6" />
+              </Button>
+              <div>
+                <h1 className="text-xl font-bold leading-tight">{meal.name}</h1>
+                <p className="text-purple-100 text-sm">
+                  {meal.items.length} {meal.items.length === 1 ? 'alimento' : 'alimentos'}
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-6">
-        {/* Menu da refeição */}
-        <div>
-          <h2 className="text-lg font-medium text-gray-800 mb-4">Menu da refeição</h2>
-          <div className="grid grid-cols-2 gap-4">
-            {/* Foto para o diário alimentar */}
-            <Button
-              onClick={handlePhotoAction}
-              className="h-20 flex flex-col items-center justify-center space-y-2 bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg shadow-md transition-all duration-200 hover:shadow-lg"
-            >
-              <Camera className="h-6 w-6" />
-              <span className="text-xs font-medium text-center">
-                Foto para o diário alimentar
-              </span>
-            </Button>
-
-            {/* Registrar humor na refeição */}
-            <Button
-              onClick={handleMoodAction}
-              className="h-20 flex flex-col items-center justify-center space-y-2 bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg shadow-md transition-all duration-200 hover:shadow-lg"
-            >
-              <Heart className="h-6 w-6" />
-              <span className="text-xs font-medium text-center">
-                Registrar humor na refeição
-              </span>
-            </Button>
-          </div>
-        </div>
-
-        {/* Lista de Alimentos */}
-        <div>
-          <h2 className="text-lg font-medium text-gray-800 mb-4">Alimentos desta refeição</h2>
-          <div className="space-y-3">
-            {meal.items.map((item) => (
-              <div
-                key={item.id}
-                className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow duration-200"
+      {/* Enhanced Content with better spacing and organization */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="p-4 space-y-8">
+          {/* Quick Actions Grid - now more prominent */}
+          <div className="bg-white rounded-2xl p-6 shadow-sm border">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+              Ações Rápidas
+            </h2>
+            <div className="grid grid-cols-2 gap-4">
+              {/* Photo for diary */}
+              <Button
+                onClick={handlePhotoAction}
+                className="h-24 flex flex-col items-center justify-center space-y-3 bg-gradient-to-br from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-xl shadow-md transition-all duration-300 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
               >
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <h3 className="font-medium text-gray-900 mb-1">
-                      {item.description}
-                    </h3>
-                    <p className="text-sm text-gray-600 mb-3">
-                      {item.amount}
-                    </p>
+                <Camera className="h-7 w-7" />
+                <span className="text-xs font-medium text-center leading-tight">
+                  Foto para<br />o diário
+                </span>
+              </Button>
+
+              {/* Mood registration */}
+              <Button
+                onClick={handleMoodAction}
+                className="h-24 flex flex-col items-center justify-center space-y-3 bg-gradient-to-br from-pink-500 to-pink-600 hover:from-pink-600 hover:to-pink-700 text-white rounded-xl shadow-md transition-all duration-300 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
+              >
+                <Heart className="h-7 w-7" />
+                <span className="text-xs font-medium text-center leading-tight">
+                  Registrar<br />humor
+                </span>
+              </Button>
+            </div>
+          </div>
+
+          {/* Enhanced Food Items List */}
+          <div className="bg-white rounded-2xl p-6 shadow-sm border">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+              Alimentos desta Refeição
+            </h2>
+            <div className="space-y-4">
+              {meal.items.map((item, index) => (
+                <div
+                  key={item.id}
+                  className="group bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-xl p-4 transition-all duration-200 hover:shadow-md"
+                >
+                  <div className="flex items-start gap-4">
+                    {/* Item number badge */}
+                    <div className="bg-orange-100 text-orange-700 text-sm font-bold rounded-lg w-8 h-8 flex items-center justify-center flex-shrink-0 mt-1">
+                      {index + 1}
+                    </div>
                     
-                    {/* Botão de substituição */}
-                    <Button
-                      onClick={() => handleSubstitutionClick(item)}
-                      variant="outline"
-                      size="sm"
-                      className="text-blue-600 border-blue-200 hover:bg-blue-50 hover:border-blue-300 transition-colors duration-200"
-                    >
-                      Ver opções de substituição
-                    </Button>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-gray-900 mb-2 text-base leading-tight">
+                        {item.description}
+                      </h3>
+                      <p className="text-sm text-gray-600 mb-4 bg-gray-100 px-3 py-1.5 rounded-lg inline-block">
+                        📏 {item.amount}
+                      </p>
+                      
+                      {/* Enhanced substitution button */}
+                      <Button
+                        onClick={() => handleSubstitutionClick(item)}
+                        variant="outline"
+                        size="sm"
+                        className="text-purple-600 border-purple-200 hover:bg-purple-50 hover:border-purple-300 transition-all duration-200 rounded-lg font-medium"
+                      >
+                        <span className="mr-2">🔄</span>
+                        Ver opções de substituição
+                      </Button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
 
-        {/* Observações da refeição */}
-        {meal.notes && (
-          <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200">
-            <h3 className="font-medium text-gray-800 mb-2 flex items-center">
-              <Image className="h-4 w-4 mr-2 text-blue-600" />
-              Observações
-            </h3>
-            <p className="text-sm text-gray-700">{meal.notes}</p>
-          </div>
-        )}
+          {/* Enhanced Notes Section */}
+          {meal.notes && (
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-6">
+              <h3 className="font-semibold text-blue-900 mb-3 flex items-center gap-2">
+                <div className="bg-blue-500 text-white p-1.5 rounded-lg">
+                  <Image className="h-4 w-4" />
+                </div>
+                Observações Importantes
+              </h3>
+              <p className="text-blue-800 text-sm leading-relaxed bg-white/50 p-4 rounded-xl">
+                {meal.notes}
+              </p>
+            </div>
+          )}
+          
+          {/* Bottom spacing for better mobile experience */}
+          <div className="h-8"></div>
+        </div>
       </div>
 
-      {/* Modals */}
+      {/* Modals remain the same */}
       <MoodRegistrationModal
         isOpen={showMoodModal}
         onClose={() => setShowMoodModal(false)}
