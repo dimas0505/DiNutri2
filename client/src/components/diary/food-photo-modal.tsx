@@ -28,24 +28,34 @@ export default function FoodPhotoModal({ isOpen, onClose, meal, prescriptionId }
     mutationFn: async () => {
       if (!file) throw new Error("Nenhum arquivo selecionado.");
 
-      // 1. Fazer o upload do arquivo para o Vercel Blob
-      const uploadResponse = await fetch('/api/food-diary/upload', {
+      // ETAPA 1: Obter a URL de upload pré-assinada do nosso backend.
+      const response = await fetch('/api/food-diary/upload-url', {
         method: 'POST',
-        headers: { 
-          'Content-Type': file.type,
-          'X-Filename': file.name,
-        },
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filename: file.name }),
+      });
+      if (!response.ok) {
+        throw new Error('Falha ao obter URL de upload.');
+      }
+      const presignedPost = await response.json();
+      const { url: uploadUrl, downloadUrl } = presignedPost;
+
+      // ETAPA 2: Fazer o upload do arquivo diretamente para a URL fornecida pelo Vercel Blob.
+      const uploadResponse = await fetch(uploadUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': file.type },
         body: file,
       });
 
-      if (!uploadResponse.ok) throw new Error("Falha no upload da imagem.");
-      const blob = await uploadResponse.json();
+      if (!uploadResponse.ok) {
+        throw new Error('Falha no upload da imagem para o storage.');
+      }
 
-      // 2. Salvar a entrada no diário no nosso DB
+      // ETAPA 3: Salvar a entrada no diário no nosso DB com a URL final (downloadUrl).
       const entryPayload = {
         prescriptionId,
         mealId: meal.id,
-        imageUrl: blob.url,
+        imageUrl: downloadUrl, // Usar a downloadUrl que é a URL pública final
         notes,
         date: new Date().toISOString().split('T')[0],
       };
@@ -53,9 +63,8 @@ export default function FoodPhotoModal({ isOpen, onClose, meal, prescriptionId }
     },
     onSuccess: () => {
       toast({ title: "Sucesso!", description: "Foto da refeição enviada." });
-      // Invalidar queries do diário no futuro
+      queryClient.invalidateQueries({ queryKey: ['/api/food-diary/entries'] });
       onClose();
-      // Resetar estado
       setFile(null);
       setPreviewUrl(null);
       setNotes("");
