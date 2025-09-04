@@ -148,7 +148,7 @@ export default function AnamnesePage() {
 
   return (
     <>
-      {/* Estilos para os blobs animados, copiados da landing page */}
+      {/* Estilos para os blobs animados e efeitos 3D dos cards */}
       <style>{`
         @keyframes blob {
           0% { transform: translate(0px, 0px) scale(1); }
@@ -159,6 +159,101 @@ export default function AnamnesePage() {
         .animate-blob { animation: blob 7s infinite; }
         .animation-delay-2000 { animation-delay: 2s; }
         .animation-delay-4000 { animation-delay: 4s; }
+        
+        /* Efeitos 3D para os cards */
+        .card-3d {
+          perspective: 1000px;
+          transform-style: preserve-3d;
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .card-3d:hover {
+          transform: translateY(-8px) rotateX(2deg) rotateY(-2deg);
+        }
+        
+        .card-3d::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(147, 51, 234, 0.05) 100%);
+          border-radius: inherit;
+          opacity: 0;
+          transition: opacity 0.3s ease;
+          pointer-events: none;
+          z-index: 1;
+        }
+        
+        .card-3d:hover::before {
+          opacity: 1;
+        }
+        
+        .card-3d > * {
+          position: relative;
+          z-index: 2;
+        }
+        
+        /* Sombras aprimoradas */
+        .shadow-3d {
+          box-shadow: 
+            0 4px 6px -1px rgba(0, 0, 0, 0.1),
+            0 2px 4px -1px rgba(0, 0, 0, 0.06),
+            0 10px 25px -3px rgba(59, 130, 246, 0.1),
+            0 0 0 1px rgba(255, 255, 255, 0.05);
+        }
+        
+        .shadow-3d:hover {
+          box-shadow: 
+            0 20px 25px -5px rgba(0, 0, 0, 0.1),
+            0 10px 10px -5px rgba(0, 0, 0, 0.04),
+            0 25px 50px -12px rgba(59, 130, 246, 0.25),
+            0 0 0 1px rgba(255, 255, 255, 0.1);
+        }
+        
+        /* Gradientes sutis para diferentes cards */
+        .card-personal {
+          background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.95) 100%);
+          border: 1px solid rgba(59, 130, 246, 0.1);
+        }
+        
+        .card-goals {
+          background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(240, 253, 244, 0.95) 100%);
+          border: 1px solid rgba(34, 197, 94, 0.1);
+        }
+        
+        .card-preferences {
+          background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 247, 237, 0.95) 100%);
+          border: 1px solid rgba(251, 146, 60, 0.1);
+        }
+        
+        .card-health {
+          background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(252, 231, 243, 0.95) 100%);
+          border: 1px solid rgba(236, 72, 153, 0.1);
+        }
+        
+        /* Animação de entrada suave */
+        .card-enter {
+          animation: cardSlideIn 0.6s ease-out forwards;
+        }
+        
+        @keyframes cardSlideIn {
+          from {
+            opacity: 0;
+            transform: translateY(30px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        
+        .card-enter:nth-child(1) { animation-delay: 0.1s; }
+        .card-enter:nth-child(2) { animation-delay: 0.2s; }
+        .card-enter:nth-child(3) { animation-delay: 0.3s; }
+        .card-enter:nth-child(4) { animation-delay: 0.4s; }
+        .card-enter:nth-child(5) { animation-delay: 0.5s; }
       `}</style>
 
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex flex-col items-center justify-center p-4 relative overflow-hidden">
@@ -173,21 +268,28 @@ export default function AnamnesePage() {
           <DiNutriLogo variant="full" className="h-24" />
         </div>
 
-        <main className="w-full max-w-4xl mx-auto space-y-6">
-          <Card className="shadow-lg border-0 bg-white/90 backdrop-blur-md">
-            <CardHeader className="text-center">
-              <CardTitle className="text-3xl font-bold">Anamnese Nutricional</CardTitle>
-              <CardDescription className="text-md text-muted-foreground">
+        <main className="w-full max-w-4xl mx-auto space-y-8">
+          <Card className="card-3d shadow-3d rounded-3xl border-0 bg-white/95 backdrop-blur-md card-enter">
+            <CardHeader className="text-center pb-6">
+              <CardTitle className="text-3xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
+                Anamnese Nutricional
+              </CardTitle>
+              <CardDescription className="text-lg text-muted-foreground mt-2">
                 Parabéns pela escolha de cuidar da sua saúde! Preencha os campos abaixo para criarmos seu plano.
               </CardDescription>
             </CardHeader>
           </Card>
 
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
               
-              <Card className="shadow-lg border-0 bg-white/90 backdrop-blur-md">
-                <CardHeader><CardTitle>1. Dados Pessoais e Acesso</CardTitle></CardHeader>
+              <Card className="card-3d card-personal shadow-3d rounded-3xl border-0 backdrop-blur-md card-enter">
+                <CardHeader className="pb-6">
+                  <CardTitle className="text-xl font-semibold text-slate-800 flex items-center gap-3">
+                    <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-sm">1</div>
+                    Dados Pessoais e Acesso
+                  </CardTitle>
+                </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
@@ -331,8 +433,13 @@ export default function AnamnesePage() {
                 </CardContent>
               </Card>
 
-              <Card className="shadow-lg border-0 bg-white/90 backdrop-blur-md">
-                <CardHeader><CardTitle>2. Objetivos e Hábitos</CardTitle></CardHeader>
+              <Card className="card-3d card-goals shadow-3d rounded-3xl border-0 backdrop-blur-md card-enter">
+                <CardHeader className="pb-6">
+                  <CardTitle className="text-xl font-semibold text-slate-800 flex items-center gap-3">
+                    <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center text-white font-bold text-sm">2</div>
+                    Objetivos e Hábitos
+                  </CardTitle>
+                </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
@@ -492,8 +599,13 @@ export default function AnamnesePage() {
                 </CardContent>
               </Card>
 
-              <Card className="shadow-lg border-0 bg-white/90 backdrop-blur-md">
-                <CardHeader><CardTitle>3. Preferências e Restrições</CardTitle></CardHeader>
+              <Card className="card-3d card-preferences shadow-3d rounded-3xl border-0 backdrop-blur-md card-enter">
+                <CardHeader className="pb-6">
+                  <CardTitle className="text-xl font-semibold text-slate-800 flex items-center gap-3">
+                    <div className="w-8 h-8 bg-gradient-to-br from-orange-500 to-orange-600 rounded-full flex items-center justify-center text-white font-bold text-sm">3</div>
+                    Preferências e Restrições
+                  </CardTitle>
+                </CardHeader>
                 <CardContent className="space-y-4">
                   <FormField
                     control={form.control}
@@ -581,8 +693,13 @@ export default function AnamnesePage() {
                 </CardContent>
               </Card>
               
-              <Card className="shadow-lg border-0 bg-white/90 backdrop-blur-md">
-                <CardHeader><CardTitle>4. Saúde e Informações Adicionais</CardTitle></CardHeader>
+              <Card className="card-3d card-health shadow-3d rounded-3xl border-0 backdrop-blur-md card-enter">
+                <CardHeader className="pb-6">
+                  <CardTitle className="text-xl font-semibold text-slate-800 flex items-center gap-3">
+                    <div className="w-8 h-8 bg-gradient-to-br from-pink-500 to-pink-600 rounded-full flex items-center justify-center text-white font-bold text-sm">4</div>
+                    Saúde e Informações Adicionais
+                  </CardTitle>
+                </CardHeader>
                 <CardContent className="space-y-4">
                   <FormField
                     control={form.control}
@@ -671,14 +788,14 @@ export default function AnamnesePage() {
                 </CardContent>
               </Card>
 
-              <div className="flex justify-end space-x-4 pt-4 pb-8">
-                <Button asChild variant="ghost">
+              <div className="flex justify-end space-x-4 pt-6 pb-8">
+                <Button asChild variant="ghost" className="px-8 py-3 text-lg rounded-2xl">
                   <Link to="/">Cancelar</Link>
                 </Button>
                 <Button
                   type="submit"
                   disabled={registerPatientMutation.isPending}
-                  className="min-w-[180px] text-lg py-6"
+                  className="min-w-[200px] text-lg py-6 px-8 rounded-2xl bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300"
                   size="lg"
                 >
                   {registerPatientMutation.isPending ? "Finalizando..." : "Concluir e Criar Conta"}
