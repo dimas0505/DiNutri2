@@ -4,8 +4,9 @@ import passport from "passport";
 import bcrypt from "bcrypt";
 import { storage } from "./storage.js";
 import { setupAuth, isAuthenticated } from "./auth.js";
-import { insertPatientSchema, updatePatientSchema, insertPrescriptionSchema, updatePrescriptionSchema, insertMoodEntrySchema, insertAnamnesisRecordSchema } from "../shared/schema.js";
+import { insertPatientSchema, updatePatientSchema, insertPrescriptionSchema, updatePrescriptionSchema, insertMoodEntrySchema, insertAnamnesisRecordSchema, insertFoodDiaryEntrySchema } from "../shared/schema.js";
 import { z } from "zod";
+import { put } from '@vercel/blob';
 
 const SALT_ROUNDS = 10;
 
@@ -564,6 +565,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching mood entries for prescription:", error);
       res.status(500).json({ message: "Failed to fetch mood entries" });
+    }
+  });
+
+  // --- FOOD DIARY ROUTES ---
+  app.post('/api/food-diary/upload-url', isAuthenticated, async (req: any, res) => {
+    const { filename, contentType } = req.body; //  Capturar o contentType
+    if (!filename || !contentType) {
+        return res.status(400).json({ message: 'Filename and contentType are required' });
+    }
+
+    try {
+        const blobPath = `food-diary/${req.user.id}/${Date.now()}-${filename}`;
+        
+        const blob = await put(blobPath, 'dummy-body', {
+            access: 'public',
+            addRandomSuffix: false,
+            contentType: contentType, // Passar o contentType para resolver CORS
+        });
+
+        res.status(200).json(blob);
+    } catch (error: any) {
+        console.error("Error generating upload URL:", error);
+        res.status(500).json({ message: error.message || 'Failed to generate upload URL.' });
+    }
+  });
+
+  app.post('/api/food-diary/entries', isAuthenticated, async (req: any, res) => {
+    try {
+      const patientProfile = await storage.getPatientByUserId(req.user.id);
+      if (!patientProfile) {
+        return res.status(403).json({ message: "Perfil de paciente não encontrado." });
+      }
+      
+      const entryData = insertFoodDiaryEntrySchema.parse({
+        ...req.body,
+        patientId: patientProfile.id,
+      });
+
+      const newEntry = await storage.createFoodDiaryEntry(entryData);
+      res.status(201).json(newEntry);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          message: "Dados inválidos", 
+          errors: error.errors 
+        });
+      }
+      console.error("Error creating food diary entry:", error);
+      res.status(500).json({ message: "Falha ao criar entrada no diário alimentar." });
     }
   });
 

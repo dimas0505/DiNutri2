@@ -15,6 +15,13 @@
       "when": 1756861988534,
       "tag": "0001_useful_post",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1756999391377,
+      "tag": "0002_sweet_hercules",
+      "breakpoints": true
     }
   ]
 }
