@@ -629,14 +629,14 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                 ) : prescriptions && prescriptions.length > 0 ? (
                   <div className="space-y-4">
                     {prescriptions.map((prescription) => (
-                      <div key={prescription.id} className="p-5 rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200/50 dark:border-blue-700/50 hover:shadow-md transition-all duration-200 transform hover:scale-[1.01]">
-                        <div className="flex items-start justify-between mb-3">
-                          <div className="flex items-center gap-3">
-                            <div className="p-2 bg-blue-100 dark:bg-blue-800 rounded-lg">
+                      <div key={prescription.id} className="p-4 sm:p-5 rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200/50 dark:border-blue-700/50 hover:shadow-md transition-all duration-200 transform hover:scale-[1.01] overflow-hidden">
+                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-3">
+                          <div className="flex items-center gap-3 min-w-0 flex-1">
+                            <div className="p-2 bg-blue-100 dark:bg-blue-800 rounded-lg flex-shrink-0">
                               <FileText className="h-5 w-5 text-blue-600 dark:text-blue-300" />
                             </div>
-                            <div>
-                              <h3 className="font-semibold text-gray-900 dark:text-white text-lg" data-testid={`text-prescription-title-${prescription.id}`}>
+                            <div className="min-w-0 flex-1">
+                              <h3 className="font-semibold text-gray-900 dark:text-white text-lg truncate" data-testid={`text-prescription-title-${prescription.id}`}>
                                 {prescription.title}
                               </h3>
                               <p className="text-sm text-gray-600 dark:text-gray-300">
@@ -649,7 +649,7 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                             className={`${prescription.status === 'published' 
                               ? 'bg-green-100 text-green-800 border-green-200 dark:bg-green-800 dark:text-green-100 dark:border-green-700' 
                               : 'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600'
-                            } px-3 py-1 font-medium`}
+                            } px-3 py-1 font-medium flex-shrink-0 self-start`}
                             data-testid={`badge-prescription-status-${prescription.id}`}
                           >
                             {prescription.status === 'published' ? 'Publicado' : 'Rascunho'}
@@ -660,7 +660,7 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                             <p className="text-sm text-gray-700 dark:text-gray-300">{prescription.generalNotes}</p>
                           </div>
                         )}
-                        <div className="flex items-center gap-2 mt-4">
+                        <div className="flex flex-wrap items-center gap-2 mt-4">
                           <Button
                             variant="ghost"
                             size="sm"
