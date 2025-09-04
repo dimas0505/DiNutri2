@@ -628,5 +628,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/patients/:patientId/food-diary/entries', isAuthenticated, async (req: any, res) => {
+    try {
+      const { patientId } = req.params;
+      
+      // Verify that the nutritionist owns this patient
+      const patient = await storage.getPatient(patientId);
+      if (!patient || patient.ownerId !== req.user.id) {
+        return res.status(404).json({ message: "Paciente não encontrado ou acesso não autorizado." });
+      }
+
+      const entries = await storage.getFoodDiaryEntriesByPatient(patientId);
+      res.json(entries);
+    } catch (error) {
+      console.error("Error fetching food diary entries:", error);
+      res.status(500).json({ message: "Falha ao buscar entradas do diário alimentar." });
+    }
+  });
+
   return createServer(app);
 }
