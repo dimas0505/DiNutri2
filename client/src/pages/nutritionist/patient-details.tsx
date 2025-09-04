@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, CheckCircle, Eye, FileText, Plus, Trash2, Users, XCircle, Link as LinkIcon, Copy, History, User, Calendar, Ruler, Weight, Target, Activity, Heart, Stethoscope, Pill } from "lucide-react";
+import { ArrowLeft, CheckCircle, Eye, FileText, Plus, Trash2, Users, XCircle, Link as LinkIcon, Copy, History, User, Calendar, Ruler, Weight, Target, Activity, Heart, Stethoscope, Pill, Camera, Image, Smile } from "lucide-react";
 import { useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -13,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { DefaultMobileDrawer } from "@/components/layout/mobile-layout";
-import type { Patient, Prescription, AnamnesisRecord } from "@shared/schema";
+import type { Patient, Prescription, AnamnesisRecord, FoodDiaryEntryWithPrescription, MealData, MoodType } from "@shared/schema";
 
 export default function PatientDetails({ params }: { params: { id: string } }) {
   const [, setLocation] = useLocation();
@@ -33,6 +33,11 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
 
   const { data: anamnesisHistory, isLoading: historyLoading } = useQuery<AnamnesisRecord[]>({
     queryKey: ["/api/patients", params.id, "anamnesis-records"],
+    enabled: !!patient,
+  });
+
+  const { data: foodDiaryEntries, isLoading: foodDiaryLoading } = useQuery<FoodDiaryEntryWithPrescription[]>({
+    queryKey: ["/api/patients", params.id, "food-diary", "entries"],
     enabled: !!patient,
   });
 
@@ -138,6 +143,30 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('pt-BR');
+  };
+
+  const getMoodEmoji = (mood: MoodType | null | undefined) => {
+    if (!mood) return null;
+    switch (mood) {
+      case 'very_sad': return '😢';
+      case 'sad': return '😟';
+      case 'neutral': return '😐';
+      case 'happy': return '😊';
+      case 'very_happy': return '😄';
+      default: return null;
+    }
+  };
+
+  const getMoodLabel = (mood: MoodType | null | undefined) => {
+    if (!mood) return null;
+    switch (mood) {
+      case 'very_sad': return 'Muito triste';
+      case 'sad': return 'Triste';
+      case 'neutral': return 'Neutro';
+      case 'happy': return 'Feliz';
+      case 'very_happy': return 'Muito feliz';
+      default: return null;
+    }
   };
 
   const handleDeletePrescription = (prescriptionId: string) => {
@@ -752,6 +781,119 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
               </CardContent>
             </Card>
           </div>
+        </div>
+
+        {/* Food Diary Section */}
+        <div className="mt-8">
+          <Card className="shadow-lg border-0 bg-gradient-to-br from-white to-orange-50/30 dark:from-gray-900 dark:to-gray-800/50 overflow-hidden">
+            <CardHeader className="bg-gradient-to-r from-orange-600 to-amber-600 text-white pb-6">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
+                  <Camera className="h-6 w-6" />
+                </div>
+                <CardTitle className="text-xl font-bold">Diário Alimentar</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent className="p-6">
+              {foodDiaryLoading ? (
+                <div className="text-center py-12">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600 mx-auto mb-4"></div>
+                  <p className="text-gray-600 dark:text-gray-300 font-medium">Carregando diário alimentar...</p>
+                </div>
+              ) : foodDiaryEntries && foodDiaryEntries.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {foodDiaryEntries.map((entry) => {
+                    // Find the meal name from the prescription meals
+                    const mealName = entry.prescriptionMeals?.find((meal: MealData) => meal.id === entry.mealId)?.name || `Refeição ${entry.mealId}`;
+                    
+                    return (
+                      <div key={entry.id} className="bg-gradient-to-br from-white to-orange-50 dark:from-gray-800 dark:to-orange-900/10 rounded-lg border border-orange-200/50 dark:border-orange-700/50 overflow-hidden shadow-md hover:shadow-lg transition-all duration-200">
+                        <div className="aspect-square relative">
+                          <img 
+                            src={entry.imageUrl} 
+                            alt="Foto da refeição" 
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              const img = e.target as HTMLImageElement;
+                              img.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2Y5ZmFmYiIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IiM2YjcyODAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5JbWFnZW0gbsOjbyBlbmNvbnRyYWRhPC90ZXh0Pjwvc3ZnPg==';
+                            }}
+                          />
+                          <div className="absolute top-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded backdrop-blur-sm">
+                            {formatDate(entry.date)}
+                          </div>
+                        </div>
+                        <div className="p-4">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Image className="h-4 w-4 text-orange-600 dark:text-orange-300" />
+                            <span className="font-semibold text-gray-900 dark:text-white">{mealName}</span>
+                          </div>
+                          {entry.prescriptionTitle && (
+                            <div className="mb-2">
+                              <span className="text-xs text-gray-500 dark:text-gray-400">
+                                Prescrição: {entry.prescriptionTitle}
+                              </span>
+                            </div>
+                          )}
+                          
+                          {/* Mood Information */}
+                          {(entry.moodBefore || entry.moodAfter) && (
+                            <div className="mb-3 p-3 rounded-lg bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 border border-blue-200/50 dark:border-blue-700/50">
+                              <div className="flex items-center gap-2 mb-2">
+                                <Smile className="h-4 w-4 text-purple-600 dark:text-purple-300" />
+                                <span className="text-sm font-medium text-gray-700 dark:text-gray-200">Humor</span>
+                              </div>
+                              <div className="space-y-1 text-sm">
+                                {entry.moodBefore && (
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs text-gray-500 dark:text-gray-400">Antes:</span>
+                                    <span className="text-lg">{getMoodEmoji(entry.moodBefore)}</span>
+                                    <span className="text-gray-700 dark:text-gray-300">{getMoodLabel(entry.moodBefore)}</span>
+                                  </div>
+                                )}
+                                {entry.moodAfter && (
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs text-gray-500 dark:text-gray-400">Depois:</span>
+                                    <span className="text-lg">{getMoodEmoji(entry.moodAfter)}</span>
+                                    <span className="text-gray-700 dark:text-gray-300">{getMoodLabel(entry.moodAfter)}</span>
+                                  </div>
+                                )}
+                              </div>
+                              {entry.moodNotes && (
+                                <div className="mt-2 text-xs text-gray-600 dark:text-gray-400">
+                                  <span className="font-medium">Observações do humor:</span> {entry.moodNotes}
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {entry.notes && (
+                            <div className="mt-2">
+                              <p className="text-sm text-gray-600 dark:text-gray-300">
+                                <span className="font-medium">Observações da refeição:</span> {entry.notes}
+                              </p>
+                            </div>
+                          )}
+                          <div className="mt-3 text-xs text-gray-500 dark:text-gray-400">
+                            Enviado em {new Date(entry.createdAt!).toLocaleDateString('pt-BR')} às {new Date(entry.createdAt!).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <div className="p-4 bg-gray-100 dark:bg-gray-800 rounded-full w-20 h-20 mx-auto mb-4 flex items-center justify-center">
+                    <Camera className="h-10 w-10 text-gray-400 dark:text-gray-500" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Nenhuma foto enviada</h3>
+                  <p className="text-gray-600 dark:text-gray-300 mb-6 max-w-md mx-auto">
+                    O paciente ainda não enviou fotos das refeições. As imagens aparecerão aqui quando forem enviadas.
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </main>
 

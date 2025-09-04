@@ -311,3 +311,12 @@ export type InsertMoodEntry = z.infer<typeof insertMoodEntrySchema>;
 export type AnamnesisRecord = typeof anamnesisRecords.$inferSelect;
 export type FoodDiaryEntry = typeof foodDiaryEntries.$inferSelect;
 export type InsertFoodDiaryEntry = z.infer<typeof insertFoodDiaryEntrySchema>;
+
+// Extended type for food diary entries with prescription and mood information
+export interface FoodDiaryEntryWithPrescription extends FoodDiaryEntry {
+  prescriptionTitle?: string | null;
+  prescriptionMeals?: MealData[] | null;
+  moodBefore?: MoodType | null;
+  moodAfter?: MoodType | null;
+  moodNotes?: string | null;
+}

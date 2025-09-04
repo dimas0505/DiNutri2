@@ -17,6 +17,7 @@ import {
   type InsertMoodEntry,
   type AnamnesisRecord,
   type FoodDiaryEntry,
+  type FoodDiaryEntryWithPrescription,
   type InsertFoodDiaryEntry,
   insertAnamnesisRecordSchema,
   insertFoodDiaryEntrySchema,
@@ -82,6 +83,7 @@ export interface IStorage {
 
   // Food Diary operations
   createFoodDiaryEntry(entry: InsertFoodDiaryEntry): Promise<FoodDiaryEntry>;
+  getFoodDiaryEntriesByPatient(patientId: string): Promise<FoodDiaryEntryWithPrescription[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -532,6 +534,50 @@ export class DatabaseStorage implements IStorage {
     const entryWithId = { id: nanoid(), ...entry };
     const [newEntry] = await db.insert(foodDiaryEntries).values(entryWithId).returning();
     return newEntry;
+  }
+
+  async getFoodDiaryEntriesByPatient(patientId: string): Promise<FoodDiaryEntryWithPrescription[]> {
+    const entries = await db.select({
+      id: foodDiaryEntries.id,
+      patientId: foodDiaryEntries.patientId,
+      prescriptionId: foodDiaryEntries.prescriptionId,
+      mealId: foodDiaryEntries.mealId,
+      imageUrl: foodDiaryEntries.imageUrl,
+      notes: foodDiaryEntries.notes,
+      date: foodDiaryEntries.date,
+      createdAt: foodDiaryEntries.createdAt,
+      prescriptionTitle: prescriptions.title,
+      prescriptionMeals: prescriptions.meals,
+      moodBefore: moodEntries.moodBefore,
+      moodAfter: moodEntries.moodAfter,
+      moodNotes: moodEntries.notes,
+    })
+      .from(foodDiaryEntries)
+      .leftJoin(prescriptions, eq(foodDiaryEntries.prescriptionId, prescriptions.id))
+      .leftJoin(moodEntries, and(
+        eq(foodDiaryEntries.patientId, moodEntries.patientId),
+        eq(foodDiaryEntries.prescriptionId, moodEntries.prescriptionId),
+        eq(foodDiaryEntries.mealId, moodEntries.mealId),
+        eq(foodDiaryEntries.date, moodEntries.date)
+      ))
+      .where(eq(foodDiaryEntries.patientId, patientId))
+      .orderBy(desc(foodDiaryEntries.createdAt));
+    
+    return entries.map(entry => ({
+      id: entry.id,
+      patientId: entry.patientId,
+      prescriptionId: entry.prescriptionId,
+      mealId: entry.mealId,
+      imageUrl: entry.imageUrl,
+      notes: entry.notes,
+      date: entry.date,
+      createdAt: entry.createdAt,
+      prescriptionTitle: entry.prescriptionTitle,
+      prescriptionMeals: entry.prescriptionMeals,
+      moodBefore: entry.moodBefore,
+      moodAfter: entry.moodAfter,
+      moodNotes: entry.moodNotes,
+    })) as any[];
   }
 }
 
