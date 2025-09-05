@@ -169,79 +169,100 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
         onBack={() => setLocation(`/patients/${prescription.patientId}`)}
         drawerContent={<DefaultMobileDrawer />}
       />
-      <main className="max-w-4xl mx-auto p-4 lg:p-6">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-          <div className="flex-1 w-full">
-            <Input
-              className="text-2xl font-bold h-auto p-1 border-none outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Título da prescrição"
-              data-testid="input-prescription-title"
-            />
-            <div className="text-sm text-muted-foreground mt-1">
-              {patient?.name} • 
-              <Badge variant={prescription.status === 'published' ? 'default' : 'secondary'} className="ml-2">
-                {prescription.status === 'published' ? 'Publicado' : 'Rascunho'}
-              </Badge>
-            </div>
-          </div>
-          <div className="flex items-center space-x-3">
-            <Button
-              variant="secondary"
-              onClick={() => setLocation(`/patients/${prescription.patientId}`)}
-              disabled={isSaving}
-              data-testid="button-close-editor"
-            >
-              Fechar
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={handleSaveDraft}
-              disabled={isSaving}
-              data-testid="button-save-draft"
-            >
-              {updatePrescriptionMutation.isPending ? "Salvando..." : "Salvar Rascunho"}
-            </Button>
-            <Button
-              onClick={handlePublish}
-              disabled={isSaving}
-              data-testid="button-publish"
-            >
-              {publishPrescriptionMutation.isPending ? "Publicando..." : "Publicar"}
-            </Button>
-          </div>
-        </div>
-        
-        {/* Prescription Tools */}
-        <div className="mb-6 flex flex-wrap gap-3">
-          <Button
-            onClick={addMeal}
-            className="flex items-center space-x-2"
-            data-testid="button-add-meal"
-          >
-            <Plus className="h-4 w-4" />
-            <span>Adicionar Refeição</span>
-          </Button>
-          <Button
-            variant="outline"
-            className="flex items-center space-x-2"
-            data-testid="button-duplicate-prescription"
-          >
-            <Copy className="h-4 w-4" />
-            <span>Duplicar Prescrição Anterior</span>
-          </Button>
-        </div>
-
-        {/* Meals List */}
-        <div className="space-y-6">
-          {meals.length === 0 ? (
-            <Card>
-              <CardContent className="p-8 text-center">
-                <p className="text-muted-foreground mb-4">Nenhuma refeição adicionada ainda.</p>
-                <Button onClick={addMeal} data-testid="button-add-first-meal">
-                  Adicionar Primeira Refeição
+      <main className="max-w-5xl mx-auto p-6 lg:p-8">
+        {/* Enhanced Header Section */}
+        <Card className="mb-8 shadow-lg border-0 bg-gradient-to-r from-card via-card to-card/95">
+          <CardContent className="p-6 lg:p-8">
+            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+              <div className="flex-1 w-full space-y-3">
+                <Input
+                  className="text-3xl font-bold h-auto p-3 border-none bg-transparent outline-none focus-visible:ring-2 focus-visible:ring-ring/20 focus-visible:bg-muted/10 rounded-lg"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Título da prescrição"
+                  data-testid="input-prescription-title"
+                />
+                <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                  <span className="font-medium">{patient?.name}</span>
+                  <span>•</span>
+                  <Badge 
+                    variant={prescription.status === 'published' ? 'default' : 'secondary'} 
+                    className="px-3 py-1 font-medium"
+                  >
+                    {prescription.status === 'published' ? 'Publicado' : 'Rascunho'}
+                  </Badge>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 w-full lg:w-auto">
+                <Button
+                  variant="outline"
+                  onClick={() => setLocation(`/patients/${prescription.patientId}`)}
+                  disabled={isSaving}
+                  data-testid="button-close-editor"
+                  className="flex-1 lg:flex-none"
+                >
+                  Fechar
                 </Button>
+                <Button
+                  variant="secondary"
+                  onClick={handleSaveDraft}
+                  disabled={isSaving}
+                  data-testid="button-save-draft"
+                  className="flex-1 lg:flex-none"
+                >
+                  {updatePrescriptionMutation.isPending ? "Salvando..." : "Salvar Rascunho"}
+                </Button>
+                <Button
+                  onClick={handlePublish}
+                  disabled={isSaving}
+                  data-testid="button-publish"
+                  className="flex-1 lg:flex-none shadow-md"
+                >
+                  {publishPrescriptionMutation.isPending ? "Publicando..." : "Publicar"}
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        {/* Enhanced Prescription Controls */}
+        <Card className="mb-8 shadow-md">
+          <CardContent className="p-6">
+            <div className="flex flex-col sm:flex-row gap-4">
+              <Button
+                onClick={addMeal}
+                className="flex items-center justify-center space-x-2 shadow-sm"
+                size="lg"
+                data-testid="button-add-meal"
+              >
+                <Plus className="h-5 w-5" />
+                <span>Adicionar Refeição</span>
+              </Button>
+              <Button
+                variant="outline"
+                className="flex items-center justify-center space-x-2 shadow-sm"
+                size="lg"
+                data-testid="button-duplicate-prescription"
+              >
+                <Copy className="h-5 w-5" />
+                <span>Duplicar Prescrição Anterior</span>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Enhanced Meals List */}
+        <div className="space-y-8">
+          {meals.length === 0 ? (
+            <Card className="shadow-md">
+              <CardContent className="p-12 text-center">
+                <div className="max-w-md mx-auto space-y-4">
+                  <p className="text-muted-foreground text-lg">Nenhuma refeição adicionada ainda.</p>
+                  <Button onClick={addMeal} data-testid="button-add-first-meal" size="lg" className="shadow-sm">
+                    <Plus className="h-5 w-5 mr-2" />
+                    Adicionar Primeira Refeição
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           ) : (
@@ -258,17 +279,19 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
           )}
         </div>
 
-        {/* General Notes */}
-        <Card className="mt-8">
-          <CardContent className="p-6">
-            <label className="block text-lg font-medium mb-3">Observações Gerais</label>
-            <Textarea
-              className="h-24"
-              placeholder="Observações gerais sobre a prescrição..."
-              value={generalNotes}
-              onChange={(e) => setGeneralNotes(e.target.value)}
-              data-testid="textarea-general-notes"
-            />
+        {/* Enhanced General Notes */}
+        <Card className="mt-12 shadow-lg bg-gradient-to-br from-muted/20 via-card to-muted/10">
+          <CardContent className="p-8">
+            <div className="space-y-4">
+              <label className="block text-xl font-semibold text-foreground">Observações Gerais</label>
+              <Textarea
+                className="min-h-[120px] text-base leading-relaxed bg-background/50 border-2 focus-visible:ring-2 focus-visible:ring-ring/20"
+                placeholder="Observações gerais sobre a prescrição..."
+                value={generalNotes}
+                onChange={(e) => setGeneralNotes(e.target.value)}
+                data-testid="textarea-general-notes"
+              />
+            </div>
           </CardContent>
         </Card>
       </main>
