@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { X, Camera, Heart, Image } from "lucide-react";
+import { X, Camera, Heart, Image, ArrowLeft, Utensils } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import MoodRegistrationModal from "@/components/mood/mood-registration-modal";
 import MealSubstitutionModal from "@/components/meal/meal-substitution-modal";
@@ -45,96 +46,140 @@ export default function MealMenuScreen({
   };
 
   return (
-    <div className="fixed inset-0 bg-white z-50 flex flex-col">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-4 shadow-lg">
-        <div className="flex items-center justify-between">
-          <h1 className="text-xl font-semibold">{meal.name}</h1>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onClose}
-            className="text-white hover:bg-white/20 p-2"
-          >
-            <X className="h-6 w-6" />
-          </Button>
+    <div className="fixed inset-0 bg-gray-50 z-50 flex flex-col">
+      {/* Enhanced Header with gradient */}
+      <div className="bg-gradient-to-r from-purple-600 to-purple-700 text-white shadow-xl">
+        <div className="p-4">
+          <div className="flex items-center justify-between mb-3">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onClose}
+              className="text-white hover:bg-white/20 p-2 rounded-full"
+              aria-label="Voltar"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <h1 className="text-xl font-semibold">{meal.name}</h1>
+            <div className="w-9" /> {/* Spacer for centering */}
+          </div>
+          
+          <div className="flex items-center justify-center space-x-2">
+            <Utensils className="h-4 w-4" />
+            <span className="text-sm opacity-90">
+              {meal.items.length} {meal.items.length === 1 ? 'item' : 'itens'} nesta refeição
+            </span>
+          </div>
         </div>
       </div>
 
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-6">
-        {/* Menu da refeição */}
-        <div>
-          <h2 className="text-lg font-medium text-gray-800 mb-4">Menu da refeição</h2>
-          <div className="grid grid-cols-2 gap-4">
-            {/* Foto para o diário alimentar */}
-            <Button
-              onClick={handlePhotoAction}
-              className="h-20 flex flex-col items-center justify-center space-y-2 bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg shadow-md transition-all duration-200 hover:shadow-lg"
-            >
-              <Camera className="h-6 w-6" />
-              <span className="text-xs font-medium text-center">
-                Foto para o diário alimentar
-              </span>
-            </Button>
-
-            {/* Registrar humor na refeição */}
-            <Button
-              onClick={handleMoodAction}
-              className="h-20 flex flex-col items-center justify-center space-y-2 bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg shadow-md transition-all duration-200 hover:shadow-lg"
-            >
-              <Heart className="h-6 w-6" />
-              <span className="text-xs font-medium text-center">
-                Registrar humor na refeição
-              </span>
-            </Button>
-          </div>
-        </div>
-
-        {/* Lista de Alimentos */}
-        <div>
-          <h2 className="text-lg font-medium text-gray-800 mb-4">Alimentos desta refeição</h2>
-          <div className="space-y-3">
-            {meal.items.map((item) => (
-              <div
-                key={item.id}
-                className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow duration-200"
+      {/* Enhanced Content */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="p-6 space-y-8 max-w-2xl mx-auto">
+          {/* Enhanced Quick Actions Section */}
+          <div className="space-y-4">
+            <div className="text-center">
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">Ações Rápidas</h2>
+              <p className="text-sm text-gray-600">Registre sua experiência com esta refeição</p>
+            </div>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Photo Action - Emerald theme */}
+              <Button
+                onClick={handlePhotoAction}
+                className="h-24 flex flex-col items-center justify-center space-y-3 bg-gradient-to-br from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02] border-0"
               >
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <h3 className="font-medium text-gray-900 mb-1">
-                      {item.description}
-                    </h3>
-                    <p className="text-sm text-gray-600 mb-3">
-                      {item.amount}
-                    </p>
+                <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                  <Camera className="h-6 w-6" />
+                </div>
+                <div className="text-center">
+                  <div className="font-semibold text-sm">Adicionar Foto</div>
+                  <div className="text-xs opacity-90">Registre no diário alimentar</div>
+                </div>
+              </Button>
+
+              {/* Mood Action - Rose theme */}
+              <Button
+                onClick={handleMoodAction}
+                className="h-24 flex flex-col items-center justify-center space-y-3 bg-gradient-to-br from-rose-500 to-rose-600 hover:from-rose-600 hover:to-rose-700 text-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02] border-0"
+              >
+                <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                  <Heart className="h-6 w-6" />
+                </div>
+                <div className="text-center">
+                  <div className="font-semibold text-sm">Registrar Humor</div>
+                  <div className="text-xs opacity-90">Como você se sente?</div>
+                </div>
+              </Button>
+            </div>
+          </div>
+
+          {/* Enhanced Food Items List */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-semibold text-gray-900">Alimentos desta Refeição</h2>
+              <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                {meal.items.length} {meal.items.length === 1 ? 'item' : 'itens'}
+              </Badge>
+            </div>
+            
+            <div className="grid gap-4">
+              {meal.items.map((item, index) => (
+                <div
+                  key={item.id}
+                  className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all duration-200 hover:border-gray-300"
+                >
+                  <div className="flex items-start space-x-4">
+                    {/* Numbered badge */}
+                    <div className="flex-shrink-0">
+                      <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-full flex items-center justify-center text-sm font-bold shadow-md">
+                        {index + 1}
+                      </div>
+                    </div>
                     
-                    {/* Botão de substituição */}
-                    <Button
-                      onClick={() => handleSubstitutionClick(item)}
-                      variant="outline"
-                      size="sm"
-                      className="text-blue-600 border-blue-200 hover:bg-blue-50 hover:border-blue-300 transition-colors duration-200"
-                    >
-                      Ver opções de substituição
-                    </Button>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-gray-900 mb-2 text-lg">
+                        {item.description}
+                      </h3>
+                      <p className="text-gray-600 mb-4 text-sm">
+                        <span className="font-medium">Quantidade:</span> {item.amount}
+                      </p>
+                      
+                      {/* Enhanced substitution button */}
+                      <Button
+                        onClick={() => handleSubstitutionClick(item)}
+                        variant="outline"
+                        size="sm"
+                        className="text-blue-600 border-blue-200 hover:bg-blue-50 hover:border-blue-300 transition-all duration-200 rounded-lg font-medium"
+                      >
+                        <span>Ver opções de substituição</span>
+                      </Button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
 
-        {/* Observações da refeição */}
-        {meal.notes && (
-          <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200">
-            <h3 className="font-medium text-gray-800 mb-2 flex items-center">
-              <Image className="h-4 w-4 mr-2 text-blue-600" />
-              Observações
-            </h3>
-            <p className="text-sm text-gray-700">{meal.notes}</p>
-          </div>
-        )}
+          {/* Enhanced Notes Section */}
+          {meal.notes && (
+            <div className="bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-6 shadow-sm">
+              <div className="flex items-start space-x-3">
+                <div className="flex-shrink-0">
+                  <div className="w-10 h-10 bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl flex items-center justify-center">
+                    <Image className="h-5 w-5 text-white" />
+                  </div>
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-amber-900 mb-2 text-lg">
+                    Observações Importantes
+                  </h3>
+                  <p className="text-amber-800 leading-relaxed">{meal.notes}</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Modals */}
