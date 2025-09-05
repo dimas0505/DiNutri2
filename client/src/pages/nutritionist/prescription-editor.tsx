@@ -169,37 +169,39 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
         onBack={() => setLocation(`/patients/${prescription.patientId}`)}
         drawerContent={<DefaultMobileDrawer />}
       />
-      <main className="max-w-5xl mx-auto p-6 lg:p-8">
+      <main className="max-w-5xl mx-auto p-3 sm:p-4 lg:p-8">
         {/* Enhanced Header Section */}
-        <Card className="mb-8 shadow-lg border-0 bg-gradient-to-r from-card via-card to-card/95">
-          <CardContent className="p-6 lg:p-8">
-            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+        <Card className="mb-6 shadow-xl border-0 bg-gradient-to-br from-blue-50 via-card to-purple-50 dark:from-blue-950/20 dark:via-card dark:to-purple-950/20">
+          <CardContent className="p-4 sm:p-6 lg:p-8">
+            <div className="space-y-4 lg:space-y-0 lg:flex lg:justify-between lg:items-center lg:gap-6">
               <div className="flex-1 w-full space-y-3">
                 <Input
-                  className="text-3xl font-bold h-auto p-3 border-none bg-transparent outline-none focus-visible:ring-2 focus-visible:ring-ring/20 focus-visible:bg-muted/10 rounded-lg"
+                  className="text-2xl sm:text-3xl font-bold h-auto p-3 sm:p-4 border-none bg-transparent outline-none focus-visible:ring-2 focus-visible:ring-ring/20 focus-visible:bg-muted/10 rounded-lg"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="Título da prescrição"
                   data-testid="input-prescription-title"
                 />
-                <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                  <span className="font-medium">{patient?.name}</span>
-                  <span>•</span>
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-sm text-muted-foreground">
+                  <span className="font-medium text-foreground">{patient?.name}</span>
+                  <span className="hidden sm:inline">•</span>
                   <Badge 
                     variant={prescription.status === 'published' ? 'default' : 'secondary'} 
-                    className="px-3 py-1 font-medium"
+                    className="px-3 py-1 font-medium shadow-sm"
                   >
                     {prescription.status === 'published' ? 'Publicado' : 'Rascunho'}
                   </Badge>
                 </div>
               </div>
-              <div className="flex items-center gap-3 w-full lg:w-auto">
+              
+              {/* Mobile Button Layout */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
                 <Button
                   variant="outline"
                   onClick={() => setLocation(`/patients/${prescription.patientId}`)}
                   disabled={isSaving}
                   data-testid="button-close-editor"
-                  className="flex-1 lg:flex-none"
+                  className="w-full sm:flex-none shadow-sm border-2 hover:bg-muted/20"
                 >
                   Fechar
                 </Button>
@@ -208,7 +210,7 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
                   onClick={handleSaveDraft}
                   disabled={isSaving}
                   data-testid="button-save-draft"
-                  className="flex-1 lg:flex-none"
+                  className="w-full sm:flex-none shadow-md bg-gradient-to-r from-secondary via-secondary to-secondary/90 hover:from-secondary/90 hover:via-secondary hover:to-secondary"
                 >
                   {updatePrescriptionMutation.isPending ? "Salvando..." : "Salvar Rascunho"}
                 </Button>
@@ -216,7 +218,7 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
                   onClick={handlePublish}
                   disabled={isSaving}
                   data-testid="button-publish"
-                  className="flex-1 lg:flex-none shadow-md"
+                  className="w-full sm:flex-none shadow-lg bg-gradient-to-r from-primary via-primary to-primary/90 hover:from-primary/90 hover:via-primary hover:to-primary"
                 >
                   {publishPrescriptionMutation.isPending ? "Publicando..." : "Publicar"}
                 </Button>
@@ -226,12 +228,12 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
         </Card>
         
         {/* Enhanced Prescription Controls */}
-        <Card className="mb-8 shadow-md">
-          <CardContent className="p-6">
-            <div className="flex flex-col sm:flex-row gap-4">
+        <Card className="mb-6 shadow-lg bg-gradient-to-r from-emerald-50 via-card to-teal-50 dark:from-emerald-950/20 dark:via-card dark:to-teal-950/20 border-2 border-emerald-100 dark:border-emerald-900/30">
+          <CardContent className="p-4 sm:p-6">
+            <div className="space-y-3 sm:space-y-0 sm:flex sm:gap-4">
               <Button
                 onClick={addMeal}
-                className="flex items-center justify-center space-x-2 shadow-sm"
+                className="w-full sm:flex-1 lg:flex-none flex items-center justify-center space-x-2 shadow-lg bg-gradient-to-r from-emerald-600 via-emerald-500 to-green-600 hover:from-emerald-700 hover:via-emerald-600 hover:to-green-700 text-white"
                 size="lg"
                 data-testid="button-add-meal"
               >
@@ -240,25 +242,31 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
               </Button>
               <Button
                 variant="outline"
-                className="flex items-center justify-center space-x-2 shadow-sm"
+                className="w-full sm:flex-1 lg:flex-none flex items-center justify-center space-x-2 shadow-md border-2 border-teal-200 dark:border-teal-800 bg-gradient-to-r from-teal-50 via-background to-cyan-50 dark:from-teal-950/30 dark:via-background dark:to-cyan-950/30 hover:from-teal-100 hover:via-muted hover:to-cyan-100 dark:hover:from-teal-900/50 dark:hover:via-muted dark:hover:to-cyan-900/50"
                 size="lg"
                 data-testid="button-duplicate-prescription"
               >
                 <Copy className="h-5 w-5" />
-                <span>Duplicar Prescrição Anterior</span>
+                <span className="hidden sm:inline">Duplicar Prescrição Anterior</span>
+                <span className="sm:hidden">Duplicar</span>
               </Button>
             </div>
           </CardContent>
         </Card>
 
         {/* Enhanced Meals List */}
-        <div className="space-y-8">
+        <div className="space-y-6">
           {meals.length === 0 ? (
-            <Card className="shadow-md">
-              <CardContent className="p-12 text-center">
+            <Card className="shadow-xl bg-gradient-to-br from-amber-50 via-card to-orange-50 dark:from-amber-950/20 dark:via-card dark:to-orange-950/20 border-2 border-amber-100 dark:border-amber-900/30">
+              <CardContent className="p-8 sm:p-12 text-center">
                 <div className="max-w-md mx-auto space-y-4">
                   <p className="text-muted-foreground text-lg">Nenhuma refeição adicionada ainda.</p>
-                  <Button onClick={addMeal} data-testid="button-add-first-meal" size="lg" className="shadow-sm">
+                  <Button 
+                    onClick={addMeal} 
+                    data-testid="button-add-first-meal" 
+                    size="lg" 
+                    className="shadow-lg bg-gradient-to-r from-amber-600 via-orange-500 to-red-500 hover:from-amber-700 hover:via-orange-600 hover:to-red-600 text-white"
+                  >
                     <Plus className="h-5 w-5 mr-2" />
                     Adicionar Primeira Refeição
                   </Button>
@@ -280,12 +288,12 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
         </div>
 
         {/* Enhanced General Notes */}
-        <Card className="mt-12 shadow-lg bg-gradient-to-br from-muted/20 via-card to-muted/10">
-          <CardContent className="p-8">
+        <Card className="mt-8 shadow-xl bg-gradient-to-br from-indigo-50 via-card to-purple-50 dark:from-indigo-950/20 dark:via-card dark:to-purple-950/20 border-2 border-indigo-100 dark:border-indigo-900/30">
+          <CardContent className="p-6 sm:p-8">
             <div className="space-y-4">
-              <label className="block text-xl font-semibold text-foreground">Observações Gerais</label>
+              <label className="block text-lg sm:text-xl font-semibold text-foreground">Observações Gerais</label>
               <Textarea
-                className="min-h-[120px] text-base leading-relaxed bg-background/50 border-2 focus-visible:ring-2 focus-visible:ring-ring/20"
+                className="min-h-[120px] text-base leading-relaxed bg-background/80 border-2 border-indigo-200 dark:border-indigo-800 focus-visible:ring-2 focus-visible:ring-indigo-300 focus-visible:border-indigo-400 dark:focus-visible:ring-indigo-700 dark:focus-visible:border-indigo-600 shadow-inner"
                 placeholder="Observações gerais sobre a prescrição..."
                 value={generalNotes}
                 onChange={(e) => setGeneralNotes(e.target.value)}
