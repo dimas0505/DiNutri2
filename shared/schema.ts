@@ -54,6 +54,7 @@ export const patients = pgTable("patients", {
   diseases: text("diseases"),
   medications: text("medications"),
   biotype: varchar("biotype", { enum: ["gain_weight_easily", "hard_to_gain", "gain_muscle_easily"] }),
+  status: varchar("status", { enum: ["active", "inactive"] }).notNull().default("active"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -81,6 +82,7 @@ export const prescriptions = pgTable("prescriptions", {
   meals: jsonb("meals").$type<MealData[]>().notNull().default([]),
   generalNotes: text("general_notes"),
   publishedAt: timestamp("published_at"),
+  expiresAt: timestamp("expires_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -269,6 +271,8 @@ export const insertPrescriptionSchema = createInsertSchema(prescriptions).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
+}).extend({
+  expiresAt: z.date().optional(),
 });
 
 export const updatePrescriptionSchema = createInsertSchema(prescriptions).omit({
@@ -295,7 +299,9 @@ export const insertFoodDiaryEntrySchema = createInsertSchema(foodDiaryEntries).o
   createdAt: true,
 });
 
-export const updatePatientSchema = insertPatientSchema.partial();
+export const updatePatientSchema = insertPatientSchema.partial().extend({
+  status: z.enum(["active", "inactive"]).optional(),
+});
 
 // Types
 export type UpsertUser = z.infer<typeof insertUserSchema>;

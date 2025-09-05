@@ -427,7 +427,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.post('/api/prescriptions/:id/publish', isAuthenticated, async (req, res) => {
     try {
-      const prescription = await storage.publishPrescription(req.params.id);
+      const { expiresAt } = req.body;
+      const prescription = await storage.publishPrescription(req.params.id, expiresAt ? new Date(expiresAt) : null);
       res.json(prescription);
     } catch (error) {
       console.error("Error publishing prescription:", error);
@@ -460,6 +461,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/patient/my-prescriptions', isAuthenticated, async (req: any, res) => {
     try {
+      const patientProfile = await storage.getPatientByUserId(req.user.id);
+      if (!patientProfile) {
+        return res.status(404).json({ message: 'Perfil de paciente não encontrado.' });
+      }
+      if (patientProfile.status === 'inactive') {
+        return res.status(403).json({ message: "Seu acesso está temporariamente desativado. Entre em contato com seu nutricionista." });
+      }
       const prescriptions = await storage.getPublishedPrescriptionsForUser(req.user.id);
       res.json(prescriptions);
     } catch (error) {
