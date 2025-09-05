@@ -345,6 +345,7 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
                 >
                   {updatePrescriptionMutation.isPending ? "Salvando..." : "Salvar Rascunho"}
                 </Button>
+                
                 <Button
                   onClick={handlePublish}
                   disabled={isSaving}

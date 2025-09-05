@@ -460,6 +460,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/patient/my-prescriptions', isAuthenticated, async (req: any, res) => {
     try {
+      const patientProfile = await storage.getPatientByUserId(req.user.id);
+      if (!patientProfile) {
+        return res.status(404).json({ message: 'Perfil de paciente não encontrado.' });
+      }
       const prescriptions = await storage.getPublishedPrescriptionsForUser(req.user.id);
       res.json(prescriptions);
     } catch (error) {

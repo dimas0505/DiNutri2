@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { Printer, ArrowLeft, Utensils, Info } from "lucide-react";
+import { Printer, ArrowLeft, Utensils } from "lucide-react";
 import Header from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -130,12 +130,28 @@ export default function PatientPrescriptionView() {
         </div>
       );
     }
+
+    // Handle inactive patient access (403 error)
+    if (error && (error as any)?.response?.status === 403) {
+      return (
+        <Card className="mt-6">
+          <CardContent className="p-8 text-center">
+            <div className="max-w-md mx-auto">
+              <h3 className="text-lg font-semibold text-destructive mb-4">Acesso Temporariamente Desativado</h3>
+              <p className="text-muted-foreground mb-4">
+                Seu acesso está temporariamente desativado. Entre em contato com seu nutricionista.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
   
     if (prescriptions.length === 0) {
       return (
         <Card className="mt-6">
           <CardContent className="p-8 text-center">
-            <p className="text-muted-foreground mb-4">Você ainda não possui uma prescrição publicada.</p>
+            <p className="text-muted-foreground mb-4">Sua prescrição expirou. Por favor, entre em contato com seu nutricionista para renovar seu plano.</p>
             <p className="text-sm text-muted-foreground">Entre em contato com seu nutricionista.</p>
           </CardContent>
         </Card>
@@ -156,7 +172,7 @@ export default function PatientPrescriptionView() {
 
     // Lista de refeições
     return (
-      <div className="p-4 md:p-0">
+      <div className="p-4 md:p-0">        
         <Tabs value={selectedPrescription?.id} onValueChange={handleSelectPrescription} className="w-full">
           <TabsList>
             {prescriptions.map(p => (

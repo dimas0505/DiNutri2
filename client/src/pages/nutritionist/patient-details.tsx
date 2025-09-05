@@ -602,13 +602,15 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
               </CardHeader>
               <CardContent className="p-6">
                 {hasAccountLinked ? (
-                  <div className="flex items-center gap-4 p-4 rounded-lg bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border border-green-200/50 dark:border-green-700/50">
-                    <div className="p-3 bg-green-100 dark:bg-green-800 rounded-full">
-                      <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-300" />
-                    </div>
-                    <div>
-                      <p className="font-semibold text-green-800 dark:text-green-200">Paciente tem acesso ao sistema</p>
-                      <p className="text-sm text-green-600 dark:text-green-300">Prescrições podem ser criadas</p>
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-4 p-4 rounded-lg bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border border-green-200/50 dark:border-green-700/50">
+                      <div className="p-3 bg-green-100 dark:bg-green-800 rounded-full">
+                        <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-300" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-green-800 dark:text-green-200">Paciente tem acesso ao sistema</p>
+                        <p className="text-sm text-green-600 dark:text-green-300">Prescrições podem ser criadas</p>
+                      </div>
                     </div>
                   </div>
                 ) : (
