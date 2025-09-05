@@ -22,7 +22,7 @@ import { insertPatientSchema } from "@shared/schema";
 import { DefaultMobileDrawer } from "@/components/layout/mobile-layout";
 import { Copy, LinkIcon, UserPlus, User, Calendar, Activity, ClipboardList } from "lucide-react";
 
-// O schema do formulário agora inclui todos os campos de anamnese
+// Schema do formulário de criação manual - alinhado com anamnese.tsx
 const formSchema = insertPatientSchema.omit({ ownerId: true, userId: true }).extend({
   heightCm: z.preprocess(
     (val) => (val === "" ? undefined : val),
@@ -30,10 +30,14 @@ const formSchema = insertPatientSchema.omit({ ownerId: true, userId: true }).ext
   ),
   weightKg: z.string().regex(/^\d+(\.\d{1,2})?$/, "Peso inválido. Ex: 65.50").optional().or(z.literal('')),
   password: z.string().min(6, "A senha deve ter no mínimo 6 caracteres."),
+  confirmPassword: z.string(),
   // Transform string arrays for multi-select fields
   likedHealthyFoods: z.array(z.string()).default([]),
   dislikedFoods: z.array(z.string()).default([]),
   intolerances: z.array(z.string()).default([]),
+}).refine(data => data.password === data.confirmPassword, {
+  message: "As senhas não correspondem.",
+  path: ["confirmPassword"],
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -52,6 +56,7 @@ export default function NewPatientPage() {
       name: "",
       email: "",
       password: "",
+      confirmPassword: "",
       birthDate: "",
       sex: undefined,
       heightCm: undefined,
@@ -105,7 +110,7 @@ export default function NewPatientPage() {
   });
 
   const createPatientMutation = useMutation({
-    mutationFn: async (data: FormData) => {
+    mutationFn: async (data: Omit<FormData, 'confirmPassword'>) => {
       const payload = { 
         ...data,
         ownerId: user?.id
@@ -149,7 +154,8 @@ export default function NewPatientPage() {
       });
       return;
     }
-    createPatientMutation.mutate(data);
+    const { confirmPassword, ...payload } = data;
+    createPatientMutation.mutate(payload);
   };
 
   const handleGenerateInvite = () => {
@@ -275,72 +281,92 @@ export default function NewPatientPage() {
                               <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
                                 <User className="h-5 w-5" />
                               </div>
-                              <h3 className="text-lg font-semibold">Dados Pessoais</h3>
+                              <h3 className="text-lg font-semibold">Dados do Paciente</h3>
                             </div>
                           </div>
                           
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <FormField
-                              control={form.control}
-                              name="name"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel className="text-gray-700 font-semibold">Nome Completo *</FormLabel>
-                                  <FormControl>
-                                    <Input 
-                                      placeholder="Nome do paciente" 
-                                      className="h-12 border-2 border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500 focus:ring-opacity-20 transition-all duration-300 rounded-xl text-base bg-white/80 backdrop-blur-sm"
-                                      {...field} 
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            <FormField
-                              control={form.control}
-                              name="email"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel className="text-gray-700 font-semibold">E-mail *</FormLabel>
-                                  <FormControl>
-                                    <Input 
-                                      type="email" 
-                                      placeholder="email@exemplo.com" 
-                                      className="h-12 border-2 border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500 focus:ring-opacity-20 transition-all duration-300 rounded-xl text-base bg-white/80 backdrop-blur-sm"
-                                      value={field.value || ""} 
-                                      onChange={field.onChange} 
-                                      onBlur={field.onBlur} 
-                                      name={field.name} 
-                                      ref={field.ref} 
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                          </div>
-
-                          <FormField
-                            control={form.control}
-                            name="password"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel className="text-gray-700 font-semibold">Senha de Acesso *</FormLabel>
-                                <FormControl>
-                                  <Input 
-                                    type="password" 
-                                    placeholder="••••••••" 
-                                    className="h-12 border-2 border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500 focus:ring-opacity-20 transition-all duration-300 rounded-xl text-base bg-white/80 backdrop-blur-sm"
-                                    {...field} 
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div className="md:col-span-2">
+                              <FormField
+                                control={form.control}
+                                name="name"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel className="text-gray-700 font-semibold">Nome Completo *</FormLabel>
+                                    <FormControl>
+                                      <Input 
+                                        placeholder="Nome do paciente" 
+                                        className="h-12 border-2 border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500 focus:ring-opacity-20 transition-all duration-300 rounded-xl text-base bg-white/80 backdrop-blur-sm"
+                                        {...field} 
+                                      />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                            </div>
+                            <div className="md:col-span-2">
+                              <FormField
+                                control={form.control}
+                                name="email"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel className="text-gray-700 font-semibold">E-mail *</FormLabel>
+                                    <FormControl>
+                                      <Input 
+                                        type="email" 
+                                        placeholder="email@exemplo.com" 
+                                        className="h-12 border-2 border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500 focus:ring-opacity-20 transition-all duration-300 rounded-xl text-base bg-white/80 backdrop-blur-sm"
+                                        value={field.value || ""} 
+                                        onChange={field.onChange} 
+                                        onBlur={field.onBlur} 
+                                        name={field.name} 
+                                        ref={field.ref} 
+                                      />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                            </div>
+                            <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
+                              <FormField
+                                control={form.control}
+                                name="password"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel className="text-gray-700 font-semibold">Senha de Acesso *</FormLabel>
+                                    <FormControl>
+                                      <Input 
+                                        type="password" 
+                                        placeholder="••••••••" 
+                                        className="h-12 border-2 border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500 focus:ring-opacity-20 transition-all duration-300 rounded-xl text-base bg-white/80 backdrop-blur-sm"
+                                        {...field} 
+                                      />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                              <FormField
+                                control={form.control}
+                                name="confirmPassword"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel className="text-gray-700 font-semibold">Confirme a Senha *</FormLabel>
+                                    <FormControl>
+                                      <Input 
+                                        type="password" 
+                                        placeholder="••••••••" 
+                                        className="h-12 border-2 border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500 focus:ring-opacity-20 transition-all duration-300 rounded-xl text-base bg-white/80 backdrop-blur-sm"
+                                        {...field} 
+                                      />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                            </div>
                             <FormField
                               control={form.control}
                               name="birthDate"
@@ -383,13 +409,73 @@ export default function NewPatientPage() {
                             />
                             <FormField
                               control={form.control}
+                              name="heightCm"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="text-gray-700 font-semibold">Altura (cm)</FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      type="number"
+                                      placeholder="165"
+                                      className="h-12 border-2 border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500 focus:ring-opacity-20 transition-all duration-300 rounded-xl text-base bg-white/80 backdrop-blur-sm"
+                                      value={field.value ?? ""}
+                                      onChange={(e) => field.onChange(e.target.value === "" ? undefined : Number(e.target.value))}
+                                      onBlur={field.onBlur}
+                                      name={field.name}
+                                      ref={field.ref}
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            <FormField
+                              control={form.control}
+                              name="weightKg"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="text-gray-700 font-semibold">Peso (kg) - Opcional</FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      type="number" 
+                                      step="0.01"
+                                      placeholder="64.50"
+                                      className="h-12 border-2 border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500 focus:ring-opacity-20 transition-all duration-300 rounded-xl text-base bg-white/80 backdrop-blur-sm"
+                                      value={field.value || ""}
+                                      onChange={field.onChange}
+                                      onBlur={field.onBlur}
+                                      name={field.name}
+                                      ref={field.ref}
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Objetivos e Hábitos Section */}
+                        <div className="space-y-6">
+                          <div className="bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl p-4 text-white">
+                            <div className="flex items-center gap-3">
+                              <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
+                                <Activity className="h-5 w-5" />
+                              </div>
+                              <h3 className="text-lg font-semibold">Objetivos e Hábitos</h3>
+                            </div>
+                          </div>
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <FormField
+                              control={form.control}
                               name="goal"
                               render={({ field }) => (
                                 <FormItem>
                                   <FormLabel className="text-gray-700 font-semibold">Objetivo</FormLabel>
                                   <Select onValueChange={field.onChange} value={field.value || ""}>
                                     <FormControl>
-                                      <SelectTrigger className="h-12 border-2 border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500 focus:ring-opacity-20 transition-all duration-300 rounded-xl text-base bg-white/80 backdrop-blur-sm">
+                                      <SelectTrigger className="h-12 border-2 border-gray-200 focus:border-green-500 focus:ring-4 focus:ring-green-500 focus:ring-opacity-20 transition-all duration-300 rounded-xl text-base bg-white/80 backdrop-blur-sm">
                                         <SelectValue placeholder="Selecionar" />
                                       </SelectTrigger>
                                     </FormControl>
@@ -403,78 +489,15 @@ export default function NewPatientPage() {
                                 </FormItem>
                               )}
                             />
-                          </div>
-
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <FormField
-                              control={form.control}
-                              name="heightCm"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel className="text-gray-700 font-semibold">Altura (cm)</FormLabel>
-                                  <FormControl>
-                                    <Input
-                                      type="number"
-                                      placeholder="170"
-                                      className="h-12 border-2 border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500 focus:ring-opacity-20 transition-all duration-300 rounded-xl text-base bg-white/80 backdrop-blur-sm"
-                                      value={field.value ?? ""}
-                                      onChange={(e) => field.onChange(e.target.value === "" ? undefined : Number(e.target.value))}
-                                      onBlur={field.onBlur}
-                                      name={field.name}
-                                      ref={field.ref}
-                                    />
-                                  </FormControl>
-                                  <FormDescription className="text-gray-500">Altura em centímetros (opcional)</FormDescription>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            <FormField
-                              control={form.control}
-                              name="weightKg"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel className="text-gray-700 font-semibold">Peso (kg)</FormLabel>
-                                  <FormControl>
-                                    <Input
-                                      placeholder="70.5"
-                                      className="h-12 border-2 border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500 focus:ring-opacity-20 transition-all duration-300 rounded-xl text-base bg-white/80 backdrop-blur-sm"
-                                      value={field.value || ""}
-                                      onChange={field.onChange}
-                                      onBlur={field.onBlur}
-                                      name={field.name}
-                                      ref={field.ref}
-                                    />
-                                  </FormControl>
-                                  <FormDescription className="text-gray-500">Formato: 70.5 (opcional)</FormDescription>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                          </div>
-                        </div>
-
-                        {/* Anamnese Básica Section */}
-                        <div className="space-y-6">
-                          <div className="bg-gradient-to-r from-emerald-500 to-teal-500 rounded-xl p-4 text-white">
-                            <div className="flex items-center gap-3">
-                              <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
-                                <ClipboardList className="h-5 w-5" />
-                              </div>
-                              <h3 className="text-lg font-semibold">Anamnese Básica</h3>
-                            </div>
-                          </div>
-                          
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <FormField
                               control={form.control}
                               name="activityLevel"
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel className="text-gray-700 font-semibold">Nível de Atividade</FormLabel>
+                                  <FormLabel className="text-gray-700 font-semibold">Nível de Atividade Física</FormLabel>
                                   <Select onValueChange={field.onChange} value={field.value || ""}>
                                     <FormControl>
-                                      <SelectTrigger className="h-12 border-2 border-gray-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500 focus:ring-opacity-20 transition-all duration-300 rounded-xl text-base bg-white/80 backdrop-blur-sm">
+                                      <SelectTrigger className="h-12 border-2 border-gray-200 focus:border-green-500 focus:ring-4 focus:ring-green-500 focus:ring-opacity-20 transition-all duration-300 rounded-xl text-base bg-white/80 backdrop-blur-sm">
                                         <SelectValue placeholder="Selecionar" />
                                       </SelectTrigger>
                                     </FormControl>
@@ -490,26 +513,155 @@ export default function NewPatientPage() {
                                 </FormItem>
                               )}
                             />
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <FormField
                               control={form.control}
-                              name="hasIntolerance"
+                              name="biotype"
                               render={({ field }) => (
-                                <FormItem className="flex flex-row items-start space-x-3 space-y-0 pt-8">
+                                <FormItem>
+                                  <FormLabel className="text-gray-700 font-semibold">Biotipo</FormLabel>
+                                  <Select onValueChange={field.onChange} value={field.value || ""}>
+                                    <FormControl>
+                                      <SelectTrigger className="h-12 border-2 border-gray-200 focus:border-green-500 focus:ring-4 focus:ring-green-500 focus:ring-opacity-20 transition-all duration-300 rounded-xl text-base bg-white/80 backdrop-blur-sm">
+                                        <SelectValue placeholder="Selecionar" />
+                                      </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                      <SelectItem value="gain_weight_easily">Ganho peso facilmente</SelectItem>
+                                      <SelectItem value="hard_to_gain">Dificuldade para ganhar peso</SelectItem>
+                                      <SelectItem value="gain_muscle_easily">Ganho músculo facilmente</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            <FormField
+                              control={form.control}
+                              name="mealsPerDayCurrent"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="text-gray-700 font-semibold">Quantas refeições faz por dia atualmente?</FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      type="number"
+                                      min="1"
+                                      max="10"
+                                      placeholder="3"
+                                      className="h-12 border-2 border-gray-200 focus:border-green-500 focus:ring-4 focus:ring-green-500 focus:ring-opacity-20 transition-all duration-300 rounded-xl text-base bg-white/80 backdrop-blur-sm"
+                                      value={field.value ?? ""}
+                                      onChange={(e) => field.onChange(e.target.value === "" ? undefined : Number(e.target.value))}
+                                      onBlur={field.onBlur}
+                                      name={field.name}
+                                      ref={field.ref}
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <FormField
+                              control={form.control}
+                              name="mealsPerDayWilling"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="text-gray-700 font-semibold">Quantas refeições estaria disposto a fazer?</FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      type="number"
+                                      min="1"
+                                      max="10"
+                                      placeholder="5"
+                                      className="h-12 border-2 border-gray-200 focus:border-green-500 focus:ring-4 focus:ring-green-500 focus:ring-opacity-20 transition-all duration-300 rounded-xl text-base bg-white/80 backdrop-blur-sm"
+                                      value={field.value ?? ""}
+                                      onChange={(e) => field.onChange(e.target.value === "" ? undefined : Number(e.target.value))}
+                                      onBlur={field.onBlur}
+                                      name={field.name}
+                                      ref={field.ref}
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            <FormField
+                              control={form.control}
+                              name="canEatMorningSolids"
+                              render={({ field }) => (
+                                <FormItem className="flex flex-row items-start space-x-3 space-y-0 p-4">
                                   <FormControl>
                                     <Checkbox
                                       checked={field.value || false}
                                       onCheckedChange={field.onChange}
-                                      className="data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
                                     />
                                   </FormControl>
                                   <div className="space-y-1 leading-none">
-                                    <FormLabel className="text-gray-700 font-semibold cursor-pointer">Possui intolerância alimentar?</FormLabel>
+                                    <FormLabel className="text-gray-700 font-semibold">Consegue comer sólidos pela manhã?</FormLabel>
                                   </div>
                                   <FormMessage />
                                 </FormItem>
                               )}
                             />
                           </div>
+
+                          <FormField
+                            control={form.control}
+                            name="alcoholConsumption"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-gray-700 font-semibold">Consumo de Álcool</FormLabel>
+                                <Select onValueChange={field.onChange} value={field.value || ""}>
+                                  <FormControl>
+                                    <SelectTrigger className="h-12 border-2 border-gray-200 focus:border-green-500 focus:ring-4 focus:ring-green-500 focus:ring-opacity-20 transition-all duration-300 rounded-xl text-base bg-white/80 backdrop-blur-sm">
+                                      <SelectValue placeholder="Selecionar" />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                    <SelectItem value="no">Não bebo</SelectItem>
+                                    <SelectItem value="moderate">Moderadamente</SelectItem>
+                                    <SelectItem value="yes">Sim, frequentemente</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+
+                        {/* Preferências e Restrições Section */}
+                        <div className="space-y-6">
+                          <div className="bg-gradient-to-r from-orange-500 to-amber-500 rounded-xl p-4 text-white">
+                            <div className="flex items-center gap-3">
+                              <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
+                                <Calendar className="h-5 w-5" />
+                              </div>
+                              <h3 className="text-lg font-semibold">Preferências e Restrições</h3>
+                            </div>
+                          </div>
+                          
+                          <FormField
+                            control={form.control}
+                            name="hasIntolerance"
+                            render={({ field }) => (
+                              <FormItem className="flex flex-row items-start space-x-3 space-y-0 p-4 bg-gradient-to-r from-orange-50 to-amber-50 rounded-xl border border-orange-100">
+                                <FormControl>
+                                  <Checkbox
+                                    checked={field.value || false}
+                                    onCheckedChange={field.onChange}
+                                  />
+                                </FormControl>
+                                <div className="space-y-1 leading-none">
+                                  <FormLabel className="text-gray-700 font-semibold">Possui alguma intolerância alimentar?</FormLabel>
+                                </div>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
 
                           {form.watch("hasIntolerance") && (
                             <FormField
@@ -521,7 +673,7 @@ export default function NewPatientPage() {
                                   <FormControl>
                                     <Input
                                       placeholder="Lactose, glúten, etc."
-                                      className="h-12 border-2 border-gray-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500 focus:ring-opacity-20 transition-all duration-300 rounded-xl text-base bg-white/80 backdrop-blur-sm"
+                                      className="h-12 border-2 border-gray-200 focus:border-orange-500 focus:ring-4 focus:ring-orange-500 focus:ring-opacity-20 transition-all duration-300 rounded-xl text-base bg-white/80 backdrop-blur-sm"
                                       value={field.value?.join(", ") || ""}
                                       onChange={(e) => field.onChange(e.target.value.split(",").map(s => s.trim()).filter(Boolean))}
                                       onBlur={field.onBlur}
@@ -534,6 +686,128 @@ export default function NewPatientPage() {
                               )}
                             />
                           )}
+
+                          <FormField
+                            control={form.control}
+                            name="likedHealthyFoods"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-gray-700 font-semibold">Alimentos saudáveis que você gosta (separar por vírgula)</FormLabel>
+                                <FormControl>
+                                  <Textarea
+                                    placeholder="Brócolis, quinoa, salmão, abacate..."
+                                    className="min-h-[100px] border-2 border-gray-200 focus:border-orange-500 focus:ring-4 focus:ring-orange-500 focus:ring-opacity-20 transition-all duration-300 rounded-xl text-base bg-white/80 backdrop-blur-sm resize-none"
+                                    value={field.value?.join(", ") || ""}
+                                    onChange={(e) => field.onChange(e.target.value.split(",").map(s => s.trim()).filter(Boolean))}
+                                    onBlur={field.onBlur}
+                                    name={field.name}
+                                    ref={field.ref}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={form.control}
+                            name="dislikedFoods"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-gray-700 font-semibold">Alimentos que não gosta (separar por vírgula)</FormLabel>
+                                <FormControl>
+                                  <Textarea
+                                    placeholder="Cebola, peixe, couve-flor..."
+                                    className="min-h-[100px] border-2 border-gray-200 focus:border-orange-500 focus:ring-4 focus:ring-orange-500 focus:ring-opacity-20 transition-all duration-300 rounded-xl text-base bg-white/80 backdrop-blur-sm resize-none"
+                                    value={field.value?.join(", ") || ""}
+                                    onChange={(e) => field.onChange(e.target.value.split(",").map(s => s.trim()).filter(Boolean))}
+                                    onBlur={field.onBlur}
+                                    name={field.name}
+                                    ref={field.ref}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+
+                        {/* Saúde e Informações Adicionais Section */}
+                        <div className="space-y-6">
+                          <div className="bg-gradient-to-r from-pink-500 to-rose-500 rounded-xl p-4 text-white">
+                            <div className="flex items-center gap-3">
+                              <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
+                                <ClipboardList className="h-5 w-5" />
+                              </div>
+                              <h3 className="text-lg font-semibold">Saúde e Informações Adicionais</h3>
+                            </div>
+                          </div>
+                          
+                          <FormField
+                            control={form.control}
+                            name="diseases"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-gray-700 font-semibold">Doenças ou condições de saúde</FormLabel>
+                                <FormControl>
+                                  <Textarea
+                                    placeholder="Diabetes, hipertensão, hipotireoidismo..."
+                                    className="min-h-[100px] border-2 border-gray-200 focus:border-pink-500 focus:ring-4 focus:ring-pink-500 focus:ring-opacity-20 transition-all duration-300 rounded-xl text-base bg-white/80 backdrop-blur-sm resize-none"
+                                    value={field.value || ""}
+                                    onChange={field.onChange}
+                                    onBlur={field.onBlur}
+                                    name={field.name}
+                                    ref={field.ref}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={form.control}
+                            name="medications"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-gray-700 font-semibold">Medicamentos em uso</FormLabel>
+                                <FormControl>
+                                  <Textarea
+                                    placeholder="Liste os medicamentos que utiliza regularmente..."
+                                    className="min-h-[100px] border-2 border-gray-200 focus:border-pink-500 focus:ring-4 focus:ring-pink-500 focus:ring-opacity-20 transition-all duration-300 rounded-xl text-base bg-white/80 backdrop-blur-sm resize-none"
+                                    value={field.value || ""}
+                                    onChange={field.onChange}
+                                    onBlur={field.onBlur}
+                                    name={field.name}
+                                    ref={field.ref}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={form.control}
+                            name="supplements"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-gray-700 font-semibold">Suplementos em uso</FormLabel>
+                                <FormControl>
+                                  <Textarea
+                                    placeholder="Whey protein, vitamina D, ômega 3..."
+                                    className="min-h-[100px] border-2 border-gray-200 focus:border-pink-500 focus:ring-4 focus:ring-pink-500 focus:ring-opacity-20 transition-all duration-300 rounded-xl text-base bg-white/80 backdrop-blur-sm resize-none"
+                                    value={field.value || ""}
+                                    onChange={field.onChange}
+                                    onBlur={field.onBlur}
+                                    name={field.name}
+                                    ref={field.ref}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
                         </div>
 
                         <FormField
@@ -544,7 +818,7 @@ export default function NewPatientPage() {
                               <FormLabel className="text-gray-700 font-semibold">Observações</FormLabel>
                               <FormControl>
                                 <Textarea 
-                                  placeholder="Observações sobre o paciente..."
+                                  placeholder="Alguma observação para o paciente..."
                                   className="min-h-[120px] border-2 border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500 focus:ring-opacity-20 transition-all duration-300 rounded-xl text-base bg-white/80 backdrop-blur-sm resize-none"
                                   value={field.value || ""}
                                   onChange={field.onChange}
