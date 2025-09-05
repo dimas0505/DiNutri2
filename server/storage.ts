@@ -18,6 +18,7 @@ import {
   type AnamnesisRecord,
   type FoodDiaryEntry,
   type FoodDiaryEntryWithPrescription,
+  type PrescriptionWithExpirationStatus,
   type InsertFoodDiaryEntry,
   insertAnamnesisRecordSchema,
   insertFoodDiaryEntrySchema,
@@ -63,7 +64,8 @@ export interface IStorage {
   getPrescription(id: string): Promise<Prescription | undefined>;
   getLatestPublishedPrescription(patientId: string): Promise<Prescription | undefined>;
   getLatestPublishedPrescriptionForUser(userId: string): Promise<Prescription | undefined>;
-  getPublishedPrescriptionsForUser(userId: string): Promise<Prescription[]>;
+  getPublishedPrescriptionsForUser(userId: string): Promise<PrescriptionWithExpirationStatus[]>;
+  getActivePrescriptionsForUser(userId: string): Promise<PrescriptionWithExpirationStatus[]>;
   createPrescription(prescription: InsertPrescription): Promise<Prescription>;
   updatePrescription(id: string, prescription: UpdatePrescription): Promise<Prescription>;
   publishPrescription(id: string): Promise<Prescription>;
@@ -118,6 +120,29 @@ export class DatabaseStorage implements IStorage {
       createdAt: patient.createdAt ?? new Date(),
       updatedAt: patient.updatedAt ?? new Date(),
     };
+  }
+
+  // Helper functions for prescription expiration
+  private isExpired(prescription: Prescription): boolean {
+    if (!prescription.expiresAt) return false;
+    return new Date() > new Date(prescription.expiresAt);
+  }
+
+  private isExpiringWithin7Days(prescription: Prescription): boolean {
+    if (!prescription.expiresAt) return false;
+    const now = new Date();
+    const expirationDate = new Date(prescription.expiresAt);
+    const sevenDaysFromNow = new Date(now.getTime() + (7 * 24 * 60 * 60 * 1000));
+    return expirationDate <= sevenDaysFromNow && expirationDate > now;
+  }
+
+  private getDaysUntilExpiration(prescription: Prescription): number | null {
+    if (!prescription.expiresAt) return null;
+    const now = new Date();
+    const expirationDate = new Date(prescription.expiresAt);
+    const diffTime = expirationDate.getTime() - now.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
   }
 
   // User operations
@@ -411,16 +436,29 @@ export class DatabaseStorage implements IStorage {
     return this.getLatestPublishedPrescription(patient.id);
   }
 
-  async getPublishedPrescriptionsForUser(userId: string): Promise<Prescription[]> {
+  async getPublishedPrescriptionsForUser(userId: string): Promise<PrescriptionWithExpirationStatus[]> {
     const patient = await this.getPatientByUserId(userId);
     if (!patient) {
       return [];
     }
-    return await db
+    const prescriptionRows = await db
       .select()
       .from(prescriptions)
       .where(and(eq(prescriptions.patientId, patient.id), eq(prescriptions.status, "published")))
       .orderBy(desc(prescriptions.publishedAt));
+    
+    // Add expiration status to all prescriptions (don't filter out expired ones here)
+    return prescriptionRows.map((prescription: Prescription) => ({
+      ...prescription,
+      isExpired: this.isExpired(prescription),
+      isExpiringWithin7Days: this.isExpiringWithin7Days(prescription),
+      daysUntilExpiration: this.getDaysUntilExpiration(prescription)
+    }));
+  }
+
+  async getActivePrescriptionsForUser(userId: string): Promise<PrescriptionWithExpirationStatus[]> {
+    const allPrescriptions = await this.getPublishedPrescriptionsForUser(userId);
+    return allPrescriptions.filter(prescription => !prescription.isExpired);
   }
 
   async createPrescription(prescription: InsertPrescription): Promise<Prescription> {
