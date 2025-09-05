@@ -1,10 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Printer, ArrowLeft, Utensils, Info } from "lucide-react";
 import Header from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import MealViewer from "@/components/prescription/meal-viewer";
@@ -91,6 +92,18 @@ export default function PatientPrescriptionView() {
     }
   }, [error, toast]);
   
+  // Calculate days until expiration for the selected prescription
+  const daysUntilExpiry = useMemo(() => {
+    if (!selectedPrescription?.expiresAt) return null;
+    
+    const expiryDate = new Date(selectedPrescription.expiresAt);
+    const today = new Date();
+    const diffTime = expiryDate.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    return diffDays;
+  }, [selectedPrescription]);
+  
   const handleOpenSubstitutes = (item: MealItemData) => {
     setSelectedItemForSubstitutes(item);
     setIsSubstitutesModalOpen(true);
@@ -130,12 +143,28 @@ export default function PatientPrescriptionView() {
         </div>
       );
     }
+
+    // Handle inactive patient access (403 error)
+    if (error && (error as any)?.response?.status === 403) {
+      return (
+        <Card className="mt-6">
+          <CardContent className="p-8 text-center">
+            <div className="max-w-md mx-auto">
+              <h3 className="text-lg font-semibold text-destructive mb-4">Acesso Temporariamente Desativado</h3>
+              <p className="text-muted-foreground mb-4">
+                Seu acesso está temporariamente desativado. Entre em contato com seu nutricionista.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
   
     if (prescriptions.length === 0) {
       return (
         <Card className="mt-6">
           <CardContent className="p-8 text-center">
-            <p className="text-muted-foreground mb-4">Você ainda não possui uma prescrição publicada.</p>
+            <p className="text-muted-foreground mb-4">Sua prescrição expirou. Por favor, entre em contato com seu nutricionista para renovar seu plano.</p>
             <p className="text-sm text-muted-foreground">Entre em contato com seu nutricionista.</p>
           </CardContent>
         </Card>
@@ -157,6 +186,31 @@ export default function PatientPrescriptionView() {
     // Lista de refeições
     return (
       <div className="p-4 md:p-0">
+        {/* Expiration Warning Alert */}
+        {daysUntilExpiry !== null && daysUntilExpiry <= 7 && daysUntilExpiry > 0 && (
+          <Alert className="mb-6 border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/20">
+            <Info className="h-4 w-4 text-amber-600" />
+            <AlertTitle className="text-amber-800 dark:text-amber-200">
+              Sua prescrição está prestes a expirar!
+            </AlertTitle>
+            <AlertDescription className="text-amber-700 dark:text-amber-300">
+              Seu plano expira em {daysUntilExpiry} dias. Este protocolo foi elaborado para um acompanhamento de 4 semanas, 
+              e a renovação é imprescindível para sua evolução contínua. Salve uma cópia do seu plano antes que o acesso seja removido.
+              <div className="mt-3">
+                <Button 
+                  onClick={handlePrint}
+                  variant="outline" 
+                  size="sm"
+                  className="border-amber-300 text-amber-800 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-200 dark:hover:bg-amber-900/20"
+                >
+                  <Printer className="mr-2 h-4 w-4" />
+                  Imprimir/Salvar PDF
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
+        
         <Tabs value={selectedPrescription?.id} onValueChange={handleSelectPrescription} className="w-full">
           <TabsList>
             {prescriptions.map(p => (

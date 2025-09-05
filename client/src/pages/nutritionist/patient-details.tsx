@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -124,6 +125,26 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
       toast({
         title: "Erro",
         description: "Falha ao gerar link de anamnese de retorno.",
+        variant: "destructive",
+      });
+    }
+  });
+
+  const updatePatientStatusMutation = useMutation({
+    mutationFn: async (newStatus: "active" | "inactive") => {
+      return await apiRequest("PUT", `/api/patients/${params.id}`, { status: newStatus });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Status atualizado",
+        description: "O status do paciente foi atualizado com sucesso.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/patients", params.id] });
+    },
+    onError: () => {
+      toast({
+        title: "Erro",
+        description: "Falha ao atualizar status do paciente.",
         variant: "destructive",
       });
     }
@@ -602,13 +623,32 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
               </CardHeader>
               <CardContent className="p-6">
                 {hasAccountLinked ? (
-                  <div className="flex items-center gap-4 p-4 rounded-lg bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border border-green-200/50 dark:border-green-700/50">
-                    <div className="p-3 bg-green-100 dark:bg-green-800 rounded-full">
-                      <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-300" />
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-4 p-4 rounded-lg bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border border-green-200/50 dark:border-green-700/50">
+                      <div className="p-3 bg-green-100 dark:bg-green-800 rounded-full">
+                        <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-300" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-green-800 dark:text-green-200">Paciente tem acesso ao sistema</p>
+                        <p className="text-sm text-green-600 dark:text-green-300">Prescrições podem ser criadas</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-semibold text-green-800 dark:text-green-200">Paciente tem acesso ao sistema</p>
-                      <p className="text-sm text-green-600 dark:text-green-300">Prescrições podem ser criadas</p>
+                    
+                    {/* Patient Status Control */}
+                    <div className="flex items-center justify-between p-4 rounded-lg bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700">
+                      <div>
+                        <p className="font-medium text-gray-900 dark:text-gray-100">Status do Paciente</p>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          {patient?.status === 'active' ? 'Acesso ativo ao sistema' : 'Acesso temporariamente desativado'}
+                        </p>
+                      </div>
+                      <Switch
+                        checked={patient?.status === 'active'}
+                        onCheckedChange={(checked) => {
+                          updatePatientStatusMutation.mutate(checked ? 'active' : 'inactive');
+                        }}
+                        disabled={updatePatientStatusMutation.isPending}
+                      />
                     </div>
                   </div>
                 ) : (
