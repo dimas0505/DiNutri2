@@ -1,10 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { Printer, ArrowLeft, Utensils, Info } from "lucide-react";
+import { Printer, ArrowLeft, Utensils, Info, AlertTriangle } from "lucide-react";
 import Header from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import MealViewer from "@/components/prescription/meal-viewer";
@@ -67,6 +68,24 @@ export default function PatientPrescriptionView() {
     gain_weight: "Ganhar Peso",
   };
 
+  // Calculate days until expiration for the selected prescription
+  const daysUntilExpiration = useMemo(() => {
+    if (!selectedPrescription?.expiresAt) return null;
+    
+    const expirationDate = new Date(selectedPrescription.expiresAt);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Reset time to start of day
+    expirationDate.setHours(0, 0, 0, 0);
+    
+    const diffTime = expirationDate.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    return diffDays;
+  }, [selectedPrescription?.expiresAt]);
+
+  // Check if prescription is expiring soon (7 days or less, but still valid)
+  const isExpiringSoon = daysUntilExpiration !== null && daysUntilExpiration <= 7 && daysUntilExpiration > 0;
+
   const patientGoal = currentPatient?.goal as keyof typeof goalMap | undefined;
   const goalText = patientGoal && goalMap[patientGoal] 
     ? `Objetivo: ${goalMap[patientGoal]}` 
@@ -122,6 +141,25 @@ export default function PatientPrescriptionView() {
   };
 
   const pageContent = () => {
+    // Handle access denied error (patient status is inactive)
+    if (error && (error as any)?.response?.status === 403) {
+      return (
+        <Card className="mt-6">
+          <CardContent className="p-8 text-center">
+            <div className="max-w-md mx-auto">
+              <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-full w-20 h-20 mx-auto mb-4 flex items-center justify-center">
+                <AlertTriangle className="h-10 w-10 text-red-600 dark:text-red-300" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Acesso Temporariamente Desativado</h3>
+              <p className="text-gray-600 dark:text-gray-300 mb-4">
+                Seu acesso está temporariamente desativado. Entre em contato com seu nutricionista.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
+
     if (isLoading || prescriptionLoading) {
       return (
         <div className="text-center p-8">
@@ -135,7 +173,7 @@ export default function PatientPrescriptionView() {
       return (
         <Card className="mt-6">
           <CardContent className="p-8 text-center">
-            <p className="text-muted-foreground mb-4">Você ainda não possui uma prescrição publicada.</p>
+            <p className="text-muted-foreground mb-4">Sua prescrição expirou. Por favor, entre em contato com seu nutricionista para renovar seu plano.</p>
             <p className="text-sm text-muted-foreground">Entre em contato com seu nutricionista.</p>
           </CardContent>
         </Card>
@@ -164,6 +202,29 @@ export default function PatientPrescriptionView() {
             ))}
           </TabsList>
         
+          {/* Expiration Warning Alert */}
+          {isExpiringSoon && (
+            <Alert className="mt-4 border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/20">
+              <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-300" />
+              <AlertTitle className="text-amber-800 dark:text-amber-200">Sua prescrição está prestes a expirar!</AlertTitle>
+              <AlertDescription className="text-amber-700 dark:text-amber-300">
+                <p className="mb-3">
+                  Seu plano expira em {daysUntilExpiration} {daysUntilExpiration === 1 ? 'dia' : 'dias'}. 
+                  Este protocolo foi elaborado para um acompanhamento de 4 semanas, e a renovação é imprescindível para sua evolução contínua. 
+                  Salve uma cópia do seu plano antes que o acesso seja removido.
+                </p>
+                <Button
+                  onClick={handlePrint}
+                  size="sm"
+                  className="bg-amber-600 hover:bg-amber-700 text-white"
+                >
+                  <Printer className="h-4 w-4 mr-2" />
+                  Imprimir/Salvar PDF
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
+
           <div className="space-y-4 mt-6">
             {selectedPrescription?.meals.map(meal => (
               <MealCard
