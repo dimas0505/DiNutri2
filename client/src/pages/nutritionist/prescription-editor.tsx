@@ -201,7 +201,7 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
                   onClick={() => setLocation(`/patients/${prescription.patientId}`)}
                   disabled={isSaving}
                   data-testid="button-close-editor"
-                  className="w-full sm:flex-none shadow-sm border-2 hover:bg-muted/20"
+                  className="w-full sm:w-auto shadow-sm border-2 hover:bg-muted/20"
                 >
                   Fechar
                 </Button>
@@ -210,7 +210,7 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
                   onClick={handleSaveDraft}
                   disabled={isSaving}
                   data-testid="button-save-draft"
-                  className="w-full sm:flex-none shadow-md bg-gradient-to-r from-secondary via-secondary to-secondary/90 hover:from-secondary/90 hover:via-secondary hover:to-secondary"
+                  className="w-full sm:w-auto shadow-md bg-gradient-to-r from-secondary via-secondary to-secondary/90 hover:from-secondary/90 hover:via-secondary hover:to-secondary"
                 >
                   {updatePrescriptionMutation.isPending ? "Salvando..." : "Salvar Rascunho"}
                 </Button>
@@ -218,7 +218,7 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
                   onClick={handlePublish}
                   disabled={isSaving}
                   data-testid="button-publish"
-                  className="w-full sm:flex-none shadow-lg bg-gradient-to-r from-primary via-primary to-primary/90 hover:from-primary/90 hover:via-primary hover:to-primary"
+                  className="w-full sm:w-auto shadow-lg bg-gradient-to-r from-primary via-primary to-primary/90 hover:from-primary/90 hover:via-primary hover:to-primary"
                 >
                   {publishPrescriptionMutation.isPending ? "Publicando..." : "Publicar"}
                 </Button>
@@ -230,10 +230,10 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
         {/* Enhanced Prescription Controls */}
         <Card className="mb-6 shadow-lg bg-gradient-to-r from-emerald-50 via-card to-teal-50 dark:from-emerald-950/20 dark:via-card dark:to-teal-950/20 border-2 border-emerald-100 dark:border-emerald-900/30">
           <CardContent className="p-4 sm:p-6">
-            <div className="space-y-3 sm:space-y-0 sm:flex sm:gap-4">
+            <div className="space-y-3 sm:space-y-0 sm:flex sm:justify-center sm:gap-4">
               <Button
                 onClick={addMeal}
-                className="w-full sm:flex-1 lg:flex-none flex items-center justify-center space-x-2 shadow-lg bg-gradient-to-r from-emerald-600 via-emerald-500 to-green-600 hover:from-emerald-700 hover:via-emerald-600 hover:to-green-700 text-white"
+                className="w-full sm:w-auto flex items-center justify-center space-x-2 shadow-lg bg-gradient-to-r from-emerald-600 via-emerald-500 to-green-600 hover:from-emerald-700 hover:via-emerald-600 hover:to-green-700 text-white"
                 size="lg"
                 data-testid="button-add-meal"
               >
@@ -242,7 +242,7 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
               </Button>
               <Button
                 variant="outline"
-                className="w-full sm:flex-1 lg:flex-none flex items-center justify-center space-x-2 shadow-md border-2 border-teal-200 dark:border-teal-800 bg-gradient-to-r from-teal-50 via-background to-cyan-50 dark:from-teal-950/30 dark:via-background dark:to-cyan-950/30 hover:from-teal-100 hover:via-muted hover:to-cyan-100 dark:hover:from-teal-900/50 dark:hover:via-muted dark:hover:to-cyan-900/50"
+                className="w-full sm:w-auto flex items-center justify-center space-x-2 shadow-md border-2 border-teal-200 dark:border-teal-800 bg-gradient-to-r from-teal-50 via-background to-cyan-50 dark:from-teal-950/30 dark:via-background dark:to-cyan-950/30 hover:from-teal-100 hover:via-muted hover:to-cyan-100 dark:hover:from-teal-900/50 dark:hover:via-muted dark:hover:to-cyan-900/50"
                 size="lg"
                 data-testid="button-duplicate-prescription"
               >
