@@ -18,6 +18,7 @@ import PrescriptionPrintPage from "@/pages/patient/prescription-print";
 import PatientRegisterPage from "@/pages/patient/patient-register";
 import AnamnesePage from "@/pages/public/anamnese";
 import FollowUpAnamnesePage from "@/pages/public/follow-up-anamnese";
+import PrescriptionViewDemo from "@/pages/demo/prescription-view-demo";
 import AdminDashboard from "@/pages/admin/dashboard";
 import CreateUserPage from "@/pages/admin/create-user";
 import AdminProfilePage from "@/pages/admin/profile";
@@ -43,6 +44,7 @@ function Router() {
       <Route path="/" component={isAuthenticated ? Home : Landing} />
       <Route path="/anamnese" component={AnamnesePage} />
       <Route path="/anamnese/retorno" component={FollowUpAnamnesePage} />
+      <Route path="/demo/prescription" component={PrescriptionViewDemo} />
 
       {/* Rota de Registro do Paciente (após login com convite) */}
       {isAuthenticated && isPatient && (
