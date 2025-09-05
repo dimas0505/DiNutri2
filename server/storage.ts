@@ -66,7 +66,7 @@ export interface IStorage {
   getPublishedPrescriptionsForUser(userId: string): Promise<Prescription[]>;
   createPrescription(prescription: InsertPrescription): Promise<Prescription>;
   updatePrescription(id: string, prescription: UpdatePrescription): Promise<Prescription>;
-  publishPrescription(id: string): Promise<Prescription>;
+  publishPrescription(id: string, expiresAt: Date | null): Promise<Prescription>;
   duplicatePrescription(id: string, title: string): Promise<Prescription>;
   deletePrescription(id: string): Promise<void>;
 
@@ -115,6 +115,7 @@ export class DatabaseStorage implements IStorage {
       diseases: patient.diseases ?? null,
       medications: patient.medications ?? null,
       biotype: patient.biotype ?? null,
+      status: patient.status ?? "active",
       createdAt: patient.createdAt ?? new Date(),
       updatedAt: patient.updatedAt ?? new Date(),
     };
@@ -419,7 +420,11 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(prescriptions)
-      .where(and(eq(prescriptions.patientId, patient.id), eq(prescriptions.status, "published")))
+      .where(and(
+        eq(prescriptions.patientId, patient.id), 
+        eq(prescriptions.status, "published"),
+        sql`${prescriptions.expiresAt} IS NULL OR ${prescriptions.expiresAt} > NOW()`
+      ))
       .orderBy(desc(prescriptions.publishedAt));
   }
 
@@ -442,10 +447,10 @@ export class DatabaseStorage implements IStorage {
     return updatedPrescription;
   }
 
-  async publishPrescription(id: string): Promise<Prescription> {
+  async publishPrescription(id: string, expiresAt: Date | null): Promise<Prescription> {
     const [publishedPrescription] = await db
       .update(prescriptions)
-      .set({ status: "published", publishedAt: new Date(), updatedAt: new Date() })
+      .set({ status: "published", publishedAt: new Date(), expiresAt, updatedAt: new Date() })
       .where(eq(prescriptions.id, id))
       .returning();
     return publishedPrescription;
