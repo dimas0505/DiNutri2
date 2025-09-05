@@ -136,17 +136,17 @@ export default function MealItemEditor({ item, onUpdate, onDelete, onMoveUp, onM
 
   return (
     <>
-      <div className="bg-background border border-border rounded-md p-3 space-y-3">
+      <div className="bg-gradient-to-br from-cyan-50 via-background to-blue-50 dark:from-cyan-950/20 dark:via-background dark:to-blue-950/20 border-2 border-cyan-200 dark:border-cyan-800 rounded-xl p-3 sm:p-4 space-y-4 shadow-lg hover:shadow-xl transition-shadow">
         {/* Linha principal do item */}
-        <div className="flex items-center space-x-3">
-          <div className="cursor-move text-muted-foreground">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
+          <div className="cursor-move text-muted-foreground hover:text-foreground transition-colors p-2 rounded-md hover:bg-cyan-100 dark:hover:bg-cyan-900/30 shadow-sm border border-cyan-200 dark:border-cyan-800">
             <GripVertical className="h-4 w-4" />
           </div>
-          <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="flex-1 w-full space-y-3 sm:space-y-0 sm:grid sm:grid-cols-2 sm:gap-4">
             <Input
               type="text"
               placeholder="Ex: Pão francês"
-              className="text-sm"
+              className="text-sm bg-background/80 border-2 border-cyan-200 dark:border-cyan-800 focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:border-cyan-400 dark:focus-visible:ring-cyan-700 dark:focus-visible:border-cyan-600 shadow-sm"
               value={item.description}
               onChange={(e) => updateDescription(e.target.value)}
               data-testid={`input-item-description-${item.id}`}
@@ -154,13 +154,13 @@ export default function MealItemEditor({ item, onUpdate, onDelete, onMoveUp, onM
             <Input
               type="text"
               placeholder="Ex: 1 unidade (50g)"
-              className="text-sm"
+              className="text-sm bg-background/80 border-2 border-cyan-200 dark:border-cyan-800 focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:border-cyan-400 dark:focus-visible:ring-cyan-700 dark:focus-visible:border-cyan-600 shadow-sm"
               value={item.amount}
               onChange={(e) => updateAmount(e.target.value)}
               data-testid={`input-item-amount-${item.id}`}
             />
           </div>
-          <div className="flex space-x-1">
+          <div className="flex space-x-2 w-full sm:w-auto justify-end">
             {onMoveUp && (
               <Button
                 variant="ghost"
@@ -168,6 +168,7 @@ export default function MealItemEditor({ item, onUpdate, onDelete, onMoveUp, onM
                 onClick={onMoveUp}
                 title="Mover para cima"
                 data-testid={`button-move-item-up-${item.id}`}
+                className="hover:bg-cyan-100 dark:hover:bg-cyan-900/30 shadow-sm border border-cyan-200 dark:border-cyan-800"
               >
                 <ChevronUp className="h-3 w-3" />
               </Button>
@@ -179,6 +180,7 @@ export default function MealItemEditor({ item, onUpdate, onDelete, onMoveUp, onM
                 onClick={onMoveDown}
                 title="Mover para baixo"
                 data-testid={`button-move-item-down-${item.id}`}
+                className="hover:bg-cyan-100 dark:hover:bg-cyan-900/30 shadow-sm border border-cyan-200 dark:border-cyan-800"
               >
                 <ChevronDown className="h-3 w-3" />
               </Button>
@@ -187,7 +189,7 @@ export default function MealItemEditor({ item, onUpdate, onDelete, onMoveUp, onM
               variant="ghost"
               size="sm"
               onClick={onDelete}
-              className="text-destructive hover:text-destructive/80"
+              className="text-destructive hover:text-destructive/80 hover:bg-destructive/20 shadow-sm border border-destructive/30"
               data-testid={`button-delete-item-${item.id}`}
             >
               <X className="h-4 w-4" />
@@ -197,15 +199,15 @@ export default function MealItemEditor({ item, onUpdate, onDelete, onMoveUp, onM
 
         {/* Seção de substitutos */}
         <Collapsible open={isSubstitutesOpen} onOpenChange={setIsSubstitutesOpen}>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between pt-3 border-t border-cyan-200 dark:border-cyan-800 space-y-3 sm:space-y-0">
+            <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4 w-full sm:w-auto">
               <CollapsibleTrigger asChild>
                 <Button 
                   variant="ghost" 
                   size="sm" 
-                  className="text-xs text-muted-foreground hover:text-foreground p-0 h-auto"
+                  className="text-xs text-cyan-700 dark:text-cyan-300 hover:text-cyan-900 dark:hover:text-cyan-100 p-3 h-auto rounded-lg hover:bg-cyan-100 dark:hover:bg-cyan-900/30 shadow-sm border border-cyan-200 dark:border-cyan-800 w-full sm:w-auto justify-center sm:justify-start"
                 >
-                  <Plus className="h-3 w-3 mr-1" />
+                  <Plus className="h-3 w-3 mr-2" />
                   {item.substitutes && item.substitutes.length > 0 
                     ? `${item.substitutes.length} substituto(s)`
                     : "Adicionar substitutos"
@@ -216,23 +218,23 @@ export default function MealItemEditor({ item, onUpdate, onDelete, onMoveUp, onM
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="text-xs text-muted-foreground hover:text-foreground p-0 h-auto"
+                className="text-xs text-cyan-700 dark:text-cyan-300 hover:text-cyan-900 dark:hover:text-cyan-100 p-3 h-auto rounded-lg hover:bg-cyan-100 dark:hover:bg-cyan-900/30 shadow-sm border border-cyan-200 dark:border-cyan-800 w-full sm:w-auto justify-center sm:justify-start"
                 onClick={() => setIsBulkModalOpen(true)}
               >
-                <Plus className="h-3 w-3 mr-1" />
+                <Plus className="h-3 w-3 mr-2" />
                 Adicionar em lote
               </Button>
             </div>
             
             {!isSubstitutesOpen && item.substitutes && item.substitutes.length > 0 && (
-              <div className="flex flex-wrap gap-1">
+              <div className="flex flex-wrap gap-2 w-full sm:w-auto">
                 {item.substitutes.slice(0, 3).map((substitute, index) => (
-                  <Badge key={index} variant="secondary" className="text-xs">
+                  <Badge key={index} variant="secondary" className="text-xs px-3 py-1 shadow-sm bg-cyan-100 dark:bg-cyan-900/30 text-cyan-800 dark:text-cyan-200">
                     {substitute}
                   </Badge>
                 ))}
                 {item.substitutes.length > 3 && (
-                  <Badge variant="outline" className="text-xs">
+                  <Badge variant="outline" className="text-xs px-3 py-1 shadow-sm border-cyan-300 dark:border-cyan-700 text-cyan-700 dark:text-cyan-300">
                     +{item.substitutes.length - 3}
                   </Badge>
                 )}
@@ -240,18 +242,19 @@ export default function MealItemEditor({ item, onUpdate, onDelete, onMoveUp, onM
             )}
           </div>
 
-          <CollapsibleContent className="space-y-2 mt-2">
+          <CollapsibleContent className="space-y-4 mt-4">
             {/* Controles de seleção em lote */}
             {item.substitutes && item.substitutes.length > 0 && (
-              <div className="flex items-center justify-between p-2 bg-muted/30 rounded-md">
-                <div className="flex items-center space-x-2">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 bg-cyan-50 dark:bg-cyan-950/20 rounded-lg border-2 border-cyan-200 dark:border-cyan-800 shadow-inner space-y-3 sm:space-y-0">
+                <div className="flex items-center space-x-3">
                    <Checkbox
                     id={`select-all-${item.id}`}
                     checked={allSelected}
                     onCheckedChange={(checked) => handleSelectAll(Boolean(checked))}
                     aria-label="Selecionar todos"
+                    className="border-cyan-400 dark:border-cyan-600"
                   />
-                  <label htmlFor={`select-all-${item.id}`} className="text-sm font-medium">
+                  <label htmlFor={`select-all-${item.id}`} className="text-sm font-medium text-cyan-800 dark:text-cyan-200">
                     Selecionar Todos
                   </label>
                 </div>
@@ -260,8 +263,9 @@ export default function MealItemEditor({ item, onUpdate, onDelete, onMoveUp, onM
                   size="sm"
                   onClick={handleDeleteSelected}
                   disabled={selectedSubstitutes.size === 0}
+                  className="shadow-md w-full sm:w-auto"
                 >
-                  <Trash2 className="h-3 w-3 mr-1" />
+                  <Trash2 className="h-3 w-3 mr-2" />
                   Excluir ({selectedSubstitutes.size})
                 </Button>
               </div>
@@ -269,22 +273,23 @@ export default function MealItemEditor({ item, onUpdate, onDelete, onMoveUp, onM
 
             {/* Lista de substitutos editáveis */}
             {item.substitutes && item.substitutes.length > 0 && (
-              <div className="space-y-1">
+              <div className="space-y-3">
                 {item.substitutes.map((substitute, index) => (
-                  <div key={index} className="flex items-center space-x-3 bg-muted/30 rounded p-2">
+                  <div key={index} className="flex items-center space-x-3 bg-cyan-50 dark:bg-cyan-950/20 rounded-lg p-4 border-2 border-cyan-200 dark:border-cyan-800 shadow-sm">
                     <Checkbox
                       id={`sub-${item.id}-${index}`}
                       checked={selectedSubstitutes.has(index)}
                       onCheckedChange={() => handleToggleSelect(index)}
+                      className="border-cyan-400 dark:border-cyan-600"
                     />
-                    <label htmlFor={`sub-${item.id}-${index}`} className="text-sm flex-1 cursor-pointer">
+                    <label htmlFor={`sub-${item.id}-${index}`} className="text-sm flex-1 cursor-pointer text-cyan-800 dark:text-cyan-200 font-medium">
                       {substitute}
                     </label>
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => removeSubstitute(index)}
-                      className="h-6 w-6 p-0 text-destructive hover:text-destructive/80"
+                      className="h-8 w-8 p-0 text-destructive hover:text-destructive/80 hover:bg-destructive/20 shadow-sm border border-destructive/30"
                     >
                       <Trash2 className="h-3 w-3" />
                     </Button>
@@ -294,11 +299,11 @@ export default function MealItemEditor({ item, onUpdate, onDelete, onMoveUp, onM
             )}
 
             {/* Input para adicionar novo substituto */}
-            <div className="flex space-x-2">
+            <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3 pt-3">
               <Input
                 type="text"
                 placeholder="Ex: Pão integral, Tapioca..."
-                className="text-sm"
+                className="text-sm bg-background/80 border-2 border-cyan-200 dark:border-cyan-800 focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:border-cyan-400 dark:focus-visible:ring-cyan-700 dark:focus-visible:border-cyan-600 shadow-sm flex-1"
                 value={newSubstitute}
                 onChange={(e) => setNewSubstitute(e.target.value)}
                 onKeyPress={handleKeyPress}
@@ -309,8 +314,10 @@ export default function MealItemEditor({ item, onUpdate, onDelete, onMoveUp, onM
                 size="sm"
                 onClick={addSubstitute}
                 disabled={!newSubstitute.trim()}
+                className="px-6 shadow-md border-2 border-cyan-300 dark:border-cyan-700 bg-cyan-50 dark:bg-cyan-950/20 hover:bg-cyan-100 dark:hover:bg-cyan-900/30 text-cyan-800 dark:text-cyan-200 w-full sm:w-auto"
               >
-                <Plus className="h-3 w-3" />
+                <Plus className="h-3 w-3 mr-2" />
+                Adicionar
               </Button>
             </div>
           </CollapsibleContent>
