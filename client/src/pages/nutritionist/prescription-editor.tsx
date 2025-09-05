@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { Plus, Copy } from "lucide-react";
+import { Plus, Copy, Upload, Download } from "lucide-react";
 import Header from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import MealEditor from "@/components/prescription/meal-editor";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import type { Prescription, Patient, MealData } from "@shared/schema";
+import type { Prescription, Patient, MealData, MealItemData } from "@shared/schema";
 import { v4 as uuidv4 } from 'uuid';
 import { DefaultMobileDrawer } from "@/components/layout/mobile-layout";
 
@@ -27,6 +27,7 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
   const [title, setTitle] = useState("");
   const [generalNotes, setGeneralNotes] = useState("");
   const [meals, setMeals] = useState<MealData[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: prescription, isLoading } = useQuery<Prescription>({
     queryKey: ["/api/prescriptions", params.id],
@@ -132,6 +133,136 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
     publishPrescriptionMutation.mutate();
   };
 
+  // CSV parsing function
+  const parseCsvToMeals = (csvText: string): MealData[] => {
+    const lines = csvText.trim().split('\n');
+    if (lines.length < 2) {
+      throw new Error('CSV deve conter pelo menos o cabeçalho e uma linha de dados');
+    }
+
+    // Remove header
+    const dataLines = lines.slice(1);
+    
+    // Group lines by meal name
+    const mealGroups = dataLines.reduce((groups, line) => {
+      const columns = line.split(',').map(col => col.trim().replace(/^"|"$/g, ''));
+      
+      if (columns.length < 5) {
+        throw new Error('CSV deve conter 5 colunas: Refeicao,ItemPrincipal,Quantidade,Substitutos,ObservacoesRefeicao');
+      }
+
+      const [mealName, itemDescription, amount, substitutesStr, mealNotes] = columns;
+      
+      if (!groups[mealName]) {
+        groups[mealName] = {
+          items: [],
+          notes: mealNotes || ''
+        };
+      }
+      
+      // Create meal item
+      const mealItem: MealItemData = {
+        id: uuidv4(),
+        description: itemDescription,
+        amount: amount,
+        substitutes: substitutesStr ? substitutesStr.split('|').map(s => s.trim()).filter(s => s) : []
+      };
+      
+      groups[mealName].items.push(mealItem);
+      
+      return groups;
+    }, {} as Record<string, { items: MealItemData[], notes: string }>);
+
+    // Convert to MealData array
+    return Object.entries(mealGroups).map(([mealName, mealData]) => ({
+      id: uuidv4(),
+      name: mealName,
+      items: mealData.items,
+      notes: mealData.notes
+    }));
+  };
+
+  // File input change handler
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.name.toLowerCase().endsWith('.csv')) {
+      toast({
+        title: "Erro",
+        description: "Por favor, selecione um arquivo CSV.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const csvText = e.target?.result as string;
+        const parsedMeals = parseCsvToMeals(csvText);
+        setMeals(parsedMeals);
+        
+        toast({
+          title: "Sucesso",
+          description: `${parsedMeals.length} refeição(ões) importada(s) com sucesso!`,
+        });
+      } catch (error) {
+        toast({
+          title: "Erro",
+          description: error instanceof Error ? error.message : "Erro ao processar arquivo CSV.",
+          variant: "destructive",
+        });
+      } finally {
+        // Clear the file input
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+      }
+    };
+
+    reader.onerror = () => {
+      toast({
+        title: "Erro",
+        description: "Erro ao ler o arquivo.",
+        variant: "destructive",
+      });
+    };
+
+    reader.readAsText(file);
+  };
+
+  // Import CSV handler
+  const handleImportCsv = () => {
+    fileInputRef.current?.click();
+  };
+
+  // Export JSON handler
+  const handleExportJson = () => {
+    const exportData = {
+      title,
+      generalNotes,
+      meals
+    };
+
+    const jsonString = JSON.stringify(exportData, null, 2);
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'plano-alimentar.json';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    toast({
+      title: "Sucesso",
+      description: "Plano alimentar exportado com sucesso!",
+    });
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background">
@@ -230,6 +361,14 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
         {/* Enhanced Prescription Controls */}
         <Card className="mb-6 shadow-lg bg-gradient-to-r from-emerald-50 via-card to-teal-50 dark:from-emerald-950/20 dark:via-card dark:to-teal-950/20 border-2 border-emerald-100 dark:border-emerald-900/30">
           <CardContent className="p-4 sm:p-6">
+            {/* Hidden file input for CSV import */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".csv"
+              onChange={handleFileChange}
+              className="hidden"
+            />
             <div className="space-y-3 sm:space-y-0 sm:flex sm:justify-center sm:gap-4">
               <Button
                 onClick={addMeal}
@@ -239,6 +378,28 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
               >
                 <Plus className="h-5 w-5" />
                 <span>Adicionar Refeição</span>
+              </Button>
+              <Button
+                onClick={handleImportCsv}
+                variant="outline"
+                className="w-full sm:w-auto flex items-center justify-center space-x-2 shadow-md border-2 border-blue-200 dark:border-blue-800 bg-gradient-to-r from-blue-50 via-background to-indigo-50 dark:from-blue-950/30 dark:via-background dark:to-indigo-950/30 hover:from-blue-100 hover:via-muted hover:to-indigo-100 dark:hover:from-blue-900/50 dark:hover:via-muted dark:hover:to-indigo-900/50"
+                size="lg"
+                data-testid="button-import-csv"
+              >
+                <Upload className="h-5 w-5" />
+                <span className="hidden sm:inline">Importar de Planilha (CSV)</span>
+                <span className="sm:hidden">Importar CSV</span>
+              </Button>
+              <Button
+                onClick={handleExportJson}
+                variant="outline"
+                className="w-full sm:w-auto flex items-center justify-center space-x-2 shadow-md border-2 border-purple-200 dark:border-purple-800 bg-gradient-to-r from-purple-50 via-background to-violet-50 dark:from-purple-950/30 dark:via-background dark:to-violet-950/30 hover:from-purple-100 hover:via-muted hover:to-violet-100 dark:hover:from-purple-900/50 dark:hover:via-muted dark:hover:to-violet-900/50"
+                size="lg"
+                data-testid="button-export-json"
+              >
+                <Download className="h-5 w-5" />
+                <span className="hidden sm:inline">Exportar (JSON)</span>
+                <span className="sm:hidden">Exportar JSON</span>
               </Button>
               <Button
                 variant="outline"
