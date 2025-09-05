@@ -1,17 +1,13 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { Plus, Copy, Upload, Download, CalendarIcon } from "lucide-react";
+import { Plus, Copy, Upload, Download } from "lucide-react";
 import Header from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
-import { format } from "date-fns";
 import MealEditor from "@/components/prescription/meal-editor";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -31,7 +27,6 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
   const [title, setTitle] = useState("");
   const [generalNotes, setGeneralNotes] = useState("");
   const [meals, setMeals] = useState<MealData[]>([]);
-  const [expiresAt, setExpiresAt] = useState<Date | undefined>();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: prescription, isLoading } = useQuery<Prescription>({
@@ -76,9 +71,7 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
     mutationFn: async () => {
       // First update, then publish
       await updatePrescriptionMutation.mutateAsync({ title, meals, generalNotes });
-      return await apiRequest("POST", `/api/prescriptions/${params.id}/publish`, {
-        expiresAt: expiresAt?.toISOString()
-      });
+      return await apiRequest("POST", `/api/prescriptions/${params.id}/publish`);
     },
     onSuccess: () => {
       toast({
@@ -352,33 +345,6 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
                 >
                   {updatePrescriptionMutation.isPending ? "Salvando..." : "Salvar Rascunho"}
                 </Button>
-                
-                {/* Date Picker for Prescription Expiry */}
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant={"outline"}
-                      className={cn(
-                        "w-full sm:w-[240px] justify-start text-left font-normal",
-                        !expiresAt && "text-muted-foreground"
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {expiresAt ? format(expiresAt, "dd/MM/yyyy") : "Definir Validade"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={expiresAt}
-                      onSelect={setExpiresAt}
-                      disabled={(date) =>
-                        date < new Date() || date < new Date("1900-01-01")
-                      }
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
                 
                 <Button
                   onClick={handlePublish}
