@@ -30,10 +30,14 @@ const formSchema = insertPatientSchema.omit({ ownerId: true, userId: true }).ext
   ),
   weightKg: z.string().regex(/^\d+(\.\d{1,2})?$/, "Peso inválido. Ex: 65.50").optional().or(z.literal('')),
   password: z.string().min(6, "A senha deve ter no mínimo 6 caracteres."),
+  confirmPassword: z.string(),
   // Transform string arrays for multi-select fields
   likedHealthyFoods: z.array(z.string()).default([]),
   dislikedFoods: z.array(z.string()).default([]),
   intolerances: z.array(z.string()).default([]),
+}).refine(data => data.password === data.confirmPassword, {
+  message: "As senhas não correspondem.",
+  path: ["confirmPassword"],
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -52,6 +56,7 @@ export default function NewPatientPage() {
       name: "",
       email: "",
       password: "",
+      confirmPassword: "",
       birthDate: "",
       sex: undefined,
       heightCm: undefined,
@@ -105,7 +110,7 @@ export default function NewPatientPage() {
   });
 
   const createPatientMutation = useMutation({
-    mutationFn: async (data: FormData) => {
+    mutationFn: async (data: Omit<FormData, 'confirmPassword'>) => {
       const payload = { 
         ...data,
         ownerId: user?.id
@@ -149,7 +154,8 @@ export default function NewPatientPage() {
       });
       return;
     }
-    createPatientMutation.mutate(data);
+    const { confirmPassword, ...payload } = data;
+    createPatientMutation.mutate(payload);
   };
 
   const handleGenerateInvite = () => {
@@ -323,13 +329,31 @@ export default function NewPatientPage() {
                                 )}
                               />
                             </div>
-                            <div className="md:col-span-2">
+                            <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
                               <FormField
                                 control={form.control}
                                 name="password"
                                 render={({ field }) => (
                                   <FormItem>
                                     <FormLabel className="text-gray-700 font-semibold">Senha de Acesso *</FormLabel>
+                                    <FormControl>
+                                      <Input 
+                                        type="password" 
+                                        placeholder="••••••••" 
+                                        className="h-12 border-2 border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500 focus:ring-opacity-20 transition-all duration-300 rounded-xl text-base bg-white/80 backdrop-blur-sm"
+                                        {...field} 
+                                      />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                              <FormField
+                                control={form.control}
+                                name="confirmPassword"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel className="text-gray-700 font-semibold">Confirme a Senha *</FormLabel>
                                     <FormControl>
                                       <Input 
                                         type="password" 
