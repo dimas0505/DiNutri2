@@ -468,30 +468,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/patient/active-prescriptions', isAuthenticated, async (req: any, res) => {
-    try {
-      const prescriptions = await storage.getActivePrescriptionsForUser(req.user.id);
-      res.json(prescriptions);
-    } catch (error) {
-      console.error("Error fetching active prescriptions:", error);
-      res.status(500).json({ message: "Failed to fetch active prescriptions" });
-    }
-  });
-
-  app.get('/api/patient/prescription-warnings', isAuthenticated, async (req: any, res) => {
-    try {
-      const prescriptions = await storage.getPublishedPrescriptionsForUser(req.user.id);
-      const warnings = {
-        expiringSoon: prescriptions.filter(p => p.isExpiringWithin7Days && !p.isExpired),
-        expired: prescriptions.filter(p => p.isExpired)
-      };
-      res.json(warnings);
-    } catch (error) {
-      console.error("Error fetching prescription warnings:", error);
-      res.status(500).json({ message: "Failed to fetch prescription warnings" });
-    }
-  });
-
   // --- INVITATION ROUTES ---
   app.post('/api/invitations', isAuthenticated, async (req: any, res) => {
     try {

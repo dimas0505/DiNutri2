@@ -26,7 +26,6 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
 
   const [title, setTitle] = useState("");
   const [generalNotes, setGeneralNotes] = useState("");
-  const [expiresAt, setExpiresAt] = useState<string>("");
   const [meals, setMeals] = useState<MealData[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -40,13 +39,6 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
       setTitle(prescription.title);
       setGeneralNotes(prescription.generalNotes || "");
       setMeals(prescription.meals || []);
-      // Convert timestamp to date string for input[type="date"]
-      if (prescription.expiresAt) {
-        const expirationDate = new Date(prescription.expiresAt);
-        setExpiresAt(expirationDate.toISOString().split('T')[0]);
-      } else {
-        setExpiresAt("");
-      }
     }
   }, [prescription]);
 
@@ -56,14 +48,8 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
   });
 
   const updatePrescriptionMutation = useMutation({
-    mutationFn: async (data: { title: string; meals: MealData[]; generalNotes: string; expiresAt?: string }) => {
-      const payload = {
-        title: data.title,
-        meals: data.meals,
-        generalNotes: data.generalNotes,
-        ...(data.expiresAt && { expiresAt: new Date(data.expiresAt).toISOString() })
-      };
-      return await apiRequest("PUT", `/api/prescriptions/${params.id}`, payload);
+    mutationFn: async (data: { title: string; meals: MealData[]; generalNotes: string }) => {
+      return await apiRequest("PUT", `/api/prescriptions/${params.id}`, data);
     },
     onSuccess: () => {
       toast({
@@ -84,7 +70,7 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
   const publishPrescriptionMutation = useMutation({
     mutationFn: async () => {
       // First update, then publish
-      await updatePrescriptionMutation.mutateAsync({ title, meals, generalNotes, expiresAt });
+      await updatePrescriptionMutation.mutateAsync({ title, meals, generalNotes });
       return await apiRequest("POST", `/api/prescriptions/${params.id}/publish`);
     },
     onSuccess: () => {
@@ -132,7 +118,7 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
   };
 
   const handleSaveDraft = () => {
-    updatePrescriptionMutation.mutate({ title, meals, generalNotes, expiresAt });
+    updatePrescriptionMutation.mutate({ title, meals, generalNotes });
   };
 
   const handlePublish = () => {
@@ -327,24 +313,6 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
                   placeholder="Título da prescrição"
                   data-testid="input-prescription-title"
                 />
-                <div className="space-y-3">
-                  <div className="flex flex-col space-y-2">
-                    <label className="text-sm font-medium text-muted-foreground">Data de Validade</label>
-                    <Input
-                      type="date"
-                      className="w-auto max-w-xs h-auto p-2 text-sm border-2 border-indigo-200 dark:border-indigo-800 focus-visible:ring-2 focus-visible:ring-indigo-300 focus-visible:border-indigo-400 dark:focus-visible:ring-indigo-700 dark:focus-visible:border-indigo-600 rounded-lg"
-                      value={expiresAt}
-                      onChange={(e) => setExpiresAt(e.target.value)}
-                      placeholder="Selecionar data de validade"
-                      data-testid="input-prescription-expires-at"
-                    />
-                    {expiresAt && (
-                      <p className="text-xs text-muted-foreground">
-                        A prescrição expirará em {new Date(expiresAt).toLocaleDateString('pt-BR')}
-                      </p>
-                    )}
-                  </div>
-                </div>
                 <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-sm text-muted-foreground">
                   <span className="font-medium text-foreground">{patient?.name}</span>
                   <span className="hidden sm:inline">•</span>

@@ -81,7 +81,6 @@ export const prescriptions = pgTable("prescriptions", {
   meals: jsonb("meals").$type<MealData[]>().notNull().default([]),
   generalNotes: text("general_notes"),
   publishedAt: timestamp("published_at"),
-  expiresAt: timestamp("expires_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -320,11 +319,4 @@ export interface FoodDiaryEntryWithPrescription extends FoodDiaryEntry {
   moodBefore?: MoodType | null;
   moodAfter?: MoodType | null;
   moodNotes?: string | null;
-}
-
-// Extended type for prescriptions with expiration status
-export interface PrescriptionWithExpirationStatus extends Prescription {
-  isExpired?: boolean;
-  isExpiringWithin7Days?: boolean;
-  daysUntilExpiration?: number | null;
 }

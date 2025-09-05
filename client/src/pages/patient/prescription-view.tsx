@@ -1,19 +1,18 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { Printer, ArrowLeft, Utensils, Info, AlertTriangle, Clock, XCircle } from "lucide-react";
+import { Printer, ArrowLeft, Utensils, Info } from "lucide-react";
 import Header from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import MealViewer from "@/components/prescription/meal-viewer";
 import MealMenuScreen from "@/components/meal/meal-menu-screen";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
-import type { Prescription, MealData, MealItemData, Patient, PrescriptionWithExpirationStatus } from "@shared/schema";
+import type { Prescription, MealData, MealItemData, Patient } from "@shared/schema";
 import { MobileLayout, DefaultMobileDrawer } from "@/components/layout/mobile-layout";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { HeaderDNutri } from "@/components/ui/header-dinutri";
@@ -27,7 +26,7 @@ export default function PatientPrescriptionView() {
   const { toast } = useToast();
   const isMobile = useIsMobile();
   
-  const [selectedPrescription, setSelectedPrescription] = useState<PrescriptionWithExpirationStatus | null>(null);
+  const [selectedPrescription, setSelectedPrescription] = useState<Prescription | null>(null);
   const [selectedMeal, setSelectedMeal] = useState<MealData | null>(null);
   const [showFullScreenMenu, setShowFullScreenMenu] = useState(false);
   const [isSubstitutesModalOpen, setIsSubstitutesModalOpen] = useState(false);
@@ -48,7 +47,7 @@ export default function PatientPrescriptionView() {
     }
   }, [isAuthenticated, isLoading, toast]);
 
-  const { data: prescriptions = [], isLoading: prescriptionLoading, error } = useQuery<PrescriptionWithExpirationStatus[]>({
+  const { data: prescriptions = [], isLoading: prescriptionLoading, error } = useQuery<Prescription[]>({
     queryKey: ["/api/patient/my-prescriptions"],
     enabled: !!user,
     retry: false,
@@ -75,10 +74,7 @@ export default function PatientPrescriptionView() {
 
   useEffect(() => {
     if (prescriptions.length > 0 && !selectedPrescription) {
-      // Prioritize non-expired prescriptions
-      const activePrescriptions = prescriptions.filter(p => !p.isExpired);
-      const prescriptionToSelect = activePrescriptions.length > 0 ? activePrescriptions[0] : prescriptions[0];
-      setSelectedPrescription(prescriptionToSelect);
+      setSelectedPrescription(prescriptions[0]);
     }
   }, [prescriptions, selectedPrescription]);
 
@@ -114,16 +110,8 @@ export default function PatientPrescriptionView() {
     }
   };
 
-  // Ao clicar na refeição, abrir diretamente na tela cheia (apenas se não estiver expirada)
+  // Ao clicar na refeição, abrir diretamente na tela cheia
   const handleMealClick = (meal: MealData) => {
-    if (selectedPrescription?.isExpired) {
-      toast({
-        title: "Acesso Negado",
-        description: "Esta prescrição expirou. Entre em contato com seu nutricionista para renovar seu plano.",
-        variant: "destructive",
-      });
-      return;
-    }
     setSelectedMeal(meal);
     setShowFullScreenMenu(true);
   };
@@ -154,8 +142,8 @@ export default function PatientPrescriptionView() {
       );
     }
 
-    // Se uma refeição foi selecionada, mostrar a tela completa do menu da refeição (apenas se não expirada)
-    if (selectedMeal && selectedPrescription && showFullScreenMenu && !selectedPrescription.isExpired) {
+    // Se uma refeição foi selecionada, mostrar a tela completa do menu da refeição
+    if (selectedMeal && selectedPrescription && showFullScreenMenu) {
       return (
         <MealMenuScreen
           meal={selectedMeal}
@@ -169,83 +157,22 @@ export default function PatientPrescriptionView() {
     // Lista de refeições
     return (
       <div className="p-4 md:p-0">
-        {/* Expiration warnings and blocking */}
-        {selectedPrescription?.isExpired && (
-          <Alert className="mb-6 border-red-500 bg-red-50">
-            <XCircle className="h-4 w-4 text-red-600" />
-            <AlertDescription className="text-red-800">
-              <strong>Prescrição Expirada</strong>
-              <p className="mt-1">
-                Sua prescrição expirou em {selectedPrescription.expiresAt ? new Date(selectedPrescription.expiresAt).toLocaleDateString('pt-BR') : 'data não especificada'}. 
-                Entre em contato com seu nutricionista para renovar seu plano alimentar e continuar sua evolução.
-              </p>
-            </AlertDescription>
-          </Alert>
-        )}
-        
-        {selectedPrescription?.isExpiringWithin7Days && !selectedPrescription?.isExpired && (
-          <Alert className="mb-6 border-orange-500 bg-orange-50">
-            <AlertTriangle className="h-4 w-4 text-orange-600" />
-            <AlertDescription className="text-orange-800">
-              <strong>Atenção: Prescrição expirando em breve</strong>
-              <p className="mt-1">
-                Sua prescrição expirará em {selectedPrescription.daysUntilExpiration} dia{selectedPrescription.daysUntilExpiration !== 1 ? 's' : ''} 
-                ({selectedPrescription.expiresAt ? new Date(selectedPrescription.expiresAt).toLocaleDateString('pt-BR') : 'data não especificada'}). 
-                É imprescindível a renovação do plano para continuar a evolução. Entre em contato com seu nutricionista.
-              </p>
-            </AlertDescription>
-          </Alert>
-        )}
-
         <Tabs value={selectedPrescription?.id} onValueChange={handleSelectPrescription} className="w-full">
           <TabsList>
             {prescriptions.map(p => (
-              <TabsTrigger 
-                key={p.id} 
-                value={p.id}
-                className={p.isExpired ? "opacity-50" : ""}
-              >
-                {p.title}
-                {p.isExpired && <XCircle className="ml-2 h-3 w-3" />}
-                {p.isExpiringWithin7Days && !p.isExpired && <Clock className="ml-2 h-3 w-3 text-orange-500" />}
-              </TabsTrigger>
+              <TabsTrigger key={p.id} value={p.id}>{p.title}</TabsTrigger>
             ))}
           </TabsList>
         
           <div className="space-y-4 mt-6">
-            {selectedPrescription?.isExpired ? (
-              <Card className="border-red-200 bg-red-50">
-                <CardContent className="p-8 text-center">
-                  <XCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-red-800 mb-2">Acesso Bloqueado</h3>
-                  <p className="text-red-700 mb-4">
-                    Esta prescrição expirou e não está mais disponível. Para continuar seu acompanhamento nutricional, 
-                    entre em contato com seu nutricionista para renovar seu plano.
-                  </p>
-                  <Button 
-                    variant="outline" 
-                    className="border-red-300 text-red-700 hover:bg-red-100"
-                    onClick={() => {
-                      toast({
-                        title: "Contato com Nutricionista",
-                        description: "Entre em contato através do email ou telefone fornecido em consultas anteriores.",
-                      });
-                    }}
-                  >
-                    Como Renovar Meu Plano?
-                  </Button>
-                </CardContent>
-              </Card>
-            ) : (
-              selectedPrescription?.meals.map(meal => (
-                <MealCard
-                  key={meal.id}
-                  title={meal.name}
-                  icon={Utensils}
-                  onClick={() => handleMealClick(meal)}
-                />
-              ))
-            )}
+            {selectedPrescription?.meals.map(meal => (
+              <MealCard
+                key={meal.id}
+                title={meal.name}
+                icon={Utensils}
+                onClick={() => handleMealClick(meal)}
+              />
+            ))}
           </div>
         </Tabs>
       </div>
@@ -253,8 +180,8 @@ export default function PatientPrescriptionView() {
   };
   
   if (isMobile) {
-    // Se estiver mostrando a tela completa do menu da refeição, renderizar fora do layout customizado (apenas se não expirada)
-    if (selectedMeal && selectedPrescription && showFullScreenMenu && !selectedPrescription.isExpired) {
+    // Se estiver mostrando a tela completa do menu da refeição, renderizar fora do layout customizado
+    if (selectedMeal && selectedPrescription && showFullScreenMenu) {
       return (
         <MealMenuScreen
           meal={selectedMeal}

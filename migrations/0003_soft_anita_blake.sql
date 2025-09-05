@@ -1,1 +1,0 @@
-ALTER TABLE "prescriptions" ADD COLUMN "expires_at" timestamp;
