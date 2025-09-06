@@ -1,12 +1,16 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { Printer, ArrowLeft, Utensils, Info } from "lucide-react";
+import { Printer, ArrowLeft, Utensils, Info, Clock, AlertTriangle } from "lucide-react";
+import { format, isAfter, differenceInDays } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import Header from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import MealViewer from "@/components/prescription/meal-viewer";
 import MealMenuScreen from "@/components/meal/meal-menu-screen";
 import { useAuth } from "@/hooks/useAuth";
@@ -32,6 +36,46 @@ export default function PatientPrescriptionView() {
   const [isSubstitutesModalOpen, setIsSubstitutesModalOpen] = useState(false);
   const [selectedItemForSubstitutes, setSelectedItemForSubstitutes] = useState<MealItemData | null>(null);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+
+  // Utility functions for prescription expiration
+  const isPrescriptionExpired = (prescription: Prescription): boolean => {
+    if (!prescription.expiresAt) return false;
+    return isAfter(new Date(), new Date(prescription.expiresAt));
+  };
+
+  const getDaysUntilExpiration = (prescription: Prescription): number | null => {
+    if (!prescription.expiresAt) return null;
+    return differenceInDays(new Date(prescription.expiresAt), new Date());
+  };
+
+  const getExpirationStatus = (prescription: Prescription) => {
+    if (!prescription.expiresAt) return null;
+    
+    const daysUntilExpiration = getDaysUntilExpiration(prescription);
+    const isExpired = isPrescriptionExpired(prescription);
+    
+    if (isExpired) {
+      return {
+        type: 'expired' as const,
+        message: `Expirou em ${format(new Date(prescription.expiresAt), "dd/MM/yyyy", { locale: ptBR })}`,
+        variant: 'destructive' as const,
+        icon: AlertTriangle
+      };
+    } else if (daysUntilExpiration !== null && daysUntilExpiration <= 7) {
+      return {
+        type: 'expiring-soon' as const,
+        message: daysUntilExpiration === 0 
+          ? 'Expira hoje'
+          : daysUntilExpiration === 1 
+            ? 'Expira amanhã'
+            : `Expira em ${daysUntilExpiration} dias`,
+        variant: 'default' as const,
+        icon: Clock
+      };
+    }
+    
+    return null;
+  };
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -159,20 +203,72 @@ export default function PatientPrescriptionView() {
       <div className="p-4 md:p-0">
         <Tabs value={selectedPrescription?.id} onValueChange={handleSelectPrescription} className="w-full">
           <TabsList>
-            {prescriptions.map(p => (
-              <TabsTrigger key={p.id} value={p.id}>{p.title}</TabsTrigger>
-            ))}
+            {prescriptions.map(p => {
+              const expirationStatus = getExpirationStatus(p);
+              return (
+                <TabsTrigger key={p.id} value={p.id} className="relative">
+                  {p.title}
+                  {expirationStatus && (
+                    <Badge 
+                      variant={expirationStatus.variant === 'destructive' ? 'destructive' : 'secondary'} 
+                      className="ml-2 text-xs"
+                    >
+                      {expirationStatus.type === 'expired' ? 'Expirada' : 'Expira em breve'}
+                    </Badge>
+                  )}
+                </TabsTrigger>
+              );
+            })}
           </TabsList>
+          
+          {/* Expiration warning for selected prescription */}
+          {selectedPrescription && (() => {
+            const expirationStatus = getExpirationStatus(selectedPrescription);
+            if (!expirationStatus) return null;
+            
+            const IconComponent = expirationStatus.icon;
+            
+            return (
+              <Alert className={`mt-4 ${expirationStatus.variant === 'destructive' ? 'border-destructive' : 'border-yellow-500'}`}>
+                <IconComponent className="h-4 w-4" />
+                <AlertDescription>
+                  <strong>
+                    {expirationStatus.type === 'expired' ? 'Prescrição Expirada: ' : 'Atenção: '}
+                  </strong>
+                  {expirationStatus.message}
+                  {expirationStatus.type === 'expired' && (
+                    <span className="block mt-1 text-sm">
+                      Entre em contato com seu nutricionista para renovar sua prescrição.
+                    </span>
+                  )}
+                </AlertDescription>
+              </Alert>
+            );
+          })()}
         
           <div className="space-y-4 mt-6">
-            {selectedPrescription?.meals.map(meal => (
-              <MealCard
-                key={meal.id}
-                title={meal.name}
-                icon={Utensils}
-                onClick={() => handleMealClick(meal)}
-              />
-            ))}
+            {selectedPrescription?.meals.map(meal => {
+              const isExpired = isPrescriptionExpired(selectedPrescription);
+              return (
+                <MealCard
+                  key={meal.id}
+                  title={meal.name}
+                  icon={Utensils}
+                  onClick={() => {
+                    if (isExpired) {
+                      toast({
+                        title: "Prescrição Expirada",
+                        description: "Esta prescrição expirou. Entre em contato com seu nutricionista.",
+                        variant: "destructive",
+                      });
+                      return;
+                    }
+                    handleMealClick(meal);
+                  }}
+                  className={isExpired ? "opacity-50" : ""}
+                />
+              );
+            })}
           </div>
         </Tabs>
       </div>
