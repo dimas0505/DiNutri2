@@ -221,7 +221,7 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
             </div>
             <Button
               onClick={() => createPrescriptionMutation.mutate()}
-              disabled={createPrescriptionMutation.isPending || !hasAccountLinked}
+              disabled={patientLoading || createPrescriptionMutation.isPending || !hasAccountLinked}
               title={!hasAccountLinked ? "Paciente precisa ter um login para criar prescrições" : "Nova Prescrição"}
               data-testid="button-new-prescription"
               className="bg-white/20 hover:bg-white/30 border-white/30 text-white font-medium px-6 py-3 rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 backdrop-blur-sm"
@@ -761,7 +761,7 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                     {hasAccountLinked ? (
                       <Button
                         onClick={() => createPrescriptionMutation.mutate()}
-                        disabled={createPrescriptionMutation.isPending}
+                        disabled={patientLoading || createPrescriptionMutation.isPending}
                         data-testid="button-create-first-prescription"
                         className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-medium px-6 py-3 rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
                       >
