@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, CheckCircle, Eye, FileText, Plus, Trash2, Users, XCircle, Link as LinkIcon, Copy, History, User, Calendar, Ruler, Weight, Target, Activity, Heart, Stethoscope, Pill, Camera, Image, Smile } from "lucide-react";
+import { ArrowLeft, CheckCircle, Eye, FileText, Plus, Users, XCircle, Link as LinkIcon, Copy, History, User, Calendar, Ruler, Weight, Target, Activity, Heart, Stethoscope, Pill, Camera, Image, Smile } from "lucide-react";
 import { useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
