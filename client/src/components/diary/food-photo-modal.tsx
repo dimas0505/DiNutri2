@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { upload } from '@vercel/blob/client';
+import imageCompression from 'browser-image-compression';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,9 +40,29 @@ export default function FoodPhotoModal({ isOpen, onClose, meal, prescriptionId }
     mutationFn: async () => {
       if (!file) throw new Error("Nenhum arquivo selecionado.");
 
+      // Client-side image compression for faster uploads
+      const options = {
+        maxSizeMB: 1,          // Comprime até 1MB para upload mais rápido
+        maxWidthOrHeight: 1920,  // Máximo 1920px de largura ou altura
+        useWebWorker: true,      // Usa Web Worker para não travar a interface
+      };
+
+      let compressedFile: File;
+      try {
+        compressedFile = await imageCompression(file, options);
+        console.log('Client-side compression:', {
+          original: file.size,
+          compressed: compressedFile.size,
+          reduction: Math.round((1 - compressedFile.size / file.size) * 100)
+        });
+      } catch (compressionError) {
+        console.warn('Client-side compression failed, using original file:', compressionError);
+        compressedFile = file;
+      }
+
       // Create FormData for file upload
       const formData = new FormData();
-      formData.append('image', file);
+      formData.append('image', compressedFile);
 
       // Upload to our server with image processing
       const uploadResponse = await fetch('/api/food-diary/upload-direct', {
@@ -93,6 +114,11 @@ export default function FoodPhotoModal({ isOpen, onClose, meal, prescriptionId }
         errorMessage = error.error;
       } else if (typeof error === 'string') {
         errorMessage = error;
+      }
+      
+      // Special handling for compression errors
+      if (errorMessage.includes('compression') || errorMessage.includes('compressão')) {
+        errorMessage = "Erro ao otimizar a imagem. Tente novamente com uma imagem menor.";
       }
       
       toast({ 

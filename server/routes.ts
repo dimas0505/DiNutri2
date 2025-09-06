@@ -698,26 +698,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Process the image with Sharp
-      // Resize to max 1920x1080 maintaining aspect ratio
-      // Convert to JPEG with 85% quality for optimal web viewing
+      // Resize to max 1080px width maintaining aspect ratio
+      // Convert to WebP with 80% quality for better compression and modern format
       const processedBuffer = await sharp(file.data)
-        .resize(1920, 1080, {
-          fit: 'inside',
-          withoutEnlargement: true
-        })
-        .jpeg({ quality: 85 })
+        .resize({ width: 1080 })
+        .webp({ quality: 80 })
         .toBuffer();
 
       // Generate unique filename
       const timestamp = Date.now();
-      const filename = `${timestamp}-optimized.jpg`;
+      const filename = `${timestamp}-optimized.webp`;
       const blobPath = `food-diary/${req.user.id}/${filename}`;
 
       // Upload processed image to Vercel Blob
       const { put } = await import('@vercel/blob');
       const blob = await put(blobPath, processedBuffer, {
         access: 'public',
-        contentType: 'image/jpeg'
+        contentType: 'image/webp'
       });
 
       return res.status(200).json({
