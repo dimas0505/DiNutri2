@@ -95,6 +95,12 @@ export function registerServiceWorker(): Promise<ServiceWorkerRegistration | nul
     .then((registration) => {
       console.log('Service Worker registered successfully:', registration);
       
+      // Set up periodic update checking (every hour)
+      setInterval(() => {
+        console.log('Checking for service worker updates...');
+        registration.update();
+      }, 1000 * 60 * 60); // 1 hour
+      
       // Check for updates
       registration.addEventListener('updatefound', () => {
         const newWorker = registration.installing;
