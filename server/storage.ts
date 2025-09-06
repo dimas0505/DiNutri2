@@ -120,6 +120,19 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
+  // Helper functions for prescription expiration (temporarily disabled until migration is applied)
+  private isExpired(prescription: Prescription): boolean {
+    return false; // Disabled until expiresAt column exists
+  }
+
+  private isExpiringWithin7Days(prescription: Prescription): boolean {
+    return false; // Disabled until expiresAt column exists
+  }
+
+  private getDaysUntilExpiration(prescription: Prescription): number | null {
+    return null; // Disabled until expiresAt column exists
+  }
+
   // User operations
   async getUser(id: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
