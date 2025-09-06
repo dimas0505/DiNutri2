@@ -10,7 +10,8 @@
     "check": "tsc",
     "db:push": "drizzle-kit push",
     "create-admin": "tsx scripts/create-admin.ts",
-    "check-schema": "tsx scripts/check-schema.ts"
+    "check-schema": "tsx scripts/check-schema.ts",
+    "test:db": "tsx scripts/test-db-connection.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
