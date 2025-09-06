@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { Printer, ArrowLeft, Utensils, Info } from "lucide-react";
-// TODO: Restore after database migration: Clock, AlertTriangle, format, isAfter, differenceInDays, ptBR
+import { Printer, ArrowLeft, Utensils, Info, Clock, AlertTriangle } from "lucide-react";
+import { format, isAfter, differenceInDays } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import Header from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -36,24 +37,18 @@ export default function PatientPrescriptionView() {
   const [selectedItemForSubstitutes, setSelectedItemForSubstitutes] = useState<MealItemData | null>(null);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
-  // TODO: Restore after database migration
   // Utility functions for prescription expiration
   const isPrescriptionExpired = (prescription: Prescription): boolean => {
-    // Temporarily disabled until database migration is complete
-    return false;
-    // if (!prescription.expiresAt) return false;
-    // return isAfter(new Date(), new Date(prescription.expiresAt));
+    if (!prescription.expiresAt) return false;
+    return isAfter(new Date(), new Date(prescription.expiresAt));
   };
 
   const getDaysUntilExpiration = (prescription: Prescription): number | null => {
-    // Temporarily disabled until database migration is complete
-    return null;
-    // if (!prescription.expiresAt) return null;
-    // return differenceInDays(new Date(prescription.expiresAt), new Date());
+    if (!prescription.expiresAt) return null;
+    const days = differenceInDays(new Date(prescription.expiresAt), new Date());
+    return days;
   };
 
-  // TODO: Restore after database migration
-  /*
   const getExpirationStatus = (prescription: Prescription) => {
     if (!prescription.expiresAt) return null;
     
@@ -80,11 +75,6 @@ export default function PatientPrescriptionView() {
       };
     }
     
-    return null;
-  };
-  */
-  const getExpirationStatus = (prescription: Prescription) => {
-    // Temporarily disabled until database migration is complete
     return null;
   };
 
@@ -215,12 +205,10 @@ export default function PatientPrescriptionView() {
         <Tabs value={selectedPrescription?.id} onValueChange={handleSelectPrescription} className="w-full">
           <TabsList>
             {prescriptions.map(p => {
-              // TODO: Restore after database migration
-              // const expirationStatus = getExpirationStatus(p);
+              const expirationStatus = getExpirationStatus(p);
               return (
                 <TabsTrigger key={p.id} value={p.id} className="relative">
                   {p.title}
-                  {/* TODO: Restore after database migration
                   {expirationStatus && (
                     <Badge 
                       variant={expirationStatus.variant === 'destructive' ? 'destructive' : 'secondary'} 
@@ -229,13 +217,11 @@ export default function PatientPrescriptionView() {
                       {expirationStatus.type === 'expired' ? 'Expirada' : 'Expira em breve'}
                     </Badge>
                   )}
-                  */}
                 </TabsTrigger>
               );
             })}
           </TabsList>
           
-          {/* TODO: Restore after database migration - Expiration warning for selected prescription
           {selectedPrescription && (() => {
             const expirationStatus = getExpirationStatus(selectedPrescription);
             if (!expirationStatus) return null;
@@ -259,7 +245,6 @@ export default function PatientPrescriptionView() {
               </Alert>
             );
           })()}
-          */}
         
           <div className="space-y-4 mt-6">
             {selectedPrescription?.meals.map(meal => {

@@ -1,19 +1,22 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { Plus, Copy, Upload, Download } from "lucide-react";
-// TODO: Restore after database migration: Calendar as CalendarIcon, format, ptBR
+import { Plus, Copy, Upload, Download, Calendar as CalendarIcon } from "lucide-react";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import Header from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-// TODO: Restore after database migration: Calendar, Popover, PopoverContent, PopoverTrigger, Label
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Label } from "@/components/ui/label";
 import MealEditor from "@/components/prescription/meal-editor";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-// TODO: Restore after database migration: cn from "@/lib/utils"
+import { cn } from "@/lib/utils";
 import type { Prescription, Patient, MealData, MealItemData } from "@shared/schema";
 import { v4 as uuidv4 } from 'uuid';
 import { DefaultMobileDrawer } from "@/components/layout/mobile-layout";
@@ -30,8 +33,7 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
   const [title, setTitle] = useState("");
   const [generalNotes, setGeneralNotes] = useState("");
   const [meals, setMeals] = useState<MealData[]>([]);
-  // TODO: Add back after database migration
-  // const [expiresAt, setExpiresAt] = useState<Date | undefined>(undefined);
+  const [expiresAt, setExpiresAt] = useState<Date | undefined>(undefined);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: prescription, isLoading } = useQuery<Prescription>({
@@ -44,8 +46,7 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
       setTitle(prescription.title);
       setGeneralNotes(prescription.generalNotes || "");
       setMeals(prescription.meals || []);
-      // TODO: Add back after database migration
-      // setExpiresAt(prescription.expiresAt ? new Date(prescription.expiresAt) : undefined);
+      setExpiresAt(prescription.expiresAt ? new Date(prescription.expiresAt) : undefined);
     }
   }, [prescription]);
 
@@ -55,7 +56,7 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
   });
 
   const updatePrescriptionMutation = useMutation({
-    mutationFn: async (data: { title: string; meals: MealData[]; generalNotes: string }) => {
+    mutationFn: async (data: { title: string; meals: MealData[]; generalNotes: string; expiresAt?: Date }) => {
       return await apiRequest("PUT", `/api/prescriptions/${params.id}`, data);
     },
     onSuccess: () => {
@@ -77,7 +78,7 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
   const publishPrescriptionMutation = useMutation({
     mutationFn: async () => {
       // First update, then publish
-      await updatePrescriptionMutation.mutateAsync({ title, meals, generalNotes });
+      await updatePrescriptionMutation.mutateAsync({ title, meals, generalNotes, expiresAt });
       return await apiRequest("POST", `/api/prescriptions/${params.id}/publish`);
     },
     onSuccess: () => {
@@ -125,7 +126,7 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
   };
 
   const handleSaveDraft = () => {
-    updatePrescriptionMutation.mutate({ title, meals, generalNotes });
+    updatePrescriptionMutation.mutate({ title, meals, generalNotes, expiresAt });
   };
 
   const handlePublish = () => {
@@ -471,7 +472,6 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
           </CardContent>
         </Card>
 
-        {/* TODO: Prescription Expiration - Restore after database migration
         <Card className="mt-6 shadow-xl bg-gradient-to-br from-rose-50 via-card to-pink-50 dark:from-rose-950/20 dark:via-card dark:to-pink-950/20 border-2 border-rose-100 dark:border-rose-900/30">
           <CardContent className="p-6 sm:p-8">
             <div className="space-y-4">
@@ -528,7 +528,6 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
             </div>
           </CardContent>
         </Card>
-        */}
       </main>
     </div>
   );
