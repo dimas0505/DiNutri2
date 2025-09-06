@@ -39,25 +39,45 @@ export default function FoodPhotoModal({ isOpen, onClose, meal, prescriptionId }
     mutationFn: async () => {
       if (!file) throw new Error("Nenhum arquivo selecionado.");
 
-      // ETAPA 1: O SDK do Vercel Blob faz o upload, chamando a rota do nosso backend
-      // que lida com a autorização de forma segura e à prova de CORS.
-      const newBlob = await upload(file.name, file, {
-        access: 'public',
-        handleUploadUrl: '/api/food-diary/upload',
+      // Create FormData for file upload
+      const formData = new FormData();
+      formData.append('image', file);
+
+      // Upload to our server with image processing
+      const uploadResponse = await fetch('/api/food-diary/upload-direct', {
+        method: 'POST',
+        body: formData,
       });
 
-      // ETAPA 2: Salvar a URL final no nosso banco de dados.
+      if (!uploadResponse.ok) {
+        const errorData = await uploadResponse.json();
+        throw new Error(errorData.message || 'Erro no upload da imagem');
+      }
+
+      const uploadResult = await uploadResponse.json();
+
+      // Save the entry with the processed image URL
       const entryPayload = {
         prescriptionId,
         mealId: meal.id,
-        imageUrl: newBlob.url,
+        imageUrl: uploadResult.url,
         notes,
         date: new Date().toISOString().split('T')[0],
       };
+      
       await apiRequest("POST", "/api/food-diary/entries", entryPayload);
+      
+      return uploadResult;
     },
-    onSuccess: () => {
-      toast({ title: "Sucesso!", description: "Foto da refeição enviada." });
+    onSuccess: (result) => {
+      const compressionMessage = result.compressionRatio > 0 
+        ? ` (Imagem otimizada: ${result.compressionRatio}% menor)`
+        : '';
+      
+      toast({ 
+        title: "Sucesso!", 
+        description: `Foto da refeição enviada${compressionMessage}.` 
+      });
       queryClient.invalidateQueries({ queryKey: ['/api/food-diary/entries', prescriptionId] });
       handleClose();
     },
