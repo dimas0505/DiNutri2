@@ -171,12 +171,12 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
         method: 'DELETE',
       }),
     onSuccess: () => {
-      toast({ title: 'Foto excluída com sucesso!', variant: 'default' });
+      toast({ title: 'Entrada do diário excluída com sucesso!', variant: 'default' });
       // Invalidate the query to reload the updated data
       queryClient.invalidateQueries({ queryKey: ["/api/patients", params.id, "food-diary", "entries"] });
     },
     onError: () => {
-      toast({ title: 'Erro ao excluir a foto', variant: 'destructive' });
+      toast({ title: 'Erro ao excluir a entrada do diário', variant: 'destructive' });
     },
     onSettled: () => {
       setEntryToDelete(null); // Close the dialog
@@ -970,7 +970,7 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza de que deseja excluir esta foto? Esta ação não pode ser desfeita.
+              Tem certeza de que deseja excluir esta entrada do diário alimentar? Tanto a foto quanto todas as informações associadas serão removidas permanentemente. Esta ação não pode ser desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

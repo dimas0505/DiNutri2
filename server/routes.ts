@@ -728,7 +728,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // DELETE route to remove food diary photo
+  // DELETE route to remove food diary entry and photo
   app.delete('/api/food-diary/entries/:id/photo', isAuthenticated, async (req: any, res) => {
     try {
       const entryId = req.params.id;
@@ -753,16 +753,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // 2. Delete the photo from Vercel Blob
       await deleteFoodDiaryPhoto(entry.imageUrl);
 
-      // 3. Remove the URL from the database
+      // 3. Delete the entire diary entry from the database
       await db
-        .update(foodDiaryEntries)
-        .set({ imageUrl: null })
+        .delete(foodDiaryEntries)
         .where(eq(foodDiaryEntries.id, entryId));
 
-      return res.status(200).json({ message: 'Foto excluída com sucesso.' });
+      return res.status(200).json({ message: 'Entrada do diário excluída com sucesso.' });
     } catch (error) {
-      console.error("Error deleting food diary photo:", error);
-      res.status(500).json({ message: "Falha ao excluir a foto." });
+      console.error("Error deleting food diary entry:", error);
+      res.status(500).json({ message: "Falha ao excluir a entrada do diário." });
     }
   });
 
