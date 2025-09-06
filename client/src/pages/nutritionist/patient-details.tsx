@@ -42,25 +42,53 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
   });
 
   const createPrescriptionMutation = useMutation({
-    mutationFn: async () => {
-      const newPrescription = {
-        patientId: params.id,
-        title: `Prescrição ${new Date().toLocaleDateString('pt-BR')}`,
-        meals: [],
-        generalNotes: "",
-      };
-      const response = await apiRequest("POST", "/api/prescriptions", newPrescription);
-      return await response.json();
-    },
-    onSuccess: (prescription) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/patients", params.id, "prescriptions"] });
-      setLocation(`/prescriptions/${prescription.id}/edit`);
-    },
-    onError: () => {
+    mutationFn: () =>
+      fetch(`/api/prescriptions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          patientId: params.id,
+        }),
+      }).then((res) => {
+        if (!res.ok) {
+          // Em caso de erro, jogue o objeto de resposta completo
+          // para que possa ser capturado pelo `onError`.
+          throw res;
+        }
+        return res.json();
+      }),
+    onSuccess: (data) => {
       toast({
-        title: "Erro",
-        description: "Falha ao criar prescrição.",
-        variant: "destructive",
+        title: 'Prescrição criada com sucesso!',
+        variant: 'success',
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/patients", params.id, "prescriptions"] });
+      setLocation(`/prescriptions/${data.id}/edit`);
+    },
+    onError: async (error: unknown) => {
+      let errorDetails = 'Não foi possível obter os detalhes do erro.';
+      
+      // Verifica se o erro é um objeto de resposta HTTP
+      if (error instanceof Response) {
+        try {
+          // Tenta ler o corpo da resposta como JSON
+          const errorJson = await error.json();
+          // Formata o JSON para ser facilmente legível no console
+          errorDetails = JSON.stringify(errorJson, null, 2);
+        } catch (e) {
+          errorDetails = 'A resposta do servidor não continha um JSON válido.';
+        }
+      }
+
+      // Exibe o erro detalhado no console do navegador
+      console.error("DETALHES DO ERRO DE VALIDAÇÃO:", errorDetails);
+
+      toast({
+        title: 'Erro ao criar prescrição',
+        description: 'O servidor rejeitou os dados. Verifique o console para detalhes técnicos.',
+        variant: 'destructive',
       });
     },
   });
