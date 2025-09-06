@@ -8,6 +8,9 @@ import { setupAuth, isAuthenticated } from "./auth.js";
 import { insertPatientSchema, updatePatientSchema, insertPrescriptionSchema, updatePrescriptionSchema, insertMoodEntrySchema, insertAnamnesisRecordSchema, insertFoodDiaryEntrySchema } from "../shared/schema.js";
 import { z } from "zod";
 import { handleUpload, type HandleUploadBody } from '@vercel/blob/client';
+import { eq } from 'drizzle-orm';
+import { anamnesisRecords, foodDiaryEntries, prescriptions, users, patients } from '../shared/schema.js';
+import { db } from './db.js';
 
 const SALT_ROUNDS = 10;
 
@@ -291,6 +294,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       console.error("Erro ao atualizar paciente:", error);
       res.status(500).json({ message: "Falha ao atualizar paciente." });
+    }
+  });
+
+  app.delete('/api/patients/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const nutritionistId = req.user.id;
+
+      const patient = await storage.getPatient(id);
+      
+      if (!patient || patient.ownerId !== nutritionistId) {
+        return res.status(404).json({ message: 'Paciente não encontrado' });
+      }
+
+      await db.transaction(async (tx) => {
+        await tx.delete(anamnesisRecords).where(eq(anamnesisRecords.patientId, id));
+        await tx.delete(foodDiaryEntries).where(eq(foodDiaryEntries.patientId, id));
+        await tx.delete(prescriptions).where(eq(prescriptions.patientId, id));
+        await tx.delete(patients).where(eq(patients.id, id));
+      });
+
+      return res.status(200).json({ message: 'Paciente excluído com sucesso' });
+    } catch (error) {
+      console.error("Erro ao excluir paciente:", error);
+      res.status(500).json({ message: "Falha ao excluir paciente." });
     }
   });
   
