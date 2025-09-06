@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import heic2any from 'heic2any';
 import imageCompression from 'browser-image-compression';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -39,16 +40,40 @@ export default function FoodPhotoModal({ isOpen, onClose, meal, prescriptionId }
     mutationFn: async () => {
       if (!file) throw new Error("Nenhum arquivo selecionado.");
 
-      // ETAPA 1: Comprimir a imagem antes do upload
+      let fileToProcess = file;
+
+      // Verifica se o arquivo é HEIC/HEIF e o converte para JPEG
+      const isHeic = fileToProcess.type === 'image/heic' || fileToProcess.type === 'image/heif' || fileToProcess.name.toLowerCase().endsWith('.heic');
+      if (isHeic) {
+        try {
+          toast({ title: 'Convertendo foto...', description: 'Aguarde um momento.' });
+          const convertedBlob = await heic2any({
+            blob: fileToProcess,
+            toType: 'image/jpeg',
+            quality: 0.8,
+          });
+          fileToProcess = new File([convertedBlob as Blob], fileToProcess.name.replace(/\.[^/.]+$/, ".jpeg"), { type: 'image/jpeg' });
+        } catch (error) {
+          console.error('Erro ao converter HEIC:', error);
+          toast({
+            title: 'Formato de foto não suportado',
+            description: 'Não foi possível converter a foto para um formato compatível.',
+            variant: 'destructive',
+          });
+          throw new Error('Não foi possível converter a foto para um formato compatível.');
+        }
+      }
+
+      // ETAPA 1: Comprimir a imagem (já convertida se necessário)
       const options = {
-        maxSizeMB: 1,          // Define o tamanho máximo do arquivo em MB
+        maxSizeMB: 1.5,          // Define o tamanho máximo do arquivo em MB
         maxWidthOrHeight: 1920,  // Define a largura ou altura máxima
         useWebWorker: true,      // Usa Web Worker para não travar a interface
       };
 
       try {
-        const compressedFile = await imageCompression(file, options);
-        console.log('Arquivo original:', file.size, 'bytes');
+        const compressedFile = await imageCompression(fileToProcess, options);
+        console.log('Arquivo original:', fileToProcess.size, 'bytes');
         console.log('Arquivo comprimido:', compressedFile.size, 'bytes');
 
         // ETAPA 2: Enviar para o endpoint otimizado que processa com Sharp
