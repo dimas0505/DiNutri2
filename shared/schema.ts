@@ -80,7 +80,7 @@ export const prescriptions = pgTable("prescriptions", {
   status: varchar("status", { enum: ["draft", "published"] }).notNull().default("draft"),
   meals: jsonb("meals").$type<MealData[]>().notNull().default([]),
   generalNotes: text("general_notes"),
-  expiresAt: timestamp("expires_at"),
+  // TODO: Add back after database migration: expiresAt: timestamp("expires_at"),
   publishedAt: timestamp("published_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
