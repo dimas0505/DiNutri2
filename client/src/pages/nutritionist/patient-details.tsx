@@ -42,25 +42,60 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
   });
 
   const createPrescriptionMutation = useMutation({
-    mutationFn: async () => {
-      const newPrescription = {
-        patientId: params.id,
-        title: `Prescrição ${new Date().toLocaleDateString('pt-BR')}`,
-        meals: [],
-        generalNotes: "",
-      };
-      const response = await apiRequest("POST", "/api/prescriptions", newPrescription);
-      return await response.json();
+    mutationFn: () => {
+      // Define uma data de expiração padrão para 90 dias no futuro
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 90);
+
+      return fetch(`/api/prescriptions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          patientId: params.id,
+          title: 'Nova Prescrição', // Adiciona um título padrão
+          expiresAt: expiresAt.toISOString(), // Adiciona a data de expiração padrão
+        }),
+      }).then((res) => {
+        if (!res.ok) {
+          // Em caso de erro, jogue o objeto de resposta completo
+          // para que possa ser capturado pelo `onError`.
+          throw res;
+        }
+        return res.json();
+      });
     },
-    onSuccess: (prescription) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/patients", params.id, "prescriptions"] });
-      setLocation(`/prescriptions/${prescription.id}/edit`);
-    },
-    onError: () => {
+    onSuccess: (data) => {
       toast({
-        title: "Erro",
-        description: "Falha ao criar prescrição.",
-        variant: "destructive",
+        title: 'Prescrição criada com sucesso!',
+        variant: 'default',
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/patients", params.id, "prescriptions"] });
+      setLocation(`/prescriptions/${data.id}/edit`);
+    },
+    onError: async (error: unknown) => {
+      let errorDetails = 'Não foi possível obter os detalhes do erro.';
+      
+      // Verifica se o erro é um objeto de resposta HTTP
+      if (error instanceof Response) {
+        try {
+          // Tenta ler o corpo da resposta como JSON
+          const errorJson = await error.json();
+          // Formata o JSON para ser facilmente legível no console
+          errorDetails = JSON.stringify(errorJson, null, 2);
+        } catch (e) {
+          errorDetails = 'A resposta do servidor não continha um JSON válido.';
+        }
+      }
+
+      // Exibe o erro detalhado no console do navegador
+      console.error("DETALHES DO ERRO DE VALIDAÇÃO:", errorDetails);
+
+      toast({
+        title: 'Erro ao criar prescrição',
+        description: 'O servidor rejeitou os dados. Verifique o console para detalhes técnicos.',
+        variant: 'destructive',
       });
     },
   });
@@ -221,7 +256,7 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
             </div>
             <Button
               onClick={() => createPrescriptionMutation.mutate()}
-              disabled={createPrescriptionMutation.isPending || !hasAccountLinked}
+              disabled={patientLoading || createPrescriptionMutation.isPending || !hasAccountLinked}
               title={!hasAccountLinked ? "Paciente precisa ter um login para criar prescrições" : "Nova Prescrição"}
               data-testid="button-new-prescription"
               className="bg-white/20 hover:bg-white/30 border-white/30 text-white font-medium px-6 py-3 rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 backdrop-blur-sm"
@@ -761,7 +796,7 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                     {hasAccountLinked ? (
                       <Button
                         onClick={() => createPrescriptionMutation.mutate()}
-                        disabled={createPrescriptionMutation.isPending}
+                        disabled={patientLoading || createPrescriptionMutation.isPending}
                         data-testid="button-create-first-prescription"
                         className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-medium px-6 py-3 rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
                       >
