@@ -27,9 +27,6 @@ export default function FoodPhotoModal({ isOpen, onClose, meal, prescriptionId }
 
   const handleClose = () => {
     setFile(null);
-    if (previewUrl) {
-      URL.revokeObjectURL(previewUrl);
-    }
     setPreviewUrl(null);
     setNotes("");
     onClose();
@@ -39,22 +36,28 @@ export default function FoodPhotoModal({ isOpen, onClose, meal, prescriptionId }
     mutationFn: async () => {
       if (!file) throw new Error("Nenhum arquivo selecionado.");
 
-      // ETAPA 1: O SDK do Vercel Blob faz o upload, chamando a rota do nosso backend
-      // que lida com a autorização de forma segura e à prova de CORS.
-      const newBlob = await upload(file.name, file, {
-        access: 'public',
-        handleUploadUrl: '/api/food-diary/upload',
-      });
+      try {
+        // ETAPA 1: O SDK do Vercel Blob faz o upload, chamando a rota do nosso backend
+        // que lida com a autorização de forma segura e à prova de CORS.
+        const newBlob = await upload(file.name, file, {
+          access: 'public',
+          handleUploadUrl: '/api/food-diary/upload',
+        });
 
-      // ETAPA 2: Salvar a URL final no nosso banco de dados.
-      const entryPayload = {
-        prescriptionId,
-        mealId: meal.id,
-        imageUrl: newBlob.url,
-        notes,
-        date: new Date().toISOString().split('T')[0],
-      };
-      await apiRequest("POST", "/api/food-diary/entries", entryPayload);
+        // ETAPA 2: Salvar a URL final no nosso banco de dados.
+        const entryPayload = {
+          prescriptionId,
+          mealId: meal.id,
+          imageUrl: newBlob.url,
+          notes,
+          date: new Date().toISOString().split('T')[0],
+        };
+        await apiRequest("POST", "/api/food-diary/entries", entryPayload);
+      } catch (error) {
+        // Re-throw with a more specific error message
+        console.error("Upload error details:", error);
+        throw new Error(error instanceof Error ? error.message : "Erro ao processar o upload da foto");
+      }
     },
     onSuccess: () => {
       toast({ title: "Sucesso!", description: "Foto da refeição enviada." });
@@ -79,10 +82,20 @@ export default function FoodPhotoModal({ isOpen, onClose, meal, prescriptionId }
         return;
       }
       setFile(selectedFile);
-      if (previewUrl) {
-        URL.revokeObjectURL(previewUrl);
-      }
-      setPreviewUrl(URL.createObjectURL(selectedFile));
+      
+      // Use FileReader for more reliable image preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreviewUrl(reader.result as string);
+      };
+      reader.onerror = () => {
+        toast({
+          title: "Erro",
+          description: "Não foi possível carregar a pré-visualização da imagem.",
+          variant: "destructive",
+        });
+      };
+      reader.readAsDataURL(selectedFile);
     }
   };
 
