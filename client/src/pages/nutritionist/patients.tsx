@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { Search, Plus, Eye, FileText, Link as LinkIcon, Copy, MoreVertical, Users } from "lucide-react";
+import { Search, Plus, Eye, FileText, Link as LinkIcon, Copy, MoreVertical, Users, Trash2 } from "lucide-react";
 import Header from "@/components/layout/header";
 import { MobileLayout, DefaultMobileDrawer } from "@/components/layout/mobile-layout";
 import { MobileCard, MobileCardHeader, MobileCardTitle, MobileCardContent } from "@/components/mobile/card";
@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -17,10 +18,11 @@ import { apiRequest } from "@/lib/queryClient";
 import type { Patient } from "@shared/schema";
 import { cn } from "@/lib/utils";
 
-function PatientCard({ patient, onViewDetails, onNewPrescription }: {
+function PatientCard({ patient, onViewDetails, onNewPrescription, onDeletePatient }: {
   patient: Patient;
   onViewDetails: () => void;
   onNewPrescription: () => void;
+  onDeletePatient: () => void;
 }) {
   const calculateAge = (birthDate: string | null) => {
     if (!birthDate) return null;
@@ -108,6 +110,12 @@ function PatientCard({ patient, onViewDetails, onNewPrescription }: {
             >
               <FileText className="h-4 w-4 mr-2 text-purple-600" /> Nova prescrição
             </DropdownMenuItem>
+            <DropdownMenuItem 
+              onClick={(e) => { e.stopPropagation(); onDeletePatient(); }}
+              className="hover:bg-red-50 transition-colors text-red-600"
+            >
+              <Trash2 className="h-4 w-4 mr-2 text-red-600" /> Excluir
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </CardContent>
@@ -121,6 +129,8 @@ export default function PatientsPage() {
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const [invitationLink, setInvitationLink] = useState<string | null>(null);
+  const [patientToDelete, setPatientToDelete] = useState<Patient | null>(null);
+  const queryClient = useQueryClient();
 
   const { data: patients = [], isLoading } = useQuery<Patient[]>({
     queryKey: ["/api/patients"],
@@ -143,6 +153,27 @@ export default function PatientsPage() {
         description: "Não foi possível gerar o link de convite.",
         variant: "destructive",
       });
+    },
+  });
+
+  const deletePatientMutation = useMutation({
+    mutationFn: (patientId: string) =>
+      apiRequest("DELETE", `/api/patients/${patientId}`),
+    onSuccess: () => {
+      toast({
+        title: "Paciente excluído com sucesso!",
+        variant: "default",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/patients"] });
+      setPatientToDelete(null);
+    },
+    onError: () => {
+      toast({
+        title: "Erro ao excluir paciente",
+        description: "Ocorreu um erro ao excluir o paciente. Tente novamente.",
+        variant: "destructive",
+      });
+      setPatientToDelete(null);
     },
   });
 
@@ -253,6 +284,7 @@ export default function PatientsPage() {
                 patient={patient}
                 onViewDetails={() => setLocation(`/patients/${patient.id}`)}
                 onNewPrescription={() => setLocation(`/patients/${patient.id}`)}
+                onDeletePatient={() => setPatientToDelete(patient)}
               />
             ))
           )}
@@ -464,6 +496,16 @@ export default function PatientsPage() {
                             >
                               <FileText className="h-4 w-4" />
                             </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => { e.stopPropagation(); setPatientToDelete(patient); }}
+                              title="Excluir paciente"
+                              className="h-9 w-9 p-0 hover:bg-red-100 hover:text-red-600 transition-all duration-200"
+                              data-testid={`button-delete-patient-${patient.id}`}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           </div>
                         </td>
                       </tr>
@@ -482,6 +524,43 @@ export default function PatientsPage() {
   return (
     <>
       {isMobile ? mobileContent : desktopContent}
+
+      {/* Delete Patient Confirmation Dialog */}
+      <AlertDialog open={!!patientToDelete} onOpenChange={(open) => !open && setPatientToDelete(null)}>
+        <AlertDialogContent className="bg-white/95 backdrop-blur-lg border-0 shadow-2xl rounded-2xl">
+          <AlertDialogHeader>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-2 bg-gradient-to-r from-red-500 to-rose-500 rounded-lg">
+                <Trash2 className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <AlertDialogTitle className="text-xl font-bold text-gray-900">Excluir Paciente</AlertDialogTitle>
+                <AlertDialogDescription className="text-gray-600">
+                  Esta ação não pode ser desfeita. Isso excluirá permanentemente o paciente e todos os seus dados associados.
+                </AlertDialogDescription>
+              </div>
+            </div>
+          </AlertDialogHeader>
+          {patientToDelete && (
+            <div className="p-4 bg-gradient-to-r from-red-50 to-rose-50 rounded-xl border border-red-200">
+              <p className="font-semibold text-red-800 mb-1">{patientToDelete.name}</p>
+              <p className="text-sm text-red-600">{patientToDelete.email}</p>
+            </div>
+          )}
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-gray-100 hover:bg-gray-200 text-gray-700 border-0 rounded-lg">
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => patientToDelete && deletePatientMutation.mutate(patientToDelete.id)}
+              disabled={deletePatientMutation.isPending}
+              className="bg-red-600 hover:bg-red-700 text-white border-0 rounded-lg"
+            >
+              {deletePatientMutation.isPending ? 'Excluindo...' : 'Excluir'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <Dialog open={!!invitationLink} onOpenChange={(isOpen) => !isOpen && setInvitationLink(null)}>
         <DialogContent className="bg-white/95 backdrop-blur-lg border-0 shadow-2xl rounded-2xl">

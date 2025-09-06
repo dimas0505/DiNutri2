@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, CheckCircle, Eye, FileText, Plus, Trash2, Users, XCircle, Link as LinkIcon, Copy, History, User, Calendar, Ruler, Weight, Target, Activity, Heart, Stethoscope, Pill, Camera, Image, Smile } from "lucide-react";
+import { ArrowLeft, CheckCircle, Eye, FileText, Plus, Users, XCircle, Link as LinkIcon, Copy, History, User, Calendar, Ruler, Weight, Target, Activity, Heart, Stethoscope, Pill, Camera, Image, Smile } from "lucide-react";
 import { useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -21,7 +21,6 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
   const queryClient = useQueryClient();
   const [prescriptionToDelete, setPrescriptionToDelete] = useState<string | null>(null);
   const [followUpLink, setFollowUpLink] = useState<string | null>(null);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   const { data: patient, isLoading: patientLoading } = useQuery<Patient>({
     queryKey: ["/api/patients", params.id],
@@ -130,26 +129,6 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
     }
   });
 
-  const deletePatientMutation = useMutation({
-    mutationFn: () =>
-      apiRequest("DELETE", `/api/patients/${params.id}`),
-    onSuccess: () => {
-      toast({
-        title: "Paciente excluído com sucesso!",
-        variant: "default",
-      });
-      setLocation('/patients');
-      queryClient.invalidateQueries({ queryKey: ['patients'] });
-    },
-    onError: () => {
-      toast({
-        title: "Erro ao excluir paciente",
-        description: "Ocorreu um erro ao excluir o paciente. Tente novamente.",
-        variant: "destructive",
-      });
-    },
-  });
-
   const calculateAge = (birthDate: string) => {
     if (!birthDate) return null;
     const birth = new Date(birthDate);
@@ -240,27 +219,16 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
               <h1 className="text-2xl font-bold mb-2">Detalhes do Paciente</h1>
               <p className="text-blue-100 opacity-90">Visualize e gerencie as informações completas do paciente</p>
             </div>
-            <div className="flex gap-3">
-              <Button
-                variant="destructive"
-                onClick={() => setIsDeleteDialogOpen(true)}
-                disabled={deletePatientMutation.isPending}
-                className="font-medium px-6 py-3 rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
-              >
-                <Trash2 className="h-5 w-5 mr-2" />
-                Excluir Paciente
-              </Button>
-              <Button
-                onClick={() => createPrescriptionMutation.mutate()}
-                disabled={createPrescriptionMutation.isPending || !hasAccountLinked}
-                title={!hasAccountLinked ? "Paciente precisa ter um login para criar prescrições" : "Nova Prescrição"}
-                data-testid="button-new-prescription"
-                className="bg-white/20 hover:bg-white/30 border-white/30 text-white font-medium px-6 py-3 rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 backdrop-blur-sm"
-              >
-                <Plus className="h-5 w-5 mr-2" />
-                {createPrescriptionMutation.isPending ? "Criando..." : "Nova Prescrição"}
-              </Button>
-            </div>
+            <Button
+              onClick={() => createPrescriptionMutation.mutate()}
+              disabled={createPrescriptionMutation.isPending || !hasAccountLinked}
+              title={!hasAccountLinked ? "Paciente precisa ter um login para criar prescrições" : "Nova Prescrição"}
+              data-testid="button-new-prescription"
+              className="bg-white/20 hover:bg-white/30 border-white/30 text-white font-medium px-6 py-3 rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 backdrop-blur-sm"
+            >
+              <Plus className="h-5 w-5 mr-2" />
+              {createPrescriptionMutation.isPending ? "Criando..." : "Nova Prescrição"}
+            </Button>
           </div>
         </div>
 
@@ -944,29 +912,6 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
           </div>
         </DialogContent>
       </Dialog>
-
-      {/* Delete Patient Confirmation Dialog */}
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Esta ação não pode ser desfeita. Isso excluirá permanentemente o
-              paciente e todos os seus dados associados.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => deletePatientMutation.mutate()}
-              disabled={deletePatientMutation.isPending}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {deletePatientMutation.isPending ? 'Excluindo...' : 'Excluir'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }
