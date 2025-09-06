@@ -610,8 +610,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           request: req,
           onBeforeGenerateToken: async (pathname: string) => {
             const blobPath = `food-diary/${req.user.id}/${pathname}`;
+            
+            // Validação de Tipo de Arquivo (MIME Type)
+            const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp'];
+            
+            // Validação de Tamanho do Arquivo (4.5 MB - limite do plano Hobby da Vercel)
+            const maxSizeInBytes = 4.5 * 1024 * 1024; // 4.5 MB
+            
             return {
-              allowedContentTypes: ['image/jpeg', 'image/png', 'image/gif', 'image/webp'],
+              allowedContentTypes: allowedMimeTypes,
+              maximumSizeInBytes: maxSizeInBytes,
               pathname: blobPath,
               tokenPayload: JSON.stringify({
                 userId: req.user.id,
@@ -626,7 +634,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(200).json(jsonResponse);
       } catch (error) {
         console.error("Error in upload handler:", error);
-        return res.status(400).json({ error: (error as Error).message });
+        
+        // Improved error handling with specific messages
+        const errorMessage = (error as Error).message;
+        
+        if (errorMessage.includes('content type')) {
+          return res.status(400).json({ 
+            message: 'Tipo de arquivo inválido. Apenas JPG, PNG e WebP são permitidos.',
+            error: errorMessage 
+          });
+        }
+        
+        if (errorMessage.includes('size') || errorMessage.includes('bytes')) {
+          return res.status(400).json({ 
+            message: 'O arquivo é muito grande. O tamanho máximo permitido é de 4.5 MB.',
+            error: errorMessage 
+          });
+        }
+        
+        return res.status(400).json({ 
+          message: 'Não foi possível processar o arquivo. Verifique se é uma imagem válida.',
+          error: errorMessage 
+        });
       }
   });
 

@@ -63,7 +63,23 @@ export default function FoodPhotoModal({ isOpen, onClose, meal, prescriptionId }
     },
     onError: (error: any) => {
       console.error("Upload error:", error);
-      toast({ title: "Erro", description: error.message || "Não foi possível enviar a foto.", variant: "destructive" });
+      
+      // Extract meaningful error message
+      let errorMessage = "Não foi possível enviar a foto.";
+      
+      if (error?.message) {
+        errorMessage = error.message;
+      } else if (error?.error) {
+        errorMessage = error.error;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      }
+      
+      toast({ 
+        title: "Erro", 
+        description: errorMessage, 
+        variant: "destructive" 
+      });
     },
   });
 
