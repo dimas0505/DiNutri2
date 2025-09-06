@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { GripVertical, X, ChevronUp, ChevronDown, Plus, Trash2 } from "lucide-react";
+import { GripVertical, X, ChevronUp, ChevronDown, Plus, Trash2, Pencil, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -18,10 +18,12 @@ interface MealItemEditorProps {
 }
 
 export default function MealItemEditor({ item, onUpdate, onDelete, onMoveUp, onMoveDown }: MealItemEditorProps) {
-  const [isSubstitutesOpen, setIsSubstitutesOpen] = useState(!!item.substitutes && item.substitutes.length > 0);
+  const [isSubstitutesOpen, setIsSubstitutesOpen] = useState(false); // Changed to default closed
   const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
   const [newSubstitute, setNewSubstitute] = useState("");
   const [selectedSubstitutes, setSelectedSubstitutes] = useState<Set<number>>(new Set());
+  const [editingSubstituteIndex, setEditingSubstituteIndex] = useState<number | null>(null);
+  const [editingSubstituteValue, setEditingSubstituteValue] = useState("");
   const { toast } = useToast();
 
   const updateDescription = (description: string) => {
@@ -83,6 +85,38 @@ export default function MealItemEditor({ item, onUpdate, onDelete, onMoveUp, onM
     });
     // Limpa a seleção após a remoção para evitar inconsistências
     setSelectedSubstitutes(new Set());
+    // Cancel editing if the item being edited was removed
+    if (editingSubstituteIndex === index) {
+      setEditingSubstituteIndex(null);
+    }
+  };
+
+  const startEditingSubstitute = (index: number) => {
+    setEditingSubstituteIndex(index);
+    setEditingSubstituteValue(item.substitutes?.[index] || "");
+  };
+
+  const saveSubstituteEdit = () => {
+    if (editingSubstituteIndex !== null && editingSubstituteValue.trim()) {
+      const substitutes = [...(item.substitutes || [])];
+      substitutes[editingSubstituteIndex] = editingSubstituteValue.trim();
+      substitutes.sort((a, b) => a.localeCompare(b)); // Maintain order
+      onUpdate({ 
+        ...item, 
+        substitutes: substitutes
+      });
+      setEditingSubstituteIndex(null);
+      setEditingSubstituteValue("");
+      toast({
+        title: "Substituto atualizado",
+        description: "O substituto foi atualizado com sucesso.",
+      });
+    }
+  };
+
+  const cancelSubstituteEdit = () => {
+    setEditingSubstituteIndex(null);
+    setEditingSubstituteValue("");
   };
 
   const handleToggleSelect = (index: number) => {
@@ -209,7 +243,7 @@ export default function MealItemEditor({ item, onUpdate, onDelete, onMoveUp, onM
                 >
                   <Plus className="h-3 w-3 mr-2" />
                   {item.substitutes && item.substitutes.length > 0 
-                    ? `${item.substitutes.length} substituto(s)`
+                    ? `${item.substitutes.length} substituto(s) - ${isSubstitutesOpen ? 'Recolher' : 'Expandir'}`
                     : "Adicionar substitutos"
                   }
                 </Button>
@@ -274,27 +308,86 @@ export default function MealItemEditor({ item, onUpdate, onDelete, onMoveUp, onM
             {/* Lista de substitutos editáveis */}
             {item.substitutes && item.substitutes.length > 0 && (
               <div className="space-y-3">
-                {item.substitutes.map((substitute, index) => (
-                  <div key={index} className="flex items-center space-x-3 bg-cyan-50 dark:bg-cyan-950/20 rounded-lg p-4 border-2 border-cyan-200 dark:border-cyan-800 shadow-sm">
-                    <Checkbox
-                      id={`sub-${item.id}-${index}`}
-                      checked={selectedSubstitutes.has(index)}
-                      onCheckedChange={() => handleToggleSelect(index)}
-                      className="border-cyan-400 dark:border-cyan-600"
-                    />
-                    <label htmlFor={`sub-${item.id}-${index}`} className="text-sm flex-1 cursor-pointer text-cyan-800 dark:text-cyan-200 font-medium">
-                      {substitute}
-                    </label>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => removeSubstitute(index)}
-                      className="h-8 w-8 p-0 text-destructive hover:text-destructive/80 hover:bg-destructive/20 shadow-sm border border-destructive/30"
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
-                  </div>
-                ))}
+                {item.substitutes.map((substitute, index) => {
+                  const isEditing = editingSubstituteIndex === index;
+                  
+                  return (
+                    <div key={index} className="flex items-center space-x-3 bg-cyan-50 dark:bg-cyan-950/20 rounded-lg p-4 border-2 border-cyan-200 dark:border-cyan-800 shadow-sm">
+                      {!isEditing && (
+                        <Checkbox
+                          id={`sub-${item.id}-${index}`}
+                          checked={selectedSubstitutes.has(index)}
+                          onCheckedChange={() => handleToggleSelect(index)}
+                          className="border-cyan-400 dark:border-cyan-600"
+                        />
+                      )}
+                      
+                      {isEditing ? (
+                        <>
+                          <Input
+                            value={editingSubstituteValue}
+                            onChange={(e) => setEditingSubstituteValue(e.target.value)}
+                            className="text-sm flex-1 bg-background/80 border-2 border-cyan-200 dark:border-cyan-800 focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:border-cyan-400 dark:focus-visible:ring-cyan-700 dark:focus-visible:border-cyan-600"
+                            placeholder="Nome do substituto"
+                            onKeyPress={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                saveSubstituteEdit();
+                              } else if (e.key === 'Escape') {
+                                e.preventDefault();
+                                cancelSubstituteEdit();
+                              }
+                            }}
+                            autoFocus
+                          />
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={saveSubstituteEdit}
+                            disabled={!editingSubstituteValue.trim()}
+                            className="h-8 w-8 p-0 text-green-600 hover:text-green-700 hover:bg-green-100 dark:hover:bg-green-900/30"
+                            title="Salvar"
+                          >
+                            <Check className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={cancelSubstituteEdit}
+                            className="h-8 w-8 p-0 text-gray-600 hover:text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-900/30"
+                            title="Cancelar"
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <label htmlFor={`sub-${item.id}-${index}`} className="text-sm flex-1 cursor-pointer text-cyan-800 dark:text-cyan-200 font-medium">
+                            {substitute}
+                          </label>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => startEditingSubstitute(index)}
+                            className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-100 dark:hover:bg-blue-900/30"
+                            title="Editar"
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeSubstitute(index)}
+                            className="h-8 w-8 p-0 text-destructive hover:text-destructive/80 hover:bg-destructive/20 shadow-sm border border-destructive/30"
+                            title="Excluir"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
 
