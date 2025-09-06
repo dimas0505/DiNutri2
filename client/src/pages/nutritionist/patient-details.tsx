@@ -42,14 +42,20 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
   });
 
   const createPrescriptionMutation = useMutation({
-    mutationFn: () =>
-      fetch(`/api/prescriptions`, {
+    mutationFn: () => {
+      // Define uma data de expiração padrão para 90 dias no futuro
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 90);
+
+      return fetch(`/api/prescriptions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           patientId: params.id,
+          title: 'Nova Prescrição', // Adiciona um título padrão
+          expiresAt: expiresAt.toISOString(), // Adiciona a data de expiração padrão
         }),
       }).then((res) => {
         if (!res.ok) {
@@ -58,11 +64,12 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
           throw res;
         }
         return res.json();
-      }),
+      });
+    },
     onSuccess: (data) => {
       toast({
         title: 'Prescrição criada com sucesso!',
-        variant: 'success',
+        variant: 'default',
       });
       queryClient.invalidateQueries({ queryKey: ["/api/patients", params.id, "prescriptions"] });
       setLocation(`/prescriptions/${data.id}/edit`);
