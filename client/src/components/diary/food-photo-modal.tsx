@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { upload } from '@vercel/blob/client';
+import imageCompression from 'browser-image-compression';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,22 +39,47 @@ export default function FoodPhotoModal({ isOpen, onClose, meal, prescriptionId }
     mutationFn: async () => {
       if (!file) throw new Error("Nenhum arquivo selecionado.");
 
-      // ETAPA 1: O SDK do Vercel Blob faz o upload, chamando a rota do nosso backend
-      // que lida com a autorização de forma segura e à prova de CORS.
-      const newBlob = await upload(file.name, file, {
-        access: 'public',
-        handleUploadUrl: '/api/food-diary/upload',
-      });
-
-      // ETAPA 2: Salvar a URL final no nosso banco de dados.
-      const entryPayload = {
-        prescriptionId,
-        mealId: meal.id,
-        imageUrl: newBlob.url,
-        notes,
-        date: new Date().toISOString().split('T')[0],
+      // ETAPA 1: Comprimir a imagem antes do upload
+      const options = {
+        maxSizeMB: 1,          // Define o tamanho máximo do arquivo em MB
+        maxWidthOrHeight: 1920,  // Define a largura ou altura máxima
+        useWebWorker: true,      // Usa Web Worker para não travar a interface
       };
-      await apiRequest("POST", "/api/food-diary/entries", entryPayload);
+
+      try {
+        const compressedFile = await imageCompression(file, options);
+        console.log('Arquivo original:', file.size, 'bytes');
+        console.log('Arquivo comprimido:', compressedFile.size, 'bytes');
+
+        // ETAPA 2: Enviar para o endpoint otimizado que processa com Sharp
+        const formData = new FormData();
+        formData.append('image', compressedFile);
+
+        const response = await fetch('/api/food-diary/upload-optimized', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Erro no upload');
+        }
+
+        const { url } = await response.json();
+
+        // ETAPA 3: Salvar a URL final no nosso banco de dados.
+        const entryPayload = {
+          prescriptionId,
+          mealId: meal.id,
+          imageUrl: url,
+          notes,
+          date: new Date().toISOString().split('T')[0],
+        };
+        await apiRequest("POST", "/api/food-diary/entries", entryPayload);
+      } catch (error) {
+        console.error('Erro ao processar e enviar a imagem:', error);
+        throw new Error('Não foi possível processar e enviar a foto.');
+      }
     },
     onSuccess: () => {
       toast({ title: "Sucesso!", description: "Foto da refeição enviada." });
