@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import passport from "passport";
 import bcrypt from "bcrypt";
 import bodyParser from "body-parser";
+import fileUpload from "express-fileupload";
 import { storage } from "./storage.js";
 import { setupAuth, isAuthenticated } from "./auth.js";
 import { insertPatientSchema, updatePatientSchema, insertPrescriptionSchema, updatePrescriptionSchema, insertMoodEntrySchema, insertAnamnesisRecordSchema, insertFoodDiaryEntrySchema } from "../shared/schema.js";
@@ -11,6 +12,7 @@ import { handleUpload, type HandleUploadBody } from '@vercel/blob/client';
 import { eq } from 'drizzle-orm';
 import { anamnesisRecords, foodDiaryEntries, prescriptions, users, patients } from '../shared/schema.js';
 import { db } from './db.js';
+import sharp from 'sharp';
 
 const SALT_ROUNDS = 10;
 
@@ -27,6 +29,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Middleware para parsear o corpo da requisição de upload
   app.use(bodyParser.json());
+  
+  // Middleware for file uploads
+  app.use(fileUpload({
+    limits: { fileSize: 4.5 * 1024 * 1024 }, // 4.5 MB limit
+    abortOnLimit: true,
+    useTempFiles: false,
+    safeFileNames: true,
+    preserveExtension: true
+  }));
 
   // --- AUTHENTICATION ROUTES ---
   app.post('/api/login', passport.authenticate('local'), (req, res) => {
@@ -610,8 +621,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           request: req,
           onBeforeGenerateToken: async (pathname: string) => {
             const blobPath = `food-diary/${req.user.id}/${pathname}`;
+            
+            // Validação de Tipo de Arquivo (MIME Type)
+            const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp'];
+            
+            // Validação de Tamanho do Arquivo (4.5 MB - limite do plano Hobby da Vercel)
+            const maxSizeInBytes = 4.5 * 1024 * 1024; // 4.5 MB
+            
             return {
-              allowedContentTypes: ['image/jpeg', 'image/png', 'image/gif', 'image/webp'],
+              allowedContentTypes: allowedMimeTypes,
+              maximumSizeInBytes: maxSizeInBytes,
               pathname: blobPath,
               tokenPayload: JSON.stringify({
                 userId: req.user.id,
@@ -626,8 +645,93 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(200).json(jsonResponse);
       } catch (error) {
         console.error("Error in upload handler:", error);
-        return res.status(400).json({ error: (error as Error).message });
+        
+        // Improved error handling with specific messages
+        const errorMessage = (error as Error).message;
+        
+        if (errorMessage.includes('content type')) {
+          return res.status(400).json({ 
+            message: 'Tipo de arquivo inválido. Apenas JPG, PNG e WebP são permitidos.',
+            error: errorMessage 
+          });
+        }
+        
+        if (errorMessage.includes('size') || errorMessage.includes('bytes')) {
+          return res.status(400).json({ 
+            message: 'O arquivo é muito grande. O tamanho máximo permitido é de 4.5 MB.',
+            error: errorMessage 
+          });
+        }
+        
+        return res.status(400).json({ 
+          message: 'Não foi possível processar o arquivo. Verifique se é uma imagem válida.',
+          error: errorMessage 
+        });
       }
+  });
+
+  // New endpoint for direct file upload with image processing
+  app.post('/api/food-diary/upload-direct', isAuthenticated, async (req: any, res) => {
+    try {
+      if (!req.files || !req.files.image) {
+        return res.status(400).json({ 
+          message: 'Nenhum arquivo foi enviado.' 
+        });
+      }
+
+      const file = req.files.image;
+      
+      // Validate file type
+      const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp'];
+      if (!allowedMimeTypes.includes(file.mimetype)) {
+        return res.status(400).json({ 
+          message: 'Tipo de arquivo inválido. Apenas JPG, PNG e WebP são permitidos.' 
+        });
+      }
+
+      // Validate file size (4.5 MB)
+      const maxSizeInBytes = 4.5 * 1024 * 1024;
+      if (file.size > maxSizeInBytes) {
+        return res.status(400).json({ 
+          message: 'O arquivo é muito grande. O tamanho máximo permitido é de 4.5 MB.' 
+        });
+      }
+
+      // Process the image with Sharp
+      // Resize to max 1080px width maintaining aspect ratio
+      // Convert to WebP with 80% quality for better compression and modern format
+      const processedBuffer = await sharp(file.data)
+        .resize({ width: 1080 })
+        .webp({ quality: 80 })
+        .toBuffer();
+
+      // Generate unique filename
+      const timestamp = Date.now();
+      const filename = `${timestamp}-optimized.webp`;
+      const blobPath = `food-diary/${req.user.id}/${filename}`;
+
+      // Upload processed image to Vercel Blob
+      const { put } = await import('@vercel/blob');
+      const blob = await put(blobPath, processedBuffer, {
+        access: 'public',
+        contentType: 'image/webp'
+      });
+
+      return res.status(200).json({
+        url: blob.url,
+        filename: filename,
+        size: processedBuffer.length,
+        originalSize: file.size,
+        compressionRatio: Math.round((1 - processedBuffer.length / file.size) * 100)
+      });
+
+    } catch (error) {
+      console.error("Error in direct upload handler:", error);
+      return res.status(500).json({ 
+        message: 'Erro interno do servidor ao processar a imagem.',
+        error: (error as Error).message 
+      });
+    }
   });
 
   app.post('/api/food-diary/entries', isAuthenticated, async (req: any, res) => {

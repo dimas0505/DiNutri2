@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { upload } from '@vercel/blob/client';
+import imageCompression from 'browser-image-compression';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,31 +40,92 @@ export default function FoodPhotoModal({ isOpen, onClose, meal, prescriptionId }
     mutationFn: async () => {
       if (!file) throw new Error("Nenhum arquivo selecionado.");
 
-      // ETAPA 1: O SDK do Vercel Blob faz o upload, chamando a rota do nosso backend
-      // que lida com a autorização de forma segura e à prova de CORS.
-      const newBlob = await upload(file.name, file, {
-        access: 'public',
-        handleUploadUrl: '/api/food-diary/upload',
+      // Client-side image compression for faster uploads
+      const options = {
+        maxSizeMB: 1,          // Comprime até 1MB para upload mais rápido
+        maxWidthOrHeight: 1920,  // Máximo 1920px de largura ou altura
+        useWebWorker: true,      // Usa Web Worker para não travar a interface
+      };
+
+      let compressedFile: File;
+      try {
+        compressedFile = await imageCompression(file, options);
+        console.log('Client-side compression:', {
+          original: file.size,
+          compressed: compressedFile.size,
+          reduction: Math.round((1 - compressedFile.size / file.size) * 100)
+        });
+      } catch (compressionError) {
+        console.warn('Client-side compression failed, using original file:', compressionError);
+        compressedFile = file;
+      }
+
+      // Create FormData for file upload
+      const formData = new FormData();
+      formData.append('image', compressedFile);
+
+      // Upload to our server with image processing
+      const uploadResponse = await fetch('/api/food-diary/upload-direct', {
+        method: 'POST',
+        body: formData,
       });
 
-      // ETAPA 2: Salvar a URL final no nosso banco de dados.
+      if (!uploadResponse.ok) {
+        const errorData = await uploadResponse.json();
+        throw new Error(errorData.message || 'Erro no upload da imagem');
+      }
+
+      const uploadResult = await uploadResponse.json();
+
+      // Save the entry with the processed image URL
       const entryPayload = {
         prescriptionId,
         mealId: meal.id,
-        imageUrl: newBlob.url,
+        imageUrl: uploadResult.url,
         notes,
         date: new Date().toISOString().split('T')[0],
       };
+      
       await apiRequest("POST", "/api/food-diary/entries", entryPayload);
+      
+      return uploadResult;
     },
-    onSuccess: () => {
-      toast({ title: "Sucesso!", description: "Foto da refeição enviada." });
+    onSuccess: (result) => {
+      const compressionMessage = result.compressionRatio > 0 
+        ? ` (Imagem otimizada: ${result.compressionRatio}% menor)`
+        : '';
+      
+      toast({ 
+        title: "Sucesso!", 
+        description: `Foto da refeição enviada${compressionMessage}.` 
+      });
       queryClient.invalidateQueries({ queryKey: ['/api/food-diary/entries', prescriptionId] });
       handleClose();
     },
     onError: (error: any) => {
       console.error("Upload error:", error);
-      toast({ title: "Erro", description: error.message || "Não foi possível enviar a foto.", variant: "destructive" });
+      
+      // Extract meaningful error message
+      let errorMessage = "Não foi possível enviar a foto.";
+      
+      if (error?.message) {
+        errorMessage = error.message;
+      } else if (error?.error) {
+        errorMessage = error.error;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      }
+      
+      // Special handling for compression errors
+      if (errorMessage.includes('compression') || errorMessage.includes('compressão')) {
+        errorMessage = "Erro ao otimizar a imagem. Tente novamente com uma imagem menor.";
+      }
+      
+      toast({ 
+        title: "Erro", 
+        description: errorMessage, 
+        variant: "destructive" 
+      });
     },
   });
 
