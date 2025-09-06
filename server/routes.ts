@@ -8,11 +8,29 @@ import { setupAuth, isAuthenticated } from "./auth.js";
 import { insertPatientSchema, updatePatientSchema, insertPrescriptionSchema, updatePrescriptionSchema, insertMoodEntrySchema, insertAnamnesisRecordSchema, insertFoodDiaryEntrySchema } from "../shared/schema.js";
 import { z } from "zod";
 import { handleUpload, type HandleUploadBody } from '@vercel/blob/client';
+import { put } from '@vercel/blob';
+import multer from 'multer';
 import { eq } from 'drizzle-orm';
 import { anamnesisRecords, foodDiaryEntries, prescriptions, users, patients } from '../shared/schema.js';
 import { db } from './db.js';
+import sharp from 'sharp';
 
 const SALT_ROUNDS = 10;
+
+// Configure multer for in-memory file uploads
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Apenas arquivos de imagem são permitidos'));
+    }
+  },
+});
 
 // Middleware to check if the user is an admin
 const isAdmin = (req: any, res: any, next: any) => {
@@ -628,6 +646,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error in upload handler:", error);
         return res.status(400).json({ error: (error as Error).message });
       }
+  });
+
+  // New route for optimized image upload with server-side processing
+  app.post('/api/food-diary/upload-optimized', isAuthenticated, upload.single('image'), async (req: any, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: 'Nenhum arquivo de imagem fornecido' });
+      }
+
+      // Process the image with Sharp
+      const processedImageBuffer = await sharp(req.file.buffer)
+        .resize({ width: 1080 }) // Redimensiona para uma largura máxima de 1080px
+        .webp({ quality: 80 }) // Converte para WebP com 80% de qualidade
+        .toBuffer();
+
+      // Generate unique filename
+      const filename = `${Date.now()}-${Math.random().toString(36).substring(7)}.webp`;
+      const blobPath = `food-diary/${req.user.id}/${filename}`;
+
+      // Upload processed image to Vercel Blob
+      const blob = await put(blobPath, processedImageBuffer, {
+        access: 'public',
+        contentType: 'image/webp',
+      });
+
+      console.log('Imagem processada e enviada:', {
+        originalSize: req.file.size,
+        processedSize: processedImageBuffer.length,
+        reduction: ((req.file.size - processedImageBuffer.length) / req.file.size * 100).toFixed(1) + '%'
+      });
+
+      return res.status(200).json({ url: blob.url });
+    } catch (error) {
+      console.error("Error in optimized upload handler:", error);
+      return res.status(400).json({ error: (error as Error).message });
+    }
   });
 
   app.post('/api/food-diary/entries', isAuthenticated, async (req: any, res) => {
