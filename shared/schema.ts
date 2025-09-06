@@ -250,6 +250,11 @@ export type MoodEntry = {
   updatedAt: Date | null;
 };
 
+// Date preprocessor for flexible date handling
+const datePreprocess = z.preprocess((arg) => {
+  if (typeof arg == "string" || arg instanceof Date) return new Date(arg);
+}, z.date());
+
 // Zod schemas
 export const insertUserSchema = createInsertSchema(users).pick({
   email: true,
@@ -270,6 +275,8 @@ export const insertPrescriptionSchema = createInsertSchema(prescriptions).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
+}).extend({
+  expiresAt: datePreprocess.nullable(),
 });
 
 export const updatePrescriptionSchema = createInsertSchema(prescriptions).omit({
@@ -278,7 +285,9 @@ export const updatePrescriptionSchema = createInsertSchema(prescriptions).omit({
   nutritionistId: true,
   createdAt: true,
   updatedAt: true,
-}).partial();
+}).partial().extend({
+  expiresAt: datePreprocess.nullable().optional(),
+});
 
 export const insertMoodEntrySchema = createInsertSchema(moodEntries).omit({
   id: true,

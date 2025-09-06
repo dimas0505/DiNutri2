@@ -57,10 +57,10 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
 
   const updatePrescriptionMutation = useMutation({
     mutationFn: async (data: { title: string; meals: MealData[]; generalNotes: string; expiresAt?: Date }) => {
-      // Convert Date to ISO string for proper serialization
+      // Pass Date object directly - the backend validation will handle the conversion
       const payload = {
         ...data,
-        expiresAt: data.expiresAt ? data.expiresAt.toISOString() : null,
+        expiresAt: data.expiresAt ?? null,
       };
       return await apiRequest("PUT", `/api/prescriptions/${params.id}`, payload);
     },
