@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import passport from "passport";
 import bcrypt from "bcrypt";
 import bodyParser from "body-parser";
-import { storage } from "./storage.js";
+import { storage, deleteFoodDiaryPhoto } from "./storage.js";
 import { setupAuth, isAuthenticated } from "./auth.js";
 import { insertPatientSchema, updatePatientSchema, insertPrescriptionSchema, updatePrescriptionSchema, insertMoodEntrySchema, insertAnamnesisRecordSchema, insertFoodDiaryEntrySchema } from "../shared/schema.js";
 import { z } from "zod";
@@ -725,6 +725,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching food diary entries:", error);
       res.status(500).json({ message: "Falha ao buscar entradas do diário alimentar." });
+    }
+  });
+
+  // DELETE route to remove food diary entry and photo
+  app.delete('/api/food-diary/entries/:id/photo', isAuthenticated, async (req: any, res) => {
+    try {
+      const entryId = req.params.id;
+      const nutritionistId = req.user.id;
+
+      // 1. Find the food diary entry and verify nutritionist permission
+      const entry = await db.query.foodDiaryEntries.findFirst({
+        where: eq(foodDiaryEntries.id, entryId),
+        with: {
+          patient: true,
+        },
+      });
+
+      if (!entry || entry.patient.ownerId !== nutritionistId) {
+        return res.status(404).json({ message: 'Entrada do diário não encontrada ou não autorizada.' });
+      }
+      
+      if (!entry.imageUrl) {
+        return res.status(400).json({ message: 'Esta entrada não possui foto.' });
+      }
+
+      // 2. Delete the photo from Vercel Blob
+      await deleteFoodDiaryPhoto(entry.imageUrl);
+
+      // 3. Delete the entire diary entry from the database
+      await db
+        .delete(foodDiaryEntries)
+        .where(eq(foodDiaryEntries.id, entryId));
+
+      return res.status(200).json({ message: 'Entrada do diário excluída com sucesso.' });
+    } catch (error) {
+      console.error("Error deleting food diary entry:", error);
+      res.status(500).json({ message: "Falha ao excluir a entrada do diário." });
     }
   });
 

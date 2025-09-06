@@ -21,6 +21,7 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
   const queryClient = useQueryClient();
   const [prescriptionToDelete, setPrescriptionToDelete] = useState<string | null>(null);
   const [followUpLink, setFollowUpLink] = useState<string | null>(null);
+  const [entryToDelete, setEntryToDelete] = useState<string | null>(null);
 
   const { data: patient, isLoading: patientLoading } = useQuery<Patient>({
     queryKey: ["/api/patients", params.id],
@@ -162,6 +163,24 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
         variant: "destructive",
       });
     }
+  });
+
+  const deletePhotoMutation = useMutation({
+    mutationFn: (entryId: string) =>
+      fetch(`/api/food-diary/entries/${entryId}/photo`, {
+        method: 'DELETE',
+      }),
+    onSuccess: () => {
+      toast({ title: 'Entrada do diário excluída com sucesso!', variant: 'default' });
+      // Invalidate the query to reload the updated data
+      queryClient.invalidateQueries({ queryKey: ["/api/patients", params.id, "food-diary", "entries"] });
+    },
+    onError: () => {
+      toast({ title: 'Erro ao excluir a entrada do diário', variant: 'destructive' });
+    },
+    onSettled: () => {
+      setEntryToDelete(null); // Close the dialog
+    },
   });
 
   const calculateAge = (birthDate: string) => {
@@ -843,20 +862,30 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                     
                     return (
                       <div key={entry.id} className="bg-gradient-to-br from-white to-orange-50 dark:from-gray-800 dark:to-orange-900/10 rounded-lg border border-orange-200/50 dark:border-orange-700/50 overflow-hidden shadow-md hover:shadow-lg transition-all duration-200">
-                        <div className="aspect-square relative">
-                          <img 
-                            src={entry.imageUrl} 
-                            alt="Foto da refeição" 
-                            className="w-full h-full object-cover"
-                            onError={(e) => {
-                              const img = e.target as HTMLImageElement;
-                              img.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2Y5ZmFmYiIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IiM2YjcyODAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5JbWFnZW0gbsOjbyBlbmNvbnRyYWRhPC90ZXh0Pjwvc3ZnPg==';
-                            }}
-                          />
-                          <div className="absolute top-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded backdrop-blur-sm">
-                            {formatDate(entry.date)}
+                        {entry.imageUrl && (
+                          <div className="aspect-square relative group">
+                            <img 
+                              src={entry.imageUrl} 
+                              alt="Foto da refeição" 
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                const img = e.target as HTMLImageElement;
+                                img.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2Y5ZmFmYiIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IiM2YjcyODAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5JbWFnZW0gbsOjbyBlbmNvbnRyYWRhPC90ZXh0Pjwvc3ZnPg==';
+                              }}
+                            />
+                            <Button
+                              variant="destructive"
+                              size="icon"
+                              className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                              onClick={() => setEntryToDelete(entry.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                            <div className="absolute top-2 left-2 bg-black/50 text-white text-xs px-2 py-1 rounded backdrop-blur-sm">
+                              {formatDate(entry.date)}
+                            </div>
                           </div>
-                        </div>
+                        )}
                         <div className="p-4">
                           <div className="flex items-center gap-2 mb-2">
                             <Image className="h-4 w-4 text-orange-600 dark:text-orange-300" />
@@ -931,6 +960,34 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
           </Card>
         </div>
       </main>
+
+      {/* AlertDialog for photo deletion confirmation */}
+      <AlertDialog
+        open={!!entryToDelete}
+        onOpenChange={(isOpen) => !isOpen && setEntryToDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza de que deseja excluir esta entrada do diário alimentar? Tanto a foto quanto todas as informações associadas serão removidas permanentemente. Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (entryToDelete) {
+                  deletePhotoMutation.mutate(entryToDelete);
+                }
+              }}
+              disabled={deletePhotoMutation.isPending}
+            >
+              {deletePhotoMutation.isPending ? 'Excluindo...' : 'Excluir'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Dialog for showing follow-up link */}
       <Dialog open={!!followUpLink} onOpenChange={() => setFollowUpLink(null)}>

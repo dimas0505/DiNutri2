@@ -136,7 +136,7 @@ export const foodDiaryEntries = pgTable("food_diary_entries", {
   patientId: varchar("patient_id").references(() => patients.id, { onDelete: 'cascade' }).notNull(),
   prescriptionId: varchar("prescription_id").references(() => prescriptions.id, { onDelete: 'cascade' }).notNull(),
   mealId: varchar("meal_id").notNull(),
-  imageUrl: text("image_url").notNull(),
+  imageUrl: text("image_url"),
   notes: text("notes"),
   date: varchar("date").notNull(), // Format: YYYY-MM-DD
   createdAt: timestamp("created_at").defaultNow(),

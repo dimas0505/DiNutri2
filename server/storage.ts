@@ -27,6 +27,7 @@ import { eq, desc, and, gte, lte, sql, SQL } from "drizzle-orm";
 import { randomBytes } from "crypto";
 import { nanoid } from "nanoid";
 import bcrypt from "bcrypt";
+import { del } from '@vercel/blob';
 
 const SALT_ROUNDS = 10;
 
@@ -595,3 +596,16 @@ export class DatabaseStorage implements IStorage {
 }
 
 export const storage = new DatabaseStorage();
+
+// Function to delete food diary photo from Vercel Blob
+export async function deleteFoodDiaryPhoto(photoUrl: string) {
+  try {
+    // Delete the blob using the full URL
+    await del(photoUrl);
+    console.log(`Successfully deleted photo from Vercel Blob: ${photoUrl}`);
+  } catch (error) {
+    console.error(`Failed to delete photo from Vercel Blob: ${photoUrl}`, error);
+    // Optional: don't throw the error to prevent blocking the database update,
+    // but log it for monitoring.
+  }
+}
