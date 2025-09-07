@@ -551,7 +551,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getFoodDiaryEntriesByPatient(patientId: string): Promise<FoodDiaryEntryWithPrescription[]> {
-    const entries = await db.select({
+    // First, get all food diary entries with their associated mood data
+    const foodEntries = await db.select({
       id: foodDiaryEntries.id,
       patientId: foodDiaryEntries.patientId,
       prescriptionId: foodDiaryEntries.prescriptionId,
@@ -565,6 +566,7 @@ export class DatabaseStorage implements IStorage {
       moodBefore: moodEntries.moodBefore,
       moodAfter: moodEntries.moodAfter,
       moodNotes: moodEntries.notes,
+      moodId: moodEntries.id,
     })
       .from(foodDiaryEntries)
       .leftJoin(prescriptions, eq(foodDiaryEntries.prescriptionId, prescriptions.id))
@@ -574,24 +576,78 @@ export class DatabaseStorage implements IStorage {
         eq(foodDiaryEntries.mealId, moodEntries.mealId),
         eq(foodDiaryEntries.date, moodEntries.date)
       ))
-      .where(eq(foodDiaryEntries.patientId, patientId))
-      .orderBy(desc(foodDiaryEntries.createdAt));
-    
-    return entries.map(entry => ({
-      id: entry.id,
-      patientId: entry.patientId,
-      prescriptionId: entry.prescriptionId,
-      mealId: entry.mealId,
-      imageUrl: entry.imageUrl,
-      notes: entry.notes,
-      date: entry.date,
-      createdAt: entry.createdAt,
-      prescriptionTitle: entry.prescriptionTitle,
-      prescriptionMeals: entry.prescriptionMeals,
-      moodBefore: entry.moodBefore,
-      moodAfter: entry.moodAfter,
-      moodNotes: entry.moodNotes,
-    })) as any[];
+      .where(eq(foodDiaryEntries.patientId, patientId));
+
+    // Then, get mood entries that don't have corresponding food diary entries
+    const standaloneMoodEntries = await db.select({
+      id: sql<string>`'mood_' || ${moodEntries.id}`, // Prefix with 'mood_' to distinguish from food entries
+      patientId: moodEntries.patientId,
+      prescriptionId: moodEntries.prescriptionId,
+      mealId: moodEntries.mealId,
+      imageUrl: sql<string | null>`NULL`,
+      notes: sql<string | null>`NULL`,
+      date: moodEntries.date,
+      createdAt: moodEntries.createdAt,
+      prescriptionTitle: prescriptions.title,
+      prescriptionMeals: prescriptions.meals,
+      moodBefore: moodEntries.moodBefore,
+      moodAfter: moodEntries.moodAfter,
+      moodNotes: moodEntries.notes,
+      moodId: moodEntries.id,
+    })
+      .from(moodEntries)
+      .leftJoin(prescriptions, eq(moodEntries.prescriptionId, prescriptions.id))
+      .leftJoin(foodDiaryEntries, and(
+        eq(moodEntries.patientId, foodDiaryEntries.patientId),
+        eq(moodEntries.prescriptionId, foodDiaryEntries.prescriptionId),
+        eq(moodEntries.mealId, foodDiaryEntries.mealId),
+        eq(moodEntries.date, foodDiaryEntries.date)
+      ))
+      .where(and(
+        eq(moodEntries.patientId, patientId),
+        sql`${foodDiaryEntries.id} IS NULL` // Only mood entries without corresponding food diary entries
+      ));
+
+    // Combine both results
+    const allEntries = [
+      ...foodEntries.map(entry => ({
+        id: entry.id,
+        patientId: entry.patientId,
+        prescriptionId: entry.prescriptionId,
+        mealId: entry.mealId,
+        imageUrl: entry.imageUrl,
+        notes: entry.notes,
+        date: entry.date,
+        createdAt: entry.createdAt,
+        prescriptionTitle: entry.prescriptionTitle,
+        prescriptionMeals: entry.prescriptionMeals,
+        moodBefore: entry.moodBefore,
+        moodAfter: entry.moodAfter,
+        moodNotes: entry.moodNotes,
+      })),
+      ...standaloneMoodEntries.map(entry => ({
+        id: entry.id,
+        patientId: entry.patientId,
+        prescriptionId: entry.prescriptionId,
+        mealId: entry.mealId,
+        imageUrl: entry.imageUrl,
+        notes: entry.notes,
+        date: entry.date,
+        createdAt: entry.createdAt,
+        prescriptionTitle: entry.prescriptionTitle,
+        prescriptionMeals: entry.prescriptionMeals,
+        moodBefore: entry.moodBefore,
+        moodAfter: entry.moodAfter,
+        moodNotes: entry.moodNotes,
+      }))
+    ];
+
+    // Sort by creation date, most recent first
+    return allEntries.sort((a, b) => {
+      const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return dateB - dateA;
+    }) as any[];
   }
 }
 

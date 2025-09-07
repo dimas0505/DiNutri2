@@ -886,6 +886,21 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                             </div>
                           </div>
                         )}
+                        
+                        {/* Visual header for mood-only entries */}
+                        {!entry.imageUrl && (entry.moodBefore || entry.moodAfter) && (
+                          <div className="bg-gradient-to-r from-purple-100 to-blue-100 dark:from-purple-900/30 dark:to-blue-900/30 p-4 border-b border-purple-200/50 dark:border-purple-700/50">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <Smile className="h-5 w-5 text-purple-600 dark:text-purple-300" />
+                                <span className="text-sm font-medium text-purple-800 dark:text-purple-200">Registro de Humor</span>
+                              </div>
+                              <div className="text-xs text-purple-600 dark:text-purple-400">
+                                {formatDate(entry.date)}
+                              </div>
+                            </div>
+                          </div>
+                        )}
                         <div className="p-4">
                           <div className="flex items-center gap-2 mb-2">
                             <Image className="h-4 w-4 text-orange-600 dark:text-orange-300" />
@@ -950,9 +965,9 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                   <div className="p-4 bg-gray-100 dark:bg-gray-800 rounded-full w-20 h-20 mx-auto mb-4 flex items-center justify-center">
                     <Camera className="h-10 w-10 text-gray-400 dark:text-gray-500" />
                   </div>
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Nenhuma foto enviada</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Nenhum registro no diário</h3>
                   <p className="text-gray-600 dark:text-gray-300 mb-6 max-w-md mx-auto">
-                    O paciente ainda não enviou fotos das refeições. As imagens aparecerão aqui quando forem enviadas.
+                    O paciente ainda não enviou fotos ou registros de humor para as refeições. Os dados aparecerão aqui quando forem enviados.
                   </p>
                 </div>
               )}
