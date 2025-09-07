@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { X, Camera, Heart, Image } from "lucide-react";
+import { ArrowLeft, Camera, Heart, Image, UtensilsCrossed, Repeat } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import MoodRegistrationModal from "@/components/mood/mood-registration-modal";
@@ -18,12 +18,11 @@ export default function MealMenuScreen({
   meal,
   prescriptionId,
   patientId,
-  onClose,
+  onClose: onBack,
 }: MealMenuScreenProps) {
   const [showMoodModal, setShowMoodModal] = useState(false);
-  const [showSubstitutionModal, setShowSubstitutionModal] = useState(false);
   const [showPhotoModal, setShowPhotoModal] = useState(false);
-  const [selectedItemForSubstitution, setSelectedItemForSubstitution] = useState<MealItemData | null>(null);
+  const [selectedItem, setSelectedItem] = useState<MealItemData | null>(null);
   const { toast } = useToast();
 
   const handlePhotoAction = () => {
@@ -34,37 +33,23 @@ export default function MealMenuScreen({
     setShowMoodModal(true);
   };
 
-  const handleSubstitutionClick = (item: MealItemData) => {
-    setSelectedItemForSubstitution(item);
-    setShowSubstitutionModal(true);
-  };
-
-  const handleSubstitutionModalClose = () => {
-    setShowSubstitutionModal(false);
-    setSelectedItemForSubstitution(null);
-  };
-
   return (
-    <div className="fixed inset-0 bg-white z-50 flex flex-col">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-4 shadow-lg">
-        <div className="flex items-center justify-between">
-          <h1 className="text-xl font-semibold">{meal.name}</h1>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onClose}
-            className="text-white hover:bg-white/20 p-2"
-          >
-            <X className="h-6 w-6" />
+    <>
+      <div className="min-h-screen bg-slate-50 p-4 font-sans">
+        {/* Cabeçalho Melhorado */}
+        <header className="flex items-center mb-8">
+          <Button onClick={onBack} variant="ghost" size="icon" className="mr-2 rounded-full">
+            <ArrowLeft className="h-6 w-6" />
           </Button>
-        </div>
-      </div>
+          <div>
+            <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-green-600 to-teal-500 bg-clip-text text-transparent">
+              {meal.name}
+            </h1>
+          </div>
+        </header>
 
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-6">
         {/* Menu da refeição */}
-        <div>
+        <div className="mb-8">
           <h2 className="text-lg font-medium text-gray-800 mb-4">Menu da refeição</h2>
           <div className="grid grid-cols-2 gap-4">
             {/* Foto para o diário alimentar */}
@@ -91,43 +76,44 @@ export default function MealMenuScreen({
           </div>
         </div>
 
-        {/* Lista de Alimentos */}
-        <div>
-          <h2 className="text-lg font-medium text-gray-800 mb-4">Alimentos desta refeição</h2>
-          <div className="space-y-3">
-            {meal.items.map((item) => (
-              <div
-                key={item.id}
-                className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow duration-200"
-              >
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <h3 className="font-medium text-gray-900 mb-1">
-                      {item.description}
-                    </h3>
-                    <p className="text-sm text-gray-600 mb-3">
-                      {item.amount}
-                    </p>
-                    
-                    {/* Botão de substituição */}
-                    <Button
-                      onClick={() => handleSubstitutionClick(item)}
-                      variant="outline"
-                      size="sm"
-                      className="text-blue-600 border-blue-200 hover:bg-blue-50 hover:border-blue-300 transition-colors duration-200"
-                    >
-                      Ver opções de substituição
-                    </Button>
+        {/* Lista de Alimentos em Cards */}
+        <div className="space-y-4">
+          {meal.items.map((item, index) => (
+            <div
+              key={index}
+              className="bg-white rounded-xl shadow-md overflow-hidden transition-all duration-300 hover:shadow-xl hover:scale-[1.02]"
+            >
+              <div className="p-5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <div className="bg-green-100 p-3 rounded-full mr-4">
+                      <UtensilsCrossed className="h-6 w-6 text-green-700" />
+                    </div>
+                    <div>
+                      <p className="text-lg font-semibold text-gray-800">{item.description}</p>
+                      <p className="text-sm text-gray-500">{item.amount}</p>
+                    </div>
                   </div>
+
+                  {item.substitutes && item.substitutes.length > 0 && (
+                    <Button
+                      variant="outline"
+                      className="border-green-500 text-green-600 hover:bg-green-500 hover:text-white transition-colors duration-300"
+                      onClick={() => setSelectedItem(item)}
+                    >
+                      <Repeat className="mr-2 h-4 w-4" />
+                      Substituir
+                    </Button>
+                  )}
                 </div>
               </div>
-            ))}
-          </div>
+            </div>
+          ))}
         </div>
 
         {/* Observações da refeição */}
         {meal.notes && (
-          <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200">
+          <div className="mt-8 bg-gradient-to-r from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200">
             <h3 className="font-medium text-gray-800 mb-2 flex items-center">
               <Image className="h-4 w-4 mr-2 text-blue-600" />
               Observações
@@ -147,10 +133,10 @@ export default function MealMenuScreen({
       />
 
       <MealSubstitutionModal
-        isOpen={showSubstitutionModal}
-        onClose={handleSubstitutionModalClose}
-        foodName={selectedItemForSubstitution?.description || ""}
-        substitutes={selectedItemForSubstitution?.substitutes || []}
+        isOpen={!!selectedItem}
+        onClose={() => setSelectedItem(null)}
+        foodName={selectedItem?.description || ""}
+        substitutes={selectedItem?.substitutes || []}
       />
 
       <FoodPhotoModal
@@ -159,6 +145,6 @@ export default function MealMenuScreen({
         meal={meal}
         prescriptionId={prescriptionId}
       />
-    </div>
+    </>
   );
 }
