@@ -30,12 +30,16 @@ export function MobileHeader({
   className,
   drawerContent
 }: MobileHeaderProps) {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const isMobile = useIsMobile();
 
-  const handleLogout = () => {
-    // Redireciona diretamente para a rota de logout que fará o redirecionamento
-    window.location.href = "/api/logout";
+  const handleLogout = async () => {
+    console.debug('[logout] click');
+    try {
+      await logout();
+    } catch (error) {
+      console.error('Erro durante o logout:', error);
+    }
   };
 
   const handleBack = () => {
@@ -113,6 +117,7 @@ export function MobileHeader({
               onClick={handleLogout}
               title="Sair"
               className="h-8 w-8 p-0"
+              data-testid="logout-button"
             >
               <LogOut className="h-3 w-3" />
               <span className="sr-only">Sair</span>
