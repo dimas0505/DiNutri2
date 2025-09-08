@@ -28,13 +28,19 @@ export function PatientSidebar() {
   const { user, logout } = useAuth();
   const [location] = useLocation();
 
-  const getInitials = (name: string) => {
-    const names = name.split(" ");
-    if (names.length > 1) {
-      return `${names[0][0]}${names[names.length - 1][0]}`.toUpperCase();
+  const getInitials = (firstName: string, lastName: string) => {
+    if (firstName && lastName) {
+      return `${firstName[0]}${lastName[0]}`.toUpperCase();
     }
-    return name.substring(0, 2).toUpperCase();
+    if (firstName) {
+      return firstName.substring(0, 2).toUpperCase();
+    }
+    return "U";
   };
+
+  const displayName = user?.firstName && user?.lastName 
+    ? `${user.firstName} ${user.lastName}`
+    : user?.firstName || user?.email || "Usuário";
 
   return (
     <aside className="hidden h-screen w-64 flex-col border-r bg-gray-50 lg:flex">
@@ -61,10 +67,10 @@ export function PatientSidebar() {
           <DropdownMenuTrigger asChild>
             <Button variant="outline" className="w-full justify-start gap-2">
               <Avatar className="h-8 w-8">
-                <AvatarImage src={user?.avatarUrl} />
-                <AvatarFallback>{getInitials(user?.name || "")}</AvatarFallback>
+                <AvatarImage src={user?.profileImageUrl} />
+                <AvatarFallback>{getInitials(user?.firstName || "", user?.lastName || "")}</AvatarFallback>
               </Avatar>
-              <span className="truncate">{user?.name}</span>
+              <span className="truncate">{displayName}</span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
