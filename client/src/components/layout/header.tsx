@@ -111,6 +111,7 @@ export default function Header({
             onClick={handleLogout}
             title="Sair"
             data-testid="button-logout"
+            className="h-9 w-9 p-0"
           >
             <LogOut className="h-4 w-4" />
           </Button>
