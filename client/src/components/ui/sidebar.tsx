@@ -1,7 +1,10 @@
 import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { VariantProps, cva } from "class-variance-authority"
-import { PanelLeft } from "lucide-react"
+import { LogOut, Home, Settings, Package2, Users2, Calendar, FileText } from "lucide-react"
+import { Link, useLocation } from "wouter"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { useAuth } from "@/hooks/useAuth"
 
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
@@ -743,6 +746,64 @@ const SidebarMenuSubButton = React.forwardRef<
 })
 SidebarMenuSubButton.displayName = "SidebarMenuSubButton"
 
+// Desktop Navigation Sidebar Component
+export function DesktopNavigationSidebar() {
+  const [location] = useLocation();
+  const { logout } = useAuth();
+
+  const handleLogout = () => {
+    // Redireciona diretamente para a rota de logout que fará o redirecionamento
+    window.location.href = "/api/logout";
+  };
+
+  return (
+    <aside className="fixed left-0 top-0 z-40 h-screen w-64 bg-white border-r border-gray-200 shadow-sm">
+      <div className="flex h-full flex-col">
+        <div className="p-6">
+          <h2 className="text-lg font-semibold text-gray-900">DiNutri</h2>
+        </div>
+        
+        <nav className="flex-1 space-y-2 px-4">
+          <Link href="/" className="flex items-center gap-3 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 hover:bg-gray-100">
+            <Home className="h-4 w-4" />
+            Início
+          </Link>
+          
+          <Link href="/patients" className="flex items-center gap-3 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 hover:bg-gray-100">
+            <Users2 className="h-4 w-4" />
+            Pacientes
+          </Link>
+          
+          <Link href="/prescriptions" className="flex items-center gap-3 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 hover:bg-gray-100">
+            <FileText className="h-4 w-4" />
+            Prescrições
+          </Link>
+          
+          <Link href="/calendar" className="flex items-center gap-3 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 hover:bg-gray-100">
+            <Calendar className="h-4 w-4" />
+            Agenda
+          </Link>
+          
+          <Link href="/settings" className="flex items-center gap-3 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 hover:bg-gray-100">
+            <Settings className="h-4 w-4" />
+            Configurações
+          </Link>
+        </nav>
+        
+        <div className="border-t border-gray-200 p-4">
+          <button
+            onClick={handleLogout}
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-red-600 transition-all hover:text-red-700 hover:bg-red-50"
+          >
+            <LogOut className="h-4 w-4" />
+            Sair
+          </button>
+        </div>
+      </div>
+    </aside>
+  );
+}
+
 export {
   Sidebar,
   SidebarContent,
@@ -768,4 +829,5 @@ export {
   SidebarSeparator,
   SidebarTrigger,
   useSidebar,
+  DesktopNavigationSidebar,
 }
