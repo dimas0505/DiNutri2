@@ -329,10 +329,8 @@ export const anamnesisSchema = insertPatientSchema.omit({ ownerId: true, userId:
     .min(1, "Peso é obrigatório")
     .regex(/^\d+(\.\d{1,2})?$/, "Peso inválido. Use formato: 65.50"),
 
-  // Goals and habits fields - now mandatory
-  goal: z.enum(["lose_weight", "maintain_weight", "gain_weight"], {
-    errorMap: () => ({ message: "Selecione um objetivo" })
-  }),
+  // Goals and habits fields - some mandatory, some optional
+  goal: z.enum(["lose_weight", "maintain_weight", "gain_weight"]).optional(),
   activityLevel: z.enum(["1", "2", "3", "4", "5"], {
     errorMap: () => ({ message: "Selecione o nível de atividade física" })
   }),
@@ -357,21 +355,19 @@ export const anamnesisSchema = insertPatientSchema.omit({ ownerId: true, userId:
   canEatMorningSolids: z.boolean({
     errorMap: () => ({ message: "Marque se consegue comer sólidos pela manhã" })
   }),
-  hasIntolerance: z.boolean({
-    errorMap: () => ({ message: "Marque se possui intolerâncias alimentares" })
-  }),
+  hasIntolerance: z.boolean().optional(), // Optional boolean field
 
-  // Preferences fields - mandatory as arrays (can be empty but must be defined)
-  likedHealthyFoods: z.array(z.string()).min(1, "Informe pelo menos um alimento saudável que gosta"),
-  dislikedFoods: z.array(z.string()).min(1, "Informe pelo menos um alimento que não gosta"),
+  // Preferences fields - optional arrays
+  likedHealthyFoods: z.array(z.string()).optional(),
+  dislikedFoods: z.array(z.string()).optional(),
   
   // Conditional intolerance field
   intolerances: z.array(z.string()).default([]),
   
-  // Health information fields - now mandatory
-  diseases: z.string().min(1, "Informe suas condições de saúde ou digite 'Nenhuma'"),
-  medications: z.string().min(1, "Informe seus medicamentos atuais ou digite 'Nenhum'"),
-  supplements: z.string().min(1, "Informe seus suplementos atuais ou digite 'Nenhum'"),
+  // Health information fields - now optional
+  diseases: z.string().optional(),
+  medications: z.string().optional(),
+  supplements: z.string().optional(),
   
   // Notes field - keep optional
   notes: z.string().optional()
