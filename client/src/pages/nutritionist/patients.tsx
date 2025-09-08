@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Search, Plus, Eye, FileText, Link as LinkIcon, Copy, MoreVertical, Users, Trash2 } from "lucide-react";
 import Header from "@/components/layout/header";
+import { NutritionistSidebar } from "@/components/layout/nutritionist-sidebar";
 import { MobileLayout, DefaultMobileDrawer } from "@/components/layout/mobile-layout";
 import { MobileCard, MobileCardHeader, MobileCardTitle, MobileCardContent } from "@/components/mobile/card";
 import { Input } from "@/components/ui/input";
@@ -323,6 +324,8 @@ export default function PatientsPage() {
       `}</style>
 
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-100 relative overflow-hidden">
+        <NutritionistSidebar />
+        
         {/* Enhanced Background decorative elements */}
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute -top-40 -right-40 w-96 h-96 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob"></div>
@@ -330,8 +333,9 @@ export default function PatientsPage() {
           <div className="absolute top-40 left-40 w-80 h-80 bg-gradient-to-br from-indigo-400 to-blue-500 rounded-full mix-blend-multiply filter blur-xl opacity-15 animate-blob animation-delay-4000"></div>
         </div>
 
-        <Header title="Meus Pacientes" />
-        <main className="max-w-7xl mx-auto p-4 lg:p-6 relative z-10">
+        <div className="pl-14">
+          <Header title="Meus Pacientes" />
+          <main className="max-w-7xl mx-auto p-4 lg:p-6 relative z-10">
           {/* Enhanced Header Section */}
           <div className="mb-8">
             <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-8 text-white shadow-xl">
@@ -517,6 +521,7 @@ export default function PatientsPage() {
           </CardContent>
         </Card>
         </main>
+        </div>
       </div>
     </>
   );
