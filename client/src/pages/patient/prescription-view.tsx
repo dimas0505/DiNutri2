@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { Printer, ArrowLeft, Utensils, Info, Clock, AlertTriangle } from "lucide-react";
+import { Download, ArrowLeft, Utensils, Info, Clock, AlertTriangle } from "lucide-react";
 import { format, isAfter, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import Header from "@/components/layout/header";
@@ -23,6 +23,8 @@ import { HeaderDNutri } from "@/components/ui/header-dinutri";
 import { MealCard } from "@/components/ui/meal-card";
 import { DNutriBottomNav } from "@/components/ui/dinutri-bottom-nav";
 import { ProfileModal } from "@/components/ui/profile-modal";
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 export default function PatientPrescriptionView() {
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -149,9 +151,30 @@ export default function PatientPrescriptionView() {
     }
   };
   
-  const handlePrint = () => {
+  const handleDownload = () => {
     if (selectedPrescription) {
-      setLocation(`/prescriptions/${selectedPrescription.id}/print`);
+      const printWindow = window.open(`/prescriptions/${selectedPrescription.id}/print`, '_blank');
+
+      if (printWindow) {
+        printWindow.onload = () => {
+          setTimeout(() => { // Ensures all content is rendered
+            html2canvas(printWindow.document.body, {
+              scale: 2, // Increases resolution for better quality
+              useCORS: true
+            }).then(canvas => {
+              const imgData = canvas.toDataURL('image/png');
+              const pdf = new jsPDF('p', 'mm', 'a4');
+              const pdfWidth = pdf.internal.pageSize.getWidth();
+              const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+              pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+              pdf.save(`prescricao-${selectedPrescription.title.replace(/\s+/g, '-').toLowerCase()}.pdf`);
+
+              printWindow.close(); // Closes the window after download
+            });
+          }, 1000); // Adjust timeout if necessary
+        };
+      }
     }
   };
 
@@ -345,13 +368,13 @@ export default function PatientPrescriptionView() {
         title="Minha Prescrição"
         rightElement={
           <Button
-            onClick={handlePrint}
+            onClick={handleDownload}
             className="flex items-center space-x-2"
             disabled={!selectedPrescription}
-            data-testid="button-print-prescription"
+            data-testid="button-download-prescription"
           >
-            <Printer className="h-4 w-4" />
-            <span>Imprimir</span>
+            <Download className="h-4 w-4" />
+            <span>Download</span>
           </Button>
         }
       />
