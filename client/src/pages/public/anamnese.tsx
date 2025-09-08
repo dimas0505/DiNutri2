@@ -12,11 +12,26 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { apiRequest } from "@/lib/queryClient";
 import { insertPatientSchema, anamnesisSchema } from "@shared/schema";
 import { DiNutriLogo } from "@/components/ui/dinutri-logo";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
+
+// Date formatting function for dd/mm/yyyy mask
+const formatDate = (value: string) => {
+  // Remove tudo que não for dígito
+  const onlyNums = value.replace(/[^\d]/g, "");
+
+  if (onlyNums.length <= 2) {
+    return onlyNums;
+  }
+  if (onlyNums.length <= 4) {
+    return `${onlyNums.slice(0, 2)}/${onlyNums.slice(2)}`;
+  }
+  return `${onlyNums.slice(0, 2)}/${onlyNums.slice(2, 4)}/${onlyNums.slice(4, 8)}`;
+};
 
 // Schema for the anamnese form with all mandatory fields
 const formSchema = anamnesisSchema;
@@ -24,6 +39,7 @@ const formSchema = anamnesisSchema;
 type FormData = z.infer<typeof formSchema>;
 
 export default function AnamnesePage() {
+  const isMobile = useIsMobile();
   const [location, setLocation] = useLocation();
   const { toast } = useToast();
   
@@ -340,9 +356,19 @@ export default function AnamnesePage() {
                       name="birthDate"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Data de Nascimento</FormLabel>
+                          <FormLabel>Data de Nascimento *</FormLabel>
                           <FormControl>
-                            <Input type="date" {...field} value={field.value || ""} />
+                            <Input
+                              type="text"
+                              placeholder="dd/mm/aaaa"
+                              maxLength={10}
+                              {...field}
+                              onChange={(e) => {
+                                const formattedDate = formatDate(e.target.value);
+                                field.onChange(formattedDate);
+                              }}
+                              value={field.value || ""}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -353,17 +379,34 @@ export default function AnamnesePage() {
                       name="sex"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Sexo</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value || ""}>
+                          <FormLabel>Sexo *</FormLabel>
+                          {isMobile ? (
+                            // Renderização para MOBILE
                             <FormControl>
-                              <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
+                              <select
+                                {...field}
+                                className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                value={field.value || ""}
+                              >
+                                <option value="" disabled>Selecionar</option>
+                                <option value="F">Feminino</option>
+                                <option value="M">Masculino</option>
+                                <option value="Outro">Outro</option>
+                              </select>
                             </FormControl>
-                            <SelectContent>
-                              <SelectItem value="F">Feminino</SelectItem>
-                              <SelectItem value="M">Masculino</SelectItem>
-                              <SelectItem value="Outro">Outro</SelectItem>
-                            </SelectContent>
-                          </Select>
+                          ) : (
+                            // Renderização para DESKTOP (código original)
+                            <Select onValueChange={field.onChange} value={field.value || ""}>
+                              <FormControl>
+                                <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="F">Feminino</SelectItem>
+                                <SelectItem value="M">Masculino</SelectItem>
+                                <SelectItem value="Outro">Outro</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          )}
                           <FormMessage />
                         </FormItem>
                       )}
