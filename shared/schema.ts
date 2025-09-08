@@ -330,7 +330,9 @@ export const anamnesisSchema = insertPatientSchema.omit({ ownerId: true, userId:
     .regex(/^\d+(\.\d{1,2})?$/, "Peso inválido. Use formato: 65.50"),
 
   // Goals and habits fields - some mandatory, some optional
-  goal: z.enum(["lose_weight", "maintain_weight", "gain_weight"]).optional(),
+  goal: z.enum(["lose_weight", "maintain_weight", "gain_weight"], {
+    errorMap: () => ({ message: "Selecione um objetivo" })
+  }),
   activityLevel: z.enum(["1", "2", "3", "4", "5"], {
     errorMap: () => ({ message: "Selecione o nível de atividade física" })
   }),
