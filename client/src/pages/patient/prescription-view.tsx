@@ -151,30 +151,177 @@ export default function PatientPrescriptionView() {
     }
   };
   
-  const handleDownload = () => {
-    if (selectedPrescription) {
-      const printWindow = window.open(`/prescriptions/${selectedPrescription.id}/print`, '_blank');
+  const handleDownload = async () => {
+    if (!selectedPrescription || !currentPatient) {
+      toast({
+        title: "Erro",
+        description: "Dados da prescrição não encontrados.",
+        variant: "destructive",
+      });
+      return;
+    }
 
-      if (printWindow) {
-        printWindow.onload = () => {
-          setTimeout(() => { // Ensures all content is rendered
-            html2canvas(printWindow.document.body, {
-              scale: 2, // Increases resolution for better quality
-              useCORS: true
-            }).then(canvas => {
-              const imgData = canvas.toDataURL('image/png');
-              const pdf = new jsPDF('p', 'mm', 'a4');
-              const pdfWidth = pdf.internal.pageSize.getWidth();
-              const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+    try {
+      // Create a temporary container for the print content
+      const printContainer = document.createElement('div');
+      printContainer.style.position = 'absolute';
+      printContainer.style.left = '-9999px';
+      printContainer.style.top = '0';
+      printContainer.style.width = '794px'; // A4 width in pixels at 96 DPI
+      printContainer.style.background = 'white';
+      printContainer.style.padding = '40px';
+      printContainer.style.fontFamily = 'system-ui, -apple-system, sans-serif';
+      
+      // Mock nutritionist data
+      const nutritionist = {
+        name: "Dr. Ana Silva",
+        crn: "12345",
+      };
 
-              pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-              pdf.save(`prescricao-${selectedPrescription.title.replace(/\s+/g, '-').toLowerCase()}.pdf`);
+      // Helper functions
+      const formatDate = (dateString: string) => {
+        return new Date(dateString).toLocaleDateString('pt-BR', {
+          year: 'numeric',
+          month: 'long', 
+          day: 'numeric',
+        });
+      };
 
-              printWindow.close(); // Closes the window after download
-            });
-          }, 1000); // Adjust timeout if necessary
-        };
-      }
+      const calculateAge = (birthDate: string) => {
+        if (!birthDate) return null;
+        const birth = new Date(birthDate);
+        const today = new Date();
+        const age = today.getFullYear() - birth.getFullYear();
+        const monthDiff = today.getMonth() - birth.getMonth();
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+          return age - 1;
+        }
+        return age;
+      };
+
+      // Generate the print content HTML
+      printContainer.innerHTML = `
+        <div style="background: white; color: #111827;">
+          <!-- Document Header -->
+          <div style="text-align: center; margin-bottom: 32px; border-bottom: 2px solid #e5e7eb; padding-bottom: 24px;">
+            <h1 style="font-size: 28px; font-weight: bold; color: #374151; margin-bottom: 8px; margin-top: 0;">PRESCRIÇÃO NUTRICIONAL</h1>
+            <div style="font-size: 18px; color: #6b7280;">
+              <div>${nutritionist.name}</div>
+              <div style="font-size: 14px;">CRN: ${nutritionist.crn} • Nutricionista</div>
+            </div>
+          </div>
+
+          <!-- Patient Info -->
+          <div style="margin-bottom: 32px; background: #f9fafb; padding: 24px; border-radius: 8px;">
+            <h2 style="font-size: 20px; font-weight: 600; margin-bottom: 16px; margin-top: 0;">Dados do Paciente</h2>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; font-size: 14px;">
+              <div><strong>Nome:</strong> ${currentPatient.name}</div>
+              <div><strong>Email:</strong> ${currentPatient.email}</div>
+              ${currentPatient.birthDate ? `<div><strong>Idade:</strong> ${calculateAge(currentPatient.birthDate)} anos</div>` : ''}
+              ${currentPatient.sex ? `<div><strong>Sexo:</strong> ${currentPatient.sex === 'F' ? 'Feminino' : currentPatient.sex === 'M' ? 'Masculino' : 'Outro'}</div>` : ''}
+              ${currentPatient.heightCm ? `<div><strong>Altura:</strong> ${currentPatient.heightCm} cm</div>` : ''}
+              ${currentPatient.weightKg ? `<div><strong>Peso:</strong> ${currentPatient.weightKg} kg</div>` : ''}
+            </div>
+          </div>
+
+          <!-- Prescription Title -->
+          <div style="margin-bottom: 32px; text-align: center;">
+            <h2 style="font-size: 24px; font-weight: bold; color: #374151; margin-top: 0; margin-bottom: 8px;">
+              ${selectedPrescription.title}
+            </h2>
+            <p style="color: #6b7280; margin-top: 8px; margin-bottom: 0;">
+              Publicado em ${selectedPrescription.publishedAt ? formatDate(selectedPrescription.publishedAt.toString()) : ''}
+            </p>
+          </div>
+
+          <!-- Meals -->
+          <div style="margin-bottom: 32px;">
+            ${selectedPrescription.meals.map(meal => `
+              <div style="margin-bottom: 32px; page-break-inside: avoid;">
+                <div style="background: #dbeafe; padding: 16px; border-radius: 8px 8px 0 0; border-left: 4px solid #3b82f6;">
+                  <h3 style="font-size: 20px; font-weight: 600; color: #374151; margin: 0;">
+                    ${meal.name}
+                  </h3>
+                </div>
+                <div style="border: 1px solid #e5e7eb; border-top: 0; border-radius: 0 0 8px 8px; padding: 16px;">
+                  <ul style="list-style: none; padding: 0; margin: 0;">
+                    ${meal.items.map(item => `
+                      <li style="display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #f3f4f6;">
+                        <span style="font-weight: 500;">${item.description}</span>
+                        <span style="color: #6b7280;">${item.amount}</span>
+                      </li>
+                    `).join('')}
+                  </ul>
+                  ${meal.notes ? `
+                    <div style="margin-top: 16px; padding: 12px; background: #fefce8; border-radius: 6px; border-left: 4px solid #facc15;">
+                      <p style="font-size: 14px; color: #374151; margin: 0;">
+                        <strong>Observação:</strong> ${meal.notes}
+                      </p>
+                    </div>
+                  ` : ''}
+                </div>
+              </div>
+            `).join('')}
+          </div>
+
+          ${selectedPrescription.generalNotes ? `
+            <!-- General Notes -->
+            <div style="margin-top: 32px; padding: 24px; background: #f9fafb; border-radius: 8px; border: 1px solid #e5e7eb;">
+              <h3 style="font-size: 18px; font-weight: 600; margin-bottom: 12px; margin-top: 0;">Observações Gerais</h3>
+              <p style="color: #374151; margin: 0;">
+                ${selectedPrescription.generalNotes}
+              </p>
+            </div>
+          ` : ''}
+
+          <!-- Footer -->
+          <div style="margin-top: 48px; padding-top: 24px; border-top: 2px solid #e5e7eb; text-align: center; font-size: 14px; color: #6b7280;">
+            <p style="margin: 0 0 8px 0;">Esta prescrição foi elaborada especificamente para ${currentPatient.name}.</p>
+            <p style="margin: 0 0 16px 0;">Em caso de dúvidas, entre em contato com seu nutricionista.</p>
+            <p style="margin: 0; font-weight: 600;">${nutritionist.name} - CRN: ${nutritionist.crn}</p>
+          </div>
+        </div>
+      `;
+
+      // Append to body temporarily
+      document.body.appendChild(printContainer);
+
+      // Wait a bit for rendering
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Capture with html2canvas
+      const canvas = await html2canvas(printContainer, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff'
+      });
+
+      // Remove the temporary container
+      document.body.removeChild(printContainer);
+
+      // Generate PDF
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`prescricao-${selectedPrescription.title.replace(/\s+/g, '-').toLowerCase()}.pdf`);
+
+      toast({
+        title: "Sucesso",
+        description: "PDF baixado com sucesso!",
+        variant: "default",
+      });
+
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao gerar PDF. Tente novamente.",
+        variant: "destructive",
+      });
     }
   };
 
