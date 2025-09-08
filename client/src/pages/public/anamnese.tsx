@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { useIsMobile } from "@/hooks/use-mobile";
+
 import { apiRequest } from "@/lib/queryClient";
 import { insertPatientSchema, anamnesisSchema } from "@shared/schema";
 import { DiNutriLogo } from "@/components/ui/dinutri-logo";
@@ -39,7 +39,6 @@ const formSchema = anamnesisSchema;
 type FormData = z.infer<typeof formSchema>;
 
 export default function AnamnesePage() {
-  const isMobile = useIsMobile();
   const [location, setLocation] = useLocation();
   const { toast } = useToast();
   
@@ -380,33 +379,21 @@ export default function AnamnesePage() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Sexo *</FormLabel>
-                          {isMobile ? (
-                            // Renderização para MOBILE
+                          {/* Removemos a condicional "isMobile" e usamos o componente Select 
+                            para garantir consistência em todos os dispositivos.
+                          */}
+                          <Select onValueChange={field.onChange} value={field.value || ""}>
                             <FormControl>
-                              <select
-                                {...field}
-                                className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                                value={field.value || ""}
-                              >
-                                <option value="" disabled>Selecionar</option>
-                                <option value="F">Feminino</option>
-                                <option value="M">Masculino</option>
-                                <option value="Outro">Outro</option>
-                              </select>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Selecionar" />
+                              </SelectTrigger>
                             </FormControl>
-                          ) : (
-                            // Renderização para DESKTOP (código original)
-                            <Select onValueChange={field.onChange} value={field.value || ""}>
-                              <FormControl>
-                                <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="F">Feminino</SelectItem>
-                                <SelectItem value="M">Masculino</SelectItem>
-                                <SelectItem value="Outro">Outro</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          )}
+                            <SelectContent>
+                              <SelectItem value="F">Feminino</SelectItem>
+                              <SelectItem value="M">Masculino</SelectItem>
+                              <SelectItem value="Outro">Outro</SelectItem>
+                            </SelectContent>
+                          </Select>
                           <FormMessage />
                         </FormItem>
                       )}
