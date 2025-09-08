@@ -11,7 +11,7 @@ interface DNutriBottomNavProps {
 export function DNutriBottomNav({ className, onItemClick, activeItem = "home" }: DNutriBottomNavProps) {
   const navItems = [
     { id: "home", icon: Home, label: "Início" },
-    { id: "prescription", icon: FileText, label: "Prescrição" },
+    { id: "prescriptions", icon: FileText, label: "Prescrições" },
     { id: "profile", icon: User, label: "Perfil" },
   ];
 

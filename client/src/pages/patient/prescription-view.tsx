@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { Printer, ArrowLeft, Utensils, Info, Clock, AlertTriangle } from "lucide-react";
+import { Download, ArrowLeft, Utensils, Info, Clock, AlertTriangle } from "lucide-react";
 import { format, isAfter, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import Header from "@/components/layout/header";
@@ -23,6 +23,7 @@ import { HeaderDNutri } from "@/components/ui/header-dinutri";
 import { MealCard } from "@/components/ui/meal-card";
 import { DNutriBottomNav } from "@/components/ui/dinutri-bottom-nav";
 import { ProfileModal } from "@/components/ui/profile-modal";
+import { generatePrescriptionPDF } from "@/utils/pdf-generator";
 
 export default function PatientPrescriptionView() {
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -149,10 +150,35 @@ export default function PatientPrescriptionView() {
     }
   };
   
-  const handlePrint = () => {
-    if (selectedPrescription) {
-      setLocation(`/prescriptions/${selectedPrescription.id}/print`);
+  const handleDownload = async () => {
+    if (!selectedPrescription || !currentPatient) {
+      toast({
+        title: "Erro",
+        description: "Dados da prescrição não encontrados.",
+        variant: "destructive",
+      });
+      return;
     }
+
+    await generatePrescriptionPDF({
+      prescription: selectedPrescription,
+      patient: currentPatient,
+      onSuccess: () => {
+        toast({
+          title: "Sucesso",
+          description: "PDF baixado com sucesso!",
+          variant: "default",
+        });
+      },
+      onError: (error) => {
+        console.error('Error generating PDF:', error);
+        toast({
+          title: "Erro",
+          description: "Erro ao gerar PDF. Tente novamente.",
+          variant: "destructive",
+        });
+      }
+    });
   };
 
   // Ao clicar na refeição, abrir diretamente na tela cheia
@@ -304,10 +330,10 @@ export default function PatientPrescriptionView() {
 
         {/* Bottom navigation customizada */}
         <DNutriBottomNav 
-          activeItem="prescription" 
+          activeItem="prescriptions" 
           onItemClick={(item) => {
             if (item === "home") setLocation("/");
-            else if (item === "prescription") setLocation("/patient/prescription");
+            else if (item === "prescriptions") setLocation("/patient/prescriptions");
             else if (item === "profile") {
               // Open profile modal instead of logout confirmation
               setIsProfileModalOpen(true);
@@ -345,13 +371,13 @@ export default function PatientPrescriptionView() {
         title="Minha Prescrição"
         rightElement={
           <Button
-            onClick={handlePrint}
+            onClick={handleDownload}
             className="flex items-center space-x-2"
             disabled={!selectedPrescription}
-            data-testid="button-print-prescription"
+            data-testid="button-download-prescription"
           >
-            <Printer className="h-4 w-4" />
-            <span>Imprimir</span>
+            <Download className="h-4 w-4" />
+            <span>Download</span>
           </Button>
         }
       />

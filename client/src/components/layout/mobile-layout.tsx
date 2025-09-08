@@ -54,18 +54,18 @@ export function MobileLayout({
     } else if (isPatient) {
       return [
         {
-          id: 'home',
+          id: 'prescription',
           label: 'Início',
           icon: Home,
-          href: '/',
-          active: location === '/',
+          href: '/patient/prescription',
+          active: location.startsWith('/patient/prescription') && !location.startsWith('/patient/prescriptions'),
         },
         {
-          id: 'prescription',
-          label: 'Prescrição',
+          id: 'prescriptions',
+          label: 'Prescrições',
           icon: FileText,
-          href: '/patient/prescription',
-          active: location.startsWith('/patient/prescription'),
+          href: '/patient/prescriptions',
+          active: location.startsWith('/patient/prescriptions'),
         },
         {
           id: 'profile',
@@ -141,7 +141,8 @@ export function DefaultMobileDrawer({ onProfileClick }: DefaultMobileDrawerProps
       { label: 'Nova Prescrição', href: '/patients/new', icon: FileText, action: 'navigate' },
     ] : []),
     ...(isPatient ? [
-      { label: 'Minha Prescrição', href: '/patient/prescription', icon: FileText, action: 'navigate' },
+      { label: 'Início', href: '/patient/prescription', icon: Home, action: 'navigate' },
+      { label: 'Prescrições', href: '/patient/prescriptions', icon: FileText, action: 'navigate' },
       { label: 'Perfil', href: '', icon: User, action: 'profile' },
     ] : []),
   ];
