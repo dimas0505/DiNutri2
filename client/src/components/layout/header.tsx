@@ -30,12 +30,16 @@ export default function Header({
   drawerContent,
   className
 }: HeaderProps) {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const isMobile = useIsMobile();
 
-  const handleLogout = () => {
-    // Redireciona diretamente para a rota de logout que fará o redirecionamento
-    window.location.href = "/api/logout";
+  const handleLogout = async () => {
+    console.debug('[logout] click');
+    try {
+      await logout();
+    } catch (error) {
+      console.error('Erro durante o logout:', error);
+    }
   };
 
   const handleBack = () => {
@@ -120,7 +124,7 @@ export default function Header({
               <DropdownMenuItem 
                 onClick={handleLogout}
                 className="text-red-600 focus:text-red-600 focus:bg-red-50"
-                data-testid="button-logout"
+                data-testid="logout-button"
               >
                 <LogOut className="h-4 w-4 mr-2" />
                 Sair

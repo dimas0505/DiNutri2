@@ -1,9 +1,9 @@
 import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { VariantProps, cva } from "class-variance-authority"
-import { LogOut, Home, Settings, Package2, Users2, Calendar, FileText } from "lucide-react"
+import { LogOut, Home, Settings, Package2, Users2, Calendar, FileText, PanelLeft } from "lucide-react"
 import { Link, useLocation } from "wouter"
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"
 import { useAuth } from "@/hooks/useAuth"
 
 import { useIsMobile } from "@/hooks/use-mobile"
@@ -19,12 +19,6 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet"
 import { Skeleton } from "@/components/ui/skeleton"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state"
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
@@ -751,9 +745,13 @@ export function DesktopNavigationSidebar() {
   const [location] = useLocation();
   const { logout } = useAuth();
 
-  const handleLogout = () => {
-    // Redireciona diretamente para a rota de logout que fará o redirecionamento
-    window.location.href = "/api/logout";
+  const handleLogout = async () => {
+    console.debug('[logout] click');
+    try {
+      await logout();
+    } catch (error) {
+      console.error('Erro durante o logout:', error);
+    }
   };
 
   return (
@@ -794,6 +792,7 @@ export function DesktopNavigationSidebar() {
           <button
             onClick={handleLogout}
             className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-red-600 transition-all hover:text-red-700 hover:bg-red-50"
+            data-testid="logout-button"
           >
             <LogOut className="h-4 w-4" />
             Sair
@@ -829,5 +828,4 @@ export {
   SidebarSeparator,
   SidebarTrigger,
   useSidebar,
-  DesktopNavigationSidebar,
 }
