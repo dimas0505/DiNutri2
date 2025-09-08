@@ -1,4 +1,4 @@
-import { LogOut, ArrowLeft } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -31,11 +31,6 @@ export default function Header({
 }: HeaderProps) {
   const { user } = useAuth();
   const isMobile = useIsMobile();
-
-  const handleLogout = () => {
-    // Redireciona diretamente para a rota de logout que fará o redirecionamento
-    window.location.href = "/api/logout";
-  };
 
   const handleBack = () => {
     if (onBack) {
@@ -105,15 +100,6 @@ export default function Header({
           <span className="text-sm text-muted-foreground" data-testid="text-user-name">
             {(user as any)?.firstName || (user as any)?.email}
           </span>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleLogout}
-            title="Sair"
-            data-testid="button-logout"
-          >
-            <LogOut className="h-4 w-4" />
-          </Button>
         </div>
       </div>
     </header>
