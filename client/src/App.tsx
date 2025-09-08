@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
 import InstallPWA from "@/components/InstallPWA";
+import IosInstallToast from "@/components/IosInstallToast";
 import { UpdateNotifier } from "@/components/update-notifier";
 import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
@@ -100,6 +101,7 @@ function App() {
         <Toaster />
         <Router />
         <InstallPWA />
+        <IosInstallToast />
       </TooltipProvider>
     </QueryClientProvider>
   );
