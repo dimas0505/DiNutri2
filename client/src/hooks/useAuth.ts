@@ -14,6 +14,12 @@ const { data: user, isLoading, error } = useQuery<AuthenticatedUser | null>({
 queryKey: ["/api/auth/user"],
 retry: false,
 });
+
+const logout = () => {
+  // Redireciona diretamente para a rota de logout que fará o redirecionamento
+  window.location.href = "/api/logout";
+};
+
 return {
 user,
 isLoading,
@@ -22,5 +28,6 @@ isAuthenticated: !!user,
 isAdmin: user?.role === 'admin', // <-- ADICIONADO
 isNutritionist: user?.role === 'nutritionist',
 isPatient: user?.role === 'patient',
+logout, // <-- ADICIONADO
 };
 }
