@@ -168,9 +168,12 @@ export default function PatientPrescriptionView() {
       printContainer.style.left = '-9999px';
       printContainer.style.top = '0';
       printContainer.style.width = '794px'; // A4 width in pixels at 96 DPI
+      printContainer.style.minHeight = 'auto';
+      printContainer.style.height = 'auto';
       printContainer.style.background = 'white';
       printContainer.style.padding = '40px';
       printContainer.style.fontFamily = 'system-ui, -apple-system, sans-serif';
+      printContainer.style.overflow = 'visible';
       
       // Mock nutritionist data
       const nutritionist = {
@@ -201,7 +204,7 @@ export default function PatientPrescriptionView() {
 
       // Generate the print content HTML
       printContainer.innerHTML = `
-        <div style="background: white; color: #111827;">
+        <div style="background: white; color: #111827; min-height: auto; height: auto;">
           <!-- Document Header -->
           <div style="text-align: center; margin-bottom: 32px; border-bottom: 2px solid #e5e7eb; padding-bottom: 24px;">
             <h1 style="font-size: 28px; font-weight: bold; color: #374151; margin-bottom: 8px; margin-top: 0;">PRESCRIÇÃO NUTRICIONAL</h1>
@@ -237,7 +240,7 @@ export default function PatientPrescriptionView() {
           <!-- Meals -->
           <div style="margin-bottom: 32px;">
             ${selectedPrescription.meals.map(meal => `
-              <div style="margin-bottom: 32px; page-break-inside: avoid;">
+              <div style="margin-bottom: 32px;">
                 <div style="background: #dbeafe; padding: 16px; border-radius: 8px 8px 0 0; border-left: 4px solid #3b82f6;">
                   <h3 style="font-size: 20px; font-weight: 600; color: #374151; margin: 0;">
                     ${meal.name}
@@ -302,27 +305,74 @@ export default function PatientPrescriptionView() {
       // Append to body temporarily
       document.body.appendChild(printContainer);
 
-      // Wait a bit for rendering
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // Wait for rendering and ensure all content is loaded
+      await new Promise(resolve => setTimeout(resolve, 500));
 
-      // Capture with html2canvas
+      // Get the actual content height
+      const contentHeight = printContainer.scrollHeight;
+      
+      // Capture with html2canvas with better options for full content
       const canvas = await html2canvas(printContainer, {
-        scale: 2,
+        scale: 1.5,
         useCORS: true,
         allowTaint: true,
-        backgroundColor: '#ffffff'
+        backgroundColor: '#ffffff',
+        height: contentHeight,
+        windowWidth: 794,
+        windowHeight: contentHeight,
+        scrollX: 0,
+        scrollY: 0
       });
 
       // Remove the temporary container
       document.body.removeChild(printContainer);
 
-      // Generate PDF
-      const imgData = canvas.toDataURL('image/png');
+      // Generate PDF with proper pagination
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      
+      // Calculate how many pages we need
+      const canvasWidth = canvas.width;
+      const canvasHeight = canvas.height;
+      const ratio = canvasWidth / pdfWidth;
+      const totalPdfHeight = canvasHeight / ratio;
+      
+      let yPosition = 0;
+      let pageNumber = 1;
+      
+      while (yPosition < totalPdfHeight) {
+        if (pageNumber > 1) {
+          pdf.addPage();
+        }
+        
+        // Calculate the slice of the canvas for this page
+        const sourceY = yPosition * ratio;
+        const sourceHeight = Math.min(pdfHeight * ratio, canvasHeight - sourceY);
+        
+        // Create a temporary canvas for this page
+        const pageCanvas = document.createElement('canvas');
+        const pageCtx = pageCanvas.getContext('2d');
+        pageCanvas.width = canvasWidth;
+        pageCanvas.height = sourceHeight;
+        
+        if (pageCtx) {
+          pageCtx.drawImage(
+            canvas,
+            0, sourceY, canvasWidth, sourceHeight,
+            0, 0, canvasWidth, sourceHeight
+          );
+          
+          const pageImgData = pageCanvas.toDataURL('image/png');
+          const actualPageHeight = sourceHeight / ratio;
+          
+          pdf.addImage(pageImgData, 'PNG', 0, 0, pdfWidth, actualPageHeight);
+        }
+        
+        yPosition += pdfHeight;
+        pageNumber++;
+      }
 
-      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
       pdf.save(`prescricao-${selectedPrescription.title.replace(/\s+/g, '-').toLowerCase()}.pdf`);
 
       toast({
