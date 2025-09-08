@@ -25,6 +25,7 @@ import AdminDashboard from "@/pages/admin/dashboard";
 import CreateUserPage from "@/pages/admin/create-user";
 import AdminProfilePage from "@/pages/admin/profile";
 import EditUserPage from "@/pages/admin/edit-user";
+import { PatientLayout } from "@/components/layout/patient-layout";
 
 function Router() {
   const { isAuthenticated, isLoading, isAdmin, isNutritionist, isPatient } = useAuth();
@@ -75,11 +76,11 @@ function Router() {
 
       {/* Rotas de Paciente (já registrado) */}
       {isAuthenticated && isPatient && (
-        <>
+        <PatientLayout>
           <Route path="/patient/prescriptions" component={PatientPrescriptionsList} />
           <Route path="/patient/prescription" component={PatientPrescriptionView} />
           <Route path="/prescriptions/:id/print" component={PrescriptionPrintPage} />
-        </>
+        </PatientLayout>
       )}
 
       {/* Redirecionamento se logado mas tentando acessar rota inválida */}
