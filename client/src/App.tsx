@@ -15,6 +15,7 @@ import PatientDetailsPage from "@/pages/nutritionist/patient-details";
 import EditPatientPage from "@/pages/nutritionist/edit-patient";
 import PrescriptionEditorPage from "@/pages/nutritionist/prescription-editor";
 import PatientPrescriptionView from "@/pages/patient/prescription-view";
+import PatientPrescriptionsList from "@/pages/patient/prescriptions-list";
 import PrescriptionPrintPage from "@/pages/patient/prescription-print";
 import PatientRegisterPage from "@/pages/patient/patient-register";
 import AnamnesePage from "@/pages/public/anamnese";
@@ -74,6 +75,7 @@ function Router() {
       {/* Rotas de Paciente (já registrado) */}
       {isAuthenticated && isPatient && (
         <>
+          <Route path="/patient/prescriptions" component={PatientPrescriptionsList} />
           <Route path="/patient/prescription" component={PatientPrescriptionView} />
           <Route path="/prescriptions/:id/print" component={PrescriptionPrintPage} />
         </>

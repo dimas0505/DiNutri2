@@ -61,11 +61,18 @@ export function MobileLayout({
           active: location === '/',
         },
         {
+          id: 'prescriptions',
+          label: 'Prescrições',
+          icon: FileText,
+          href: '/patient/prescriptions',
+          active: location.startsWith('/patient/prescriptions'),
+        },
+        {
           id: 'prescription',
-          label: 'Prescrição',
+          label: 'Prescrição Atual',
           icon: FileText,
           href: '/patient/prescription',
-          active: location.startsWith('/patient/prescription'),
+          active: location.startsWith('/patient/prescription') && !location.startsWith('/patient/prescriptions'),
         },
         {
           id: 'profile',
@@ -141,6 +148,7 @@ export function DefaultMobileDrawer({ onProfileClick }: DefaultMobileDrawerProps
       { label: 'Nova Prescrição', href: '/patients/new', icon: FileText, action: 'navigate' },
     ] : []),
     ...(isPatient ? [
+      { label: 'Prescrições', href: '/patient/prescriptions', icon: FileText, action: 'navigate' },
       { label: 'Minha Prescrição', href: '/patient/prescription', icon: FileText, action: 'navigate' },
       { label: 'Perfil', href: '', icon: User, action: 'profile' },
     ] : []),
