@@ -307,12 +307,95 @@ export const insertFoodDiaryEntrySchema = createInsertSchema(foodDiaryEntries).o
 
 export const updatePatientSchema = insertPatientSchema.partial();
 
+// Enhanced anamnesis schema with mandatory fields for patient registration
+export const anamnesisSchema = insertPatientSchema.omit({ ownerId: true, userId: true }).extend({
+  // Password fields for account creation
+  password: z.string().min(6, "A senha deve ter no mínimo 6 caracteres."),
+  confirmPassword: z.string(),
+  
+  // Patient data fields - now mandatory
+  name: z.string().min(1, "Nome é obrigatório"),
+  email: z.string().email("Email inválido").min(1, "Email é obrigatório"),
+  birthDate: z.string().min(1, "Data de nascimento é obrigatória"),
+  sex: z.enum(["M", "F", "Outro"], { 
+    errorMap: () => ({ message: "Selecione o sexo" })
+  }),
+  heightCm: z.preprocess(
+    (val) => (val === "" || val === undefined ? undefined : val),
+    z.coerce.number().min(50, "Altura deve ser no mínimo 50cm").max(250, "Altura deve ser no máximo 250cm")
+      .refine(val => val !== undefined, "Altura é obrigatória")
+  ),
+  weightKg: z.string()
+    .min(1, "Peso é obrigatório")
+    .regex(/^\d+(\.\d{1,2})?$/, "Peso inválido. Use formato: 65.50"),
+
+  // Goals and habits fields - now mandatory
+  goal: z.enum(["lose_weight", "maintain_weight", "gain_weight"], {
+    errorMap: () => ({ message: "Selecione um objetivo" })
+  }),
+  activityLevel: z.enum(["1", "2", "3", "4", "5"], {
+    errorMap: () => ({ message: "Selecione o nível de atividade física" })
+  }),
+  biotype: z.enum(["gain_weight_easily", "hard_to_gain", "gain_muscle_easily"], {
+    errorMap: () => ({ message: "Selecione o biotipo" })
+  }),
+  mealsPerDayCurrent: z.preprocess(
+    (val) => (val === "" || val === undefined ? undefined : val),
+    z.coerce.number().min(1, "Deve ser no mínimo 1 refeição").max(10, "Deve ser no máximo 10 refeições")
+      .refine(val => val !== undefined, "Número de refeições atuais é obrigatório")
+  ),
+  mealsPerDayWilling: z.preprocess(
+    (val) => (val === "" || val === undefined ? undefined : val),
+    z.coerce.number().min(1, "Deve ser no mínimo 1 refeição").max(10, "Deve ser no máximo 10 refeições")
+      .refine(val => val !== undefined, "Número de refeições dispostas é obrigatório")
+  ),
+  alcoholConsumption: z.enum(["yes", "no", "moderate"], {
+    errorMap: () => ({ message: "Selecione o consumo de álcool" })
+  }),
+  
+  // Boolean fields - ensure they are explicitly set
+  canEatMorningSolids: z.boolean({
+    errorMap: () => ({ message: "Marque se consegue comer sólidos pela manhã" })
+  }),
+  hasIntolerance: z.boolean({
+    errorMap: () => ({ message: "Marque se possui intolerâncias alimentares" })
+  }),
+
+  // Preferences fields - mandatory as arrays (can be empty but must be defined)
+  likedHealthyFoods: z.array(z.string()).min(1, "Informe pelo menos um alimento saudável que gosta"),
+  dislikedFoods: z.array(z.string()).min(1, "Informe pelo menos um alimento que não gosta"),
+  
+  // Conditional intolerance field
+  intolerances: z.array(z.string()).default([]),
+  
+  // Health information fields - now mandatory
+  diseases: z.string().min(1, "Informe suas condições de saúde ou digite 'Nenhuma'"),
+  medications: z.string().min(1, "Informe seus medicamentos atuais ou digite 'Nenhum'"),
+  supplements: z.string().min(1, "Informe seus suplementos atuais ou digite 'Nenhum'"),
+  
+  // Notes field - keep optional
+  notes: z.string().optional()
+}).refine(data => data.password === data.confirmPassword, {
+  message: "As senhas não correspondem.",
+  path: ["confirmPassword"],
+}).refine(data => {
+  // If hasIntolerance is true, intolerances array must not be empty
+  if (data.hasIntolerance && data.intolerances.length === 0) {
+    return false;
+  }
+  return true;
+}, {
+  message: "Informe suas intolerâncias alimentares",
+  path: ["intolerances"]
+});
+
 // Types
 export type UpsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertPatient = z.infer<typeof insertPatientSchema>;
 export type UpdatePatient = z.infer<typeof updatePatientSchema>;
 export type Patient = typeof patients.$inferSelect;
+export type AnamnesisFormData = z.infer<typeof anamnesisSchema>;
 export type InsertPrescription = z.infer<typeof insertPrescriptionSchema>;
 export type UpdatePrescription = z.infer<typeof updatePrescriptionSchema>;
 export type Prescription = typeof prescriptions.$inferSelect;
