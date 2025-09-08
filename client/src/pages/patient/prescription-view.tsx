@@ -244,14 +244,30 @@ export default function PatientPrescriptionView() {
                   </h3>
                 </div>
                 <div style="border: 1px solid #e5e7eb; border-top: 0; border-radius: 0 0 8px 8px; padding: 16px;">
-                  <ul style="list-style: none; padding: 0; margin: 0;">
+                  <div style="margin: 0; padding: 0;">
                     ${meal.items.map(item => `
-                      <li style="display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #f3f4f6;">
-                        <span style="font-weight: 500;">${item.description}</span>
-                        <span style="color: #6b7280;">${item.amount}</span>
-                      </li>
+                      <div style="padding: 12px 0; border-bottom: 1px solid #f3f4f6;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                          <span style="font-weight: 500; color: #374151;">${item.description}</span>
+                          <span style="color: #6b7280; font-weight: 500;">${item.amount}</span>
+                        </div>
+                        ${item.substitutes && item.substitutes.length > 0 ? `
+                          <div style="margin-left: 16px; margin-top: 8px;">
+                            <div style="font-size: 12px; color: #3b82f6; font-weight: 600; margin-bottom: 4px;">
+                              ↪ Opções de substituição:
+                            </div>
+                            <div style="margin-left: 12px;">
+                              ${item.substitutes.map(substitute => `
+                                <div style="font-size: 13px; color: #6b7280; margin-bottom: 2px;">
+                                  • ${substitute}
+                                </div>
+                              `).join('')}
+                            </div>
+                          </div>
+                        ` : ''}
+                      </div>
                     `).join('')}
-                  </ul>
+                  </div>
                   ${meal.notes ? `
                     <div style="margin-top: 16px; padding: 12px; background: #fefce8; border-radius: 6px; border-left: 4px solid #facc15;">
                       <p style="font-size: 14px; color: #374151; margin: 0;">
