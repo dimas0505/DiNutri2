@@ -1,5 +1,6 @@
-import { LogOut, ArrowLeft } from "lucide-react";
+import { LogOut, ArrowLeft, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { MobileHeader } from "@/components/mobile";
@@ -102,19 +103,30 @@ export default function Header({
         </div>
         <div className="flex items-center space-x-4">
           {rightElement}
-          <span className="text-sm text-muted-foreground" data-testid="text-user-name">
-            {(user as any)?.firstName || (user as any)?.email}
-          </span>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleLogout}
-            title="Sair"
-            data-testid="button-logout"
-            className="h-9 w-9 p-0"
-          >
-            <LogOut className="h-4 w-4" />
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button 
+                variant="ghost" 
+                className="h-9 p-2 rounded-md hover:bg-muted flex items-center space-x-2"
+                data-testid="user-dropdown-trigger"
+              >
+                <span className="text-sm text-muted-foreground" data-testid="text-user-name">
+                  {(user as any)?.firstName || (user as any)?.email}
+                </span>
+                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuItem 
+                onClick={handleLogout}
+                className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                data-testid="button-logout"
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                Sair
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
     </header>
