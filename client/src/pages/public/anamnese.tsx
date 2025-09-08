@@ -13,28 +13,13 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDes
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { insertPatientSchema } from "@shared/schema";
+import { insertPatientSchema, anamnesisSchema } from "@shared/schema";
 import { DiNutriLogo } from "@/components/ui/dinutri-logo";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 
-// Schema for the anamnese form with all fields
-const formSchema = insertPatientSchema.omit({ ownerId: true, userId: true }).extend({
-  heightCm: z.preprocess(
-    (val) => (val === "" ? undefined : val),
-    z.coerce.number().optional()
-  ),
-  weightKg: z.string().regex(/^\d+(\.\d{1,2})?$/, "Peso inválido. Ex: 65.50").optional().or(z.literal('')),
-  password: z.string().min(6, "A senha deve ter no mínimo 6 caracteres."),
-  confirmPassword: z.string(),
-  // Transform string arrays for multi-select fields
-  likedHealthyFoods: z.array(z.string()).default([]),
-  dislikedFoods: z.array(z.string()).default([]),
-  intolerances: z.array(z.string()).default([]),
-}).refine(data => data.password === data.confirmPassword, {
-  message: "As senhas não correspondem.",
-  path: ["confirmPassword"],
-});
+// Schema for the anamnese form with all mandatory fields
+const formSchema = anamnesisSchema;
 
 type FormData = z.infer<typeof formSchema>;
 
@@ -355,7 +340,7 @@ export default function AnamnesePage() {
                       name="birthDate"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Data de Nascimento</FormLabel>
+                          <FormLabel>Data de Nascimento *</FormLabel>
                           <FormControl>
                             <Input type="date" {...field} value={field.value || ""} />
                           </FormControl>
@@ -368,7 +353,7 @@ export default function AnamnesePage() {
                       name="sex"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Sexo</FormLabel>
+                          <FormLabel>Sexo *</FormLabel>
                           <Select onValueChange={field.onChange} value={field.value || ""}>
                             <FormControl>
                               <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
@@ -388,7 +373,7 @@ export default function AnamnesePage() {
                       name="heightCm"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Altura (cm)</FormLabel>
+                          <FormLabel>Altura (cm) *</FormLabel>
                           <FormControl>
                             <Input
                               type="number"
@@ -400,7 +385,7 @@ export default function AnamnesePage() {
                               ref={field.ref}
                             />
                           </FormControl>
-                          <FormDescription>Altura em centímetros (opcional)</FormDescription>
+                          <FormDescription>Altura em centímetros</FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -413,7 +398,7 @@ export default function AnamnesePage() {
                       name="weightKg"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Peso (kg)</FormLabel>
+                          <FormLabel>Peso (kg) *</FormLabel>
                           <FormControl>
                             <Input
                               placeholder="70.5"
@@ -424,7 +409,7 @@ export default function AnamnesePage() {
                               ref={field.ref}
                             />
                           </FormControl>
-                          <FormDescription>Formato: 70.5 (opcional)</FormDescription>
+                          <FormDescription>Formato: 70.5</FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -447,7 +432,7 @@ export default function AnamnesePage() {
                       name="goal"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Objetivo</FormLabel>
+                          <FormLabel>Objetivo *</FormLabel>
                           <Select onValueChange={field.onChange} value={field.value || ""}>
                             <FormControl>
                               <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
@@ -467,7 +452,7 @@ export default function AnamnesePage() {
                       name="activityLevel"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Nível de Atividade Física</FormLabel>
+                          <FormLabel>Nível de Atividade Física *</FormLabel>
                           <Select onValueChange={field.onChange} value={field.value || ""}>
                             <FormControl>
                               <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
@@ -492,7 +477,7 @@ export default function AnamnesePage() {
                       name="biotype"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Biotipo</FormLabel>
+                          <FormLabel>Biotipo *</FormLabel>
                           <Select onValueChange={field.onChange} value={field.value || ""}>
                             <FormControl>
                               <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
@@ -512,7 +497,7 @@ export default function AnamnesePage() {
                       name="mealsPerDayCurrent"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Quantas refeições faz por dia atualmente?</FormLabel>
+                          <FormLabel>Quantas refeições faz por dia atualmente? *</FormLabel>
                           <FormControl>
                             <Input
                               type="number"
@@ -538,7 +523,7 @@ export default function AnamnesePage() {
                       name="mealsPerDayWilling"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Quantas refeições estaria disposto a fazer?</FormLabel>
+                          <FormLabel>Quantas refeições estaria disposto a fazer? *</FormLabel>
                           <FormControl>
                             <Input
                               type="number"
@@ -568,7 +553,7 @@ export default function AnamnesePage() {
                             />
                           </FormControl>
                           <div className="space-y-1 leading-none">
-                            <FormLabel>Consegue comer sólidos pela manhã?</FormLabel>
+                            <FormLabel>Consegue comer sólidos pela manhã? *</FormLabel>
                           </div>
                           <FormMessage />
                         </FormItem>
@@ -581,7 +566,7 @@ export default function AnamnesePage() {
                     name="alcoholConsumption"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Consumo de Álcool</FormLabel>
+                        <FormLabel>Consumo de Álcool *</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value || ""}>
                           <FormControl>
                             <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
@@ -619,7 +604,7 @@ export default function AnamnesePage() {
                           />
                         </FormControl>
                         <div className="space-y-1 leading-none">
-                          <FormLabel>Possui alguma intolerância alimentar?</FormLabel>
+                          <FormLabel>Possui alguma intolerância alimentar? *</FormLabel>
                         </div>
                         <FormMessage />
                       </FormItem>
@@ -632,7 +617,7 @@ export default function AnamnesePage() {
                       name="intolerances"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Quais intolerâncias? (separar por vírgula)</FormLabel>
+                          <FormLabel>Quais intolerâncias? (separar por vírgula) *</FormLabel>
                           <FormControl>
                             <Input
                               placeholder="Lactose, glúten, etc."
@@ -654,7 +639,7 @@ export default function AnamnesePage() {
                     name="likedHealthyFoods"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Alimentos saudáveis que você gosta (separar por vírgula)</FormLabel>
+                        <FormLabel>Alimentos saudáveis que você gosta (separar por vírgula) *</FormLabel>
                         <FormControl>
                           <Textarea
                             placeholder="Brócolis, quinoa, salmão, abacate..."
@@ -675,7 +660,7 @@ export default function AnamnesePage() {
                     name="dislikedFoods"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Alimentos que não gosta (separar por vírgula)</FormLabel>
+                        <FormLabel>Alimentos que não gosta (separar por vírgula) *</FormLabel>
                         <FormControl>
                           <Textarea
                             placeholder="Cebola, peixe, couve-flor..."
@@ -706,10 +691,10 @@ export default function AnamnesePage() {
                     name="diseases"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Doenças ou condições de saúde</FormLabel>
+                        <FormLabel>Doenças ou condições de saúde *</FormLabel>
                         <FormControl>
                           <Textarea
-                            placeholder="Diabetes, hipertensão, hipotireoidismo..."
+                            placeholder="Diabetes, hipertensão, hipotireoidismo... (Digite 'Nenhuma' se não possui)"
                             value={field.value || ""}
                             onChange={field.onChange}
                             onBlur={field.onBlur}
@@ -727,10 +712,10 @@ export default function AnamnesePage() {
                     name="medications"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Medicamentos em uso</FormLabel>
+                        <FormLabel>Medicamentos em uso *</FormLabel>
                         <FormControl>
                           <Textarea
-                            placeholder="Liste os medicamentos que utiliza regularmente..."
+                            placeholder="Liste os medicamentos que utiliza regularmente... (Digite 'Nenhum' se não usa)"
                             value={field.value || ""}
                             onChange={field.onChange}
                             onBlur={field.onBlur}
@@ -748,10 +733,10 @@ export default function AnamnesePage() {
                     name="supplements"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Suplementos em uso</FormLabel>
+                        <FormLabel>Suplementos em uso *</FormLabel>
                         <FormControl>
                           <Textarea
-                            placeholder="Whey protein, vitamina D, ômega 3..."
+                            placeholder="Whey protein, vitamina D, ômega 3... (Digite 'Nenhum' se não usa)"
                             value={field.value || ""}
                             onChange={field.onChange}
                             onBlur={field.onBlur}
