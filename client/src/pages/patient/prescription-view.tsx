@@ -175,10 +175,10 @@ export default function PatientPrescriptionView() {
       printContainer.style.fontFamily = 'system-ui, -apple-system, sans-serif';
       printContainer.style.overflow = 'visible';
       
-      // Mock nutritionist data
-      const nutritionist = {
-        name: "Dr. Ana Silva",
-        crn: "12345",
+      // DiNutri team branding
+      const teamInfo = {
+        name: "Equipe DiNutri",
+        logoPath: "/logo_dinutri.png"
       };
 
       // Helper functions
@@ -202,20 +202,37 @@ export default function PatientPrescriptionView() {
         return age;
       };
 
+      // Convert logo to base64 for inline embedding
+      const logoImg = new Image();
+      logoImg.crossOrigin = 'anonymous';
+      
+      const logoBase64 = await new Promise<string>((resolve) => {
+        logoImg.onload = () => {
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          canvas.width = 80; // Resize to appropriate size
+          canvas.height = 80;
+          ctx?.drawImage(logoImg, 0, 0, 80, 80);
+          resolve(canvas.toDataURL('image/png'));
+        };
+        logoImg.onerror = () => resolve(''); // Fallback to no logo
+        logoImg.src = teamInfo.logoPath;
+      });
+
       // Generate the print content HTML
       printContainer.innerHTML = `
-        <div style="background: white; color: #111827; min-height: auto; height: auto;">
+        <div style="background: white; color: #111827; min-height: auto; height: auto; page-break-inside: avoid;">
           <!-- Document Header -->
-          <div style="text-align: center; margin-bottom: 32px; border-bottom: 2px solid #e5e7eb; padding-bottom: 24px;">
+          <div style="text-align: center; margin-bottom: 32px; border-bottom: 2px solid #e5e7eb; padding-bottom: 24px; page-break-after: avoid;">
+            ${logoBase64 ? `<img src="${logoBase64}" style="width: 80px; height: 80px; margin-bottom: 16px;" alt="DiNutri Logo">` : ''}
             <h1 style="font-size: 28px; font-weight: bold; color: #374151; margin-bottom: 8px; margin-top: 0;">PRESCRIÇÃO NUTRICIONAL</h1>
             <div style="font-size: 18px; color: #6b7280;">
-              <div>${nutritionist.name}</div>
-              <div style="font-size: 14px;">CRN: ${nutritionist.crn} • Nutricionista</div>
+              <div style="font-weight: 600;">${teamInfo.name}</div>
             </div>
           </div>
 
           <!-- Patient Info -->
-          <div style="margin-bottom: 32px; background: #f9fafb; padding: 24px; border-radius: 8px;">
+          <div style="margin-bottom: 32px; background: #f9fafb; padding: 24px; border-radius: 8px; page-break-inside: avoid;">
             <h2 style="font-size: 20px; font-weight: 600; margin-bottom: 16px; margin-top: 0;">Dados do Paciente</h2>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; font-size: 14px;">
               <div><strong>Nome:</strong> ${currentPatient.name}</div>
@@ -228,7 +245,7 @@ export default function PatientPrescriptionView() {
           </div>
 
           <!-- Prescription Title -->
-          <div style="margin-bottom: 32px; text-align: center;">
+          <div style="margin-bottom: 32px; text-align: center; page-break-inside: avoid;">
             <h2 style="font-size: 24px; font-weight: bold; color: #374151; margin-top: 0; margin-bottom: 8px;">
               ${selectedPrescription.title}
             </h2>
@@ -240,7 +257,7 @@ export default function PatientPrescriptionView() {
           <!-- Meals -->
           <div style="margin-bottom: 32px;">
             ${selectedPrescription.meals.map(meal => `
-              <div style="margin-bottom: 32px;">
+              <div style="margin-bottom: 32px; page-break-inside: avoid;">
                 <div style="background: #dbeafe; padding: 16px; border-radius: 8px 8px 0 0; border-left: 4px solid #3b82f6;">
                   <h3 style="font-size: 20px; font-weight: 600; color: #374151; margin: 0;">
                     ${meal.name}
@@ -249,7 +266,7 @@ export default function PatientPrescriptionView() {
                 <div style="border: 1px solid #e5e7eb; border-top: 0; border-radius: 0 0 8px 8px; padding: 16px;">
                   <div style="margin: 0; padding: 0;">
                     ${meal.items.map(item => `
-                      <div style="padding: 12px 0; border-bottom: 1px solid #f3f4f6;">
+                      <div style="padding: 12px 0; border-bottom: 1px solid #f3f4f6; page-break-inside: avoid;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
                           <span style="font-weight: 500; color: #374151;">${item.description}</span>
                           <span style="color: #6b7280; font-weight: 500;">${item.amount}</span>
@@ -272,7 +289,7 @@ export default function PatientPrescriptionView() {
                     `).join('')}
                   </div>
                   ${meal.notes ? `
-                    <div style="margin-top: 16px; padding: 12px; background: #fefce8; border-radius: 6px; border-left: 4px solid #facc15;">
+                    <div style="margin-top: 16px; padding: 12px; background: #fefce8; border-radius: 6px; border-left: 4px solid #facc15; page-break-inside: avoid;">
                       <p style="font-size: 14px; color: #374151; margin: 0;">
                         <strong>Observação:</strong> ${meal.notes}
                       </p>
@@ -285,7 +302,7 @@ export default function PatientPrescriptionView() {
 
           ${selectedPrescription.generalNotes ? `
             <!-- General Notes -->
-            <div style="margin-top: 32px; padding: 24px; background: #f9fafb; border-radius: 8px; border: 1px solid #e5e7eb;">
+            <div style="margin-top: 32px; padding: 24px; background: #f9fafb; border-radius: 8px; border: 1px solid #e5e7eb; page-break-inside: avoid;">
               <h3 style="font-size: 18px; font-weight: 600; margin-bottom: 12px; margin-top: 0;">Observações Gerais</h3>
               <p style="color: #374151; margin: 0;">
                 ${selectedPrescription.generalNotes}
@@ -294,10 +311,10 @@ export default function PatientPrescriptionView() {
           ` : ''}
 
           <!-- Footer -->
-          <div style="margin-top: 48px; padding-top: 24px; border-top: 2px solid #e5e7eb; text-align: center; font-size: 14px; color: #6b7280;">
+          <div style="margin-top: 48px; padding-top: 24px; border-top: 2px solid #e5e7eb; text-align: center; font-size: 14px; color: #6b7280; page-break-inside: avoid;">
             <p style="margin: 0 0 8px 0;">Esta prescrição foi elaborada especificamente para ${currentPatient.name}.</p>
-            <p style="margin: 0 0 16px 0;">Em caso de dúvidas, entre em contato com seu nutricionista.</p>
-            <p style="margin: 0; font-weight: 600;">${nutritionist.name} - CRN: ${nutritionist.crn}</p>
+            <p style="margin: 0 0 16px 0;">Em caso de dúvidas, entre em contato com a equipe DiNutri.</p>
+            <p style="margin: 0; font-weight: 600;">${teamInfo.name}</p>
           </div>
         </div>
       `;
@@ -327,49 +344,57 @@ export default function PatientPrescriptionView() {
       // Remove the temporary container
       document.body.removeChild(printContainer);
 
-      // Generate PDF with proper pagination
+      // Generate PDF with proper A4 pagination
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
       
-      // Calculate how many pages we need
+      // Calculate scaling and page dimensions
       const canvasWidth = canvas.width;
       const canvasHeight = canvas.height;
-      const ratio = canvasWidth / pdfWidth;
-      const totalPdfHeight = canvasHeight / ratio;
+      const scale = pdfWidth / (canvasWidth / 1.5); // Account for canvas scale
+      const scaledCanvasHeight = canvasHeight * scale / 1.5;
+      
+      // Define proper margins for A4 (leaving space for page headers/footers)
+      const marginTop = 10;
+      const marginBottom = 15;
+      const usablePageHeight = pdfHeight - marginTop - marginBottom;
       
       let yPosition = 0;
       let pageNumber = 1;
       
-      while (yPosition < totalPdfHeight) {
+      while (yPosition < scaledCanvasHeight) {
         if (pageNumber > 1) {
           pdf.addPage();
         }
         
-        // Calculate the slice of the canvas for this page
-        const sourceY = yPosition * ratio;
-        const sourceHeight = Math.min(pdfHeight * ratio, canvasHeight - sourceY);
+        // Calculate the slice of canvas for this page
+        const sourceY = (yPosition / scale) * 1.5;
+        const remainingHeight = scaledCanvasHeight - yPosition;
+        const pageContentHeight = Math.min(usablePageHeight, remainingHeight);
+        const sourceHeight = (pageContentHeight / scale) * 1.5;
         
-        // Create a temporary canvas for this page
+        // Create a temporary canvas for this page slice
         const pageCanvas = document.createElement('canvas');
         const pageCtx = pageCanvas.getContext('2d');
         pageCanvas.width = canvasWidth;
         pageCanvas.height = sourceHeight;
         
         if (pageCtx) {
+          // Draw the slice from the main canvas
+          pageCtx.fillStyle = '#ffffff';
+          pageCtx.fillRect(0, 0, canvasWidth, sourceHeight);
           pageCtx.drawImage(
             canvas,
             0, sourceY, canvasWidth, sourceHeight,
             0, 0, canvasWidth, sourceHeight
           );
           
-          const pageImgData = pageCanvas.toDataURL('image/png');
-          const actualPageHeight = sourceHeight / ratio;
-          
-          pdf.addImage(pageImgData, 'PNG', 0, 0, pdfWidth, actualPageHeight);
+          const pageImgData = pageCanvas.toDataURL('image/png', 0.95);
+          pdf.addImage(pageImgData, 'PNG', 0, marginTop, pdfWidth, pageContentHeight);
         }
         
-        yPosition += pdfHeight;
+        yPosition += usablePageHeight;
         pageNumber++;
       }
 
