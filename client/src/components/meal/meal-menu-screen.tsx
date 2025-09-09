@@ -84,13 +84,13 @@ export default function MealMenuScreen({
               className="bg-white rounded-xl shadow-md overflow-hidden transition-all duration-300 hover:shadow-xl hover:scale-[1.02]"
             >
               <div className="p-5">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center flex-1 min-w-0">
                     <div className="bg-green-100 p-3 rounded-full mr-4">
                       <UtensilsCrossed className="h-6 w-6 text-green-700" />
                     </div>
-                    <div>
-                      <p className="text-lg font-semibold text-gray-800">{item.description}</p>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-lg font-semibold text-gray-800 truncate" title={item.description}>{item.description}</p>
                       <p className="text-sm text-gray-500">{item.amount}</p>
                     </div>
                   </div>
