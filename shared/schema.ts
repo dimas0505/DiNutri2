@@ -1,4 +1,4 @@
-import { pgTable, varchar, text, timestamp, boolean, integer, jsonb, index } from "drizzle-orm/pg-core";
+import { pgTable, varchar, text, timestamp, boolean, integer, jsonb, index, real } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -126,6 +126,12 @@ export const anamnesisRecords = pgTable("anamnesis_records", {
   // Feedback fields for follow-up anamnesis
   protocolAdherence: varchar("protocol_adherence", { enum: ["total", "partial", "low"] }),
   nextProtocolRequests: text("next_protocol_requests"),
+  
+  // Nutritionist-only fields for calculations
+  tmb: real("tmb"),
+  get: real("get"),
+  vet: real("vet"),
+  usedFormula: text("used_formula"),
   
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -298,6 +304,12 @@ export const insertMoodEntrySchema = createInsertSchema(moodEntries).omit({
 export const insertAnamnesisRecordSchema = createInsertSchema(anamnesisRecords).omit({
   id: true,
   createdAt: true,
+}).extend({
+  // Nutritionist fields validation
+  tmb: z.coerce.number().min(0, "TMB deve ser um valor positivo").optional().nullable(),
+  get: z.coerce.number().min(0, "GET deve ser um valor positivo").optional().nullable(),
+  vet: z.coerce.number().min(0, "VET deve ser um valor positivo").optional().nullable(),
+  usedFormula: z.string().optional().nullable(),
 });
 
 export const insertFoodDiaryEntrySchema = createInsertSchema(foodDiaryEntries).omit({

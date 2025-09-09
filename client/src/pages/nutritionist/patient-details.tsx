@@ -6,13 +6,14 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { DefaultMobileDrawer } from "@/components/layout/mobile-layout";
+import { AnamnesisNutritionistDataForm } from "@/components/nutritionist/anamnesis-nutritionist-data-form";
 import type { Patient, Prescription, AnamnesisRecord, FoodDiaryEntryWithPrescription, MealData, MoodType } from "@shared/schema";
 
 export default function PatientDetails({ params }: { params: { id: string } }) {
@@ -36,6 +37,53 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
     queryKey: ["/api/patients", params.id, "anamnesis-records"],
     enabled: !!patient,
   });
+
+  // Function to create initial anamnesis record from current patient data
+  const createInitialAnamnesisRecord = useMutation({
+    mutationFn: async () => {
+      if (!patient) throw new Error("Patient not found");
+      
+      const initialRecord = {
+        patientId: patient.id,
+        weightKg: patient.weightKg,
+        notes: patient.notes,
+        goal: patient.goal,
+        activityLevel: patient.activityLevel,
+        likedHealthyFoods: patient.likedHealthyFoods,
+        dislikedFoods: patient.dislikedFoods,
+        hasIntolerance: patient.hasIntolerance,
+        intolerances: patient.intolerances,
+        canEatMorningSolids: patient.canEatMorningSolids,
+        mealsPerDayCurrent: patient.mealsPerDayCurrent,
+        mealsPerDayWilling: patient.mealsPerDayWilling,
+        alcoholConsumption: patient.alcoholConsumption,
+        supplements: patient.supplements,
+        diseases: patient.diseases,
+        medications: patient.medications,
+        biotype: patient.biotype,
+      };
+
+      const response = await apiRequest("POST", `/api/patients/${patient.id}/anamnesis-records`, initialRecord);
+      return await response.json();
+    },
+    onSuccess: () => {
+      // Refresh anamnesis records after creating initial record
+      queryClient.invalidateQueries({ queryKey: ["/api/patients", params.id, "anamnesis-records"] });
+    },
+    onError: (error) => {
+      console.error("Error creating initial anamnesis record:", error);
+      toast({
+        title: "Erro",
+        description: "Falha ao criar registro inicial de anamnese.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Get the most recent (current) anamnesis record or create one if none exists
+  const currentAnamnesisRecord = anamnesisHistory && anamnesisHistory.length > 0 
+    ? anamnesisHistory[anamnesisHistory.length - 1] // Most recent record
+    : null;
 
   const { data: foodDiaryEntries, isLoading: foodDiaryLoading } = useQuery<FoodDiaryEntryWithPrescription[]>({
     queryKey: ["/api/patients", params.id, "food-diary", "entries"],
@@ -572,6 +620,36 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                         </div>
                       )}
                     </div>
+
+                    {/* Nutritionist calculation fields */}
+                    {!historyLoading && (
+                      <div className="mt-6">
+                        {currentAnamnesisRecord ? (
+                          <AnamnesisNutritionistDataForm anamnesis={currentAnamnesisRecord} />
+                        ) : (
+                          <div className="p-4 rounded-lg bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 border border-yellow-200/50 dark:border-yellow-700/50">
+                            <div className="flex items-center gap-3 mb-3">
+                              <div className="p-2 bg-yellow-100 dark:bg-yellow-800 rounded-lg">
+                                <FileText className="h-5 w-5 text-yellow-600 dark:text-yellow-300" />
+                              </div>
+                              <div>
+                                <h4 className="font-semibold text-yellow-800 dark:text-yellow-200">Dados Nutricionais</h4>
+                                <p className="text-sm text-yellow-600 dark:text-yellow-300">
+                                  Crie um registro de anamnese para adicionar cálculos nutricionais (TMB, GET, VET)
+                                </p>
+                              </div>
+                            </div>
+                            <Button
+                              onClick={() => createInitialAnamnesisRecord.mutate()}
+                              disabled={createInitialAnamnesisRecord.isPending}
+                              className="bg-yellow-600 hover:bg-yellow-700 text-white"
+                            >
+                              {createInitialAnamnesisRecord.isPending ? "Criando..." : "Criar Registro de Anamnese"}
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               </TabsContent>
@@ -636,6 +714,9 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                                 <p className="text-sm text-gray-700 dark:text-gray-300">{record.nextProtocolRequests}</p>
                               </div>
                             )}
+                            
+                            {/* Renderiza o novo formulário para dados do nutricionista */}
+                            <AnamnesisNutritionistDataForm anamnesis={record} />
                           </div>
                         ))}
                       </div>
