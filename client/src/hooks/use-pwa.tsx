@@ -1,7 +1,5 @@
 import { useState, useEffect } from 'react';
 import { toast } from './use-toast';
-import { isMobileDevice, isTouchDevice } from '@/utils/mobile';
-import { Button } from '@/components/ui/button';
 
 interface PWAInstallEvent extends Event {
   prompt: () => Promise<void>;
@@ -107,36 +105,23 @@ export function registerServiceWorker(): Promise<ServiceWorkerRegistration | nul
         if (newWorker) {
           newWorker.addEventListener('statechange', () => {
             if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-              // New content is available
-              const isMobile = isMobileDevice() || isTouchDevice();
+              // New content is available - automatically update
+              console.log('New SW version available, starting automatic update...');
               
-              console.log('New SW version available, isMobile:', isMobile);
+              // Show informative toast to user about automatic update
+              const toastResult = toast({
+                title: "Atualização em andamento...",
+                description: "O aplicativo está sendo atualizado para a versão mais recente. A página será recarregada em breve.",
+              });
               
-              const handleUpdate = () => {
-                console.log('Update button clicked, sending SKIP_WAITING message');
-                newWorker.postMessage({ action: 'SKIP_WAITING' });
-              };
+              // Dismiss the toast after 5 seconds
+              setTimeout(() => {
+                toastResult.dismiss();
+              }, 5000);
               
-              if (isMobile) {
-                // Show toast notification for mobile users
-                toast({
-                  title: "🎉 Nova versão disponível!",
-                  description: "Toque para atualizar o aplicativo agora.",
-                  action: (
-                    <Button
-                      size="sm"
-                      onClick={handleUpdate}
-                    >
-                      Atualizar
-                    </Button>
-                  ),
-                });
-              } else {
-                // Fallback to confirm dialog for desktop
-                if (confirm('Nova versão disponível. Atualizar agora?')) {
-                  handleUpdate();
-                }
-              }
+              // Automatically trigger the update without user interaction
+              console.log('Automatically sending SKIP_WAITING message');
+              newWorker.postMessage({ action: 'SKIP_WAITING' });
             }
           });
         }
