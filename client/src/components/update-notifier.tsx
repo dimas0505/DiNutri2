@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 
 export function UpdateNotifier() {
@@ -14,29 +13,25 @@ export function UpdateNotifier() {
         // Verifica se já existe um worker esperando na inicialização
         // Isso pode acontecer se o usuário recarregou a página e há uma atualização pendente
         if (registration.waiting) {
-          console.log('UpdateNotifier: Found waiting service worker on startup');
+          console.log('UpdateNotifier: Found waiting service worker on startup, automatically updating...');
           setWaitingWorker(registration.waiting);
-          showUpdateNotification(registration.waiting);
+          handleAutomaticUpdate(registration.waiting);
         }
       });
     }
   }, []);
 
-  const showUpdateNotification = (worker: ServiceWorker) => {
+  const handleAutomaticUpdate = (worker: ServiceWorker) => {
+    // Show informative toast to user about automatic update
     const { id } = toast({
-      title: 'Atualização Disponível',
-      description: 'Uma nova versão do aplicativo está pronta para ser instalada.',
-      action: (
-        <Button onClick={() => handleUpdate(id, worker)}>
-          Atualizar Agora
-        </Button>
-      ),
+      title: 'Atualização em andamento...',
+      description: 'O aplicativo está sendo atualizado para a versão mais recente. A página será recarregada em breve.',
     });
-  };
 
-  const handleUpdate = (toastId: string, worker: ServiceWorker) => {
-    // Fecha a notificação
-    dismiss(toastId);
+    // Dismiss the toast after 5 seconds
+    setTimeout(() => {
+      dismiss(id);
+    }, 5000);
 
     // Garante que a página recarregue assim que o novo worker assumir
     navigator.serviceWorker.addEventListener('controllerchange', () => {
@@ -44,8 +39,8 @@ export function UpdateNotifier() {
       window.location.reload();
     });
 
-    // Envia a mensagem para o worker em espera
-    console.log('UpdateNotifier: Sending SKIP_WAITING message to service worker');
+    // Envia a mensagem para o worker em espera automaticamente
+    console.log('UpdateNotifier: Automatically sending SKIP_WAITING message to service worker');
     worker.postMessage({ action: 'SKIP_WAITING' });
   };
 

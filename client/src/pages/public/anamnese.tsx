@@ -391,7 +391,7 @@ export default function AnamnesePage() {
                             value={field.value || "M"} // Ensure we always have a valid value
                           >
                             <FormControl>
-                              <SelectTrigger autoComplete="off">
+                              <SelectTrigger>
                                 <SelectValue placeholder="Selecionar" />
                               </SelectTrigger>
                             </FormControl>
