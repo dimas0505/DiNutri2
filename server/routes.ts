@@ -10,7 +10,7 @@ import { z } from "zod";
 import { handleUpload, type HandleUploadBody } from '@vercel/blob/client';
 import { put } from '@vercel/blob';
 import multer from 'multer';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { anamnesisRecords, foodDiaryEntries, prescriptions, users, patients } from '../shared/schema.js';
 import { db } from './db.js';
 import sharp from 'sharp';
@@ -762,6 +762,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting food diary entry:", error);
       res.status(500).json({ message: "Falha ao excluir a entrada do diário." });
+    }
+  });
+
+  // PATCH route to update nutritionist-specific data for anamnesis records
+  app.patch('/api/anamnesis/:anamnesisId/nutritionist-data', isAuthenticated, async (req: any, res) => {
+    try {
+      const nutritionistId = req.user.id; // Get the logged-in nutritionist's ID
+      const anamnesisId = req.params.anamnesisId;
+      const body = req.body;
+
+      // Create a validation schema for only the nutritionist fields
+      const nutritionistDataSchema = z.object({
+        tmb: z.coerce.number().min(0, "TMB deve ser um valor positivo").optional().nullable(),
+        get: z.coerce.number().min(0, "GET deve ser um valor positivo").optional().nullable(),
+        vet: z.coerce.number().min(0, "VET deve ser um valor positivo").optional().nullable(),
+        usedFormula: z.string().optional().nullable(),
+      });
+
+      // Validate the data
+      const data = nutritionistDataSchema.parse(body);
+
+      // Security check: verify that the anamnesis belongs to a patient owned by this nutritionist
+      const [targetAnamnesis] = await db
+        .select({ patientOwnerId: patients.ownerId })
+        .from(anamnesisRecords)
+        .leftJoin(patients, eq(anamnesisRecords.patientId, patients.id))
+        .where(eq(anamnesisRecords.id, anamnesisId));
+
+      if (!targetAnamnesis || targetAnamnesis.patientOwnerId !== nutritionistId) {
+        return res.status(404).json({ error: "Anamnese não encontrada ou não autorizada." });
+      }
+
+      // Update the nutritionist data in the database
+      const [updatedAnamnesis] = await db
+        .update(anamnesisRecords)
+        .set({
+          tmb: data.tmb,
+          get: data.get,
+          vet: data.vet,
+          usedFormula: data.usedFormula,
+        })
+        .where(eq(anamnesisRecords.id, anamnesisId))
+        .returning();
+
+      return res.json(updatedAnamnesis);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Dados inválidos.", errors: error.flatten() });
+      }
+      console.error("Erro ao atualizar dados do nutricionista:", error);
+      res.status(500).json({ message: "Falha ao atualizar dados do nutricionista." });
     }
   });
 

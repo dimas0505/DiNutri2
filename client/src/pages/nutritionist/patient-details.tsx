@@ -6,13 +6,14 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { DefaultMobileDrawer } from "@/components/layout/mobile-layout";
+import { AnamnesisNutritionistDataForm } from "@/components/nutritionist/anamnesis-nutritionist-data-form";
 import type { Patient, Prescription, AnamnesisRecord, FoodDiaryEntryWithPrescription, MealData, MoodType } from "@shared/schema";
 
 export default function PatientDetails({ params }: { params: { id: string } }) {
@@ -636,6 +637,9 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                                 <p className="text-sm text-gray-700 dark:text-gray-300">{record.nextProtocolRequests}</p>
                               </div>
                             )}
+                            
+                            {/* Renderiza o novo formulário para dados do nutricionista */}
+                            <AnamnesisNutritionistDataForm anamnesis={record} />
                           </div>
                         ))}
                       </div>
