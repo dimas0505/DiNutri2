@@ -319,7 +319,7 @@ export const anamnesisSchema = insertPatientSchema.omit({ ownerId: true, userId:
   birthDate: z.string().min(1, "Data de nascimento é obrigatória"),
   sex: z.enum(["M", "F", "Outro"], { 
     errorMap: () => ({ message: "Selecione o sexo" })
-  }),
+  }).default("M"), // Provide a default value
   heightCm: z.preprocess(
     (val) => (val === "" || val === undefined ? undefined : val),
     z.coerce.number().min(50, "Altura deve ser no mínimo 50cm").max(250, "Altura deve ser no máximo 250cm")

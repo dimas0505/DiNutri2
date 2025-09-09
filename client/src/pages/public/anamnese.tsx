@@ -18,6 +18,7 @@ import { insertPatientSchema, anamnesisSchema } from "@shared/schema";
 import { DiNutriLogo } from "@/components/ui/dinutri-logo";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
+import { ErrorBoundary } from "@/components/ui/error-boundary";
 
 // Date formatting function for dd/mm/yyyy mask
 const formatDate = (value: string) => {
@@ -64,7 +65,7 @@ export default function AnamnesePage() {
       password: "",
       confirmPassword: "",
       birthDate: "",
-      sex: undefined,
+      sex: "M", // Set a default value instead of undefined
       heightCm: undefined,
       weightKg: "",
       notes: "",
@@ -269,7 +270,8 @@ export default function AnamnesePage() {
         </div>
 
         <main className="w-full max-w-4xl mx-auto space-y-8">
-          <Card className="card-3d shadow-3d rounded-3xl border-0 bg-white/95 backdrop-blur-md card-enter">
+          <ErrorBoundary>
+            <Card className="card-3d shadow-3d rounded-3xl border-0 bg-white/95 backdrop-blur-md card-enter">
             <CardHeader className="text-center pb-6">
               <CardTitle className="text-3xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
                 Anamnese Nutricional
@@ -379,18 +381,23 @@ export default function AnamnesePage() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Sexo *</FormLabel>
-                          {/* Removemos a condicional "isMobile" e usamos o componente Select 
-                            para garantir consistência em todos os dispositivos.
-                          */}
-                          <Select onValueChange={field.onChange} value={field.value || ""}>
+                          <Select 
+                            onValueChange={(value) => {
+                              // Defensive handling: only accept valid enum values
+                              const validValues = new Set(["M", "F", "Outro"]);
+                              const normalizedValue = typeof value === "string" ? value.trim() : "";
+                              field.onChange(validValues.has(normalizedValue) ? normalizedValue : "M");
+                            }} 
+                            value={field.value || "M"} // Ensure we always have a valid value
+                          >
                             <FormControl>
-                              <SelectTrigger>
+                              <SelectTrigger autoComplete="off">
                                 <SelectValue placeholder="Selecionar" />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              <SelectItem value="F">Feminino</SelectItem>
                               <SelectItem value="M">Masculino</SelectItem>
+                              <SelectItem value="F">Feminino</SelectItem>
                               <SelectItem value="Outro">Outro</SelectItem>
                             </SelectContent>
                           </Select>
@@ -819,6 +826,7 @@ export default function AnamnesePage() {
 
             </form>
           </Form>
+          </ErrorBoundary>
         </main>
       </div>
     </>
