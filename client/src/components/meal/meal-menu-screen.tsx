@@ -84,24 +84,25 @@ export default function MealMenuScreen({
               className="bg-white rounded-xl shadow-md overflow-hidden transition-all duration-300 hover:shadow-xl hover:scale-[1.02]"
             >
               <div className="p-5">
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex items-center flex-1 min-w-0">
-                    <div className="bg-green-100 p-3 rounded-full mr-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-start flex-1 min-w-0">
+                    <div className="bg-green-100 p-3 rounded-full mr-4 flex-shrink-0">
                       <UtensilsCrossed className="h-6 w-6 text-green-700" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-lg font-semibold text-gray-800 truncate" title={item.description}>{item.description}</p>
-                      <p className="text-sm text-gray-500">{item.amount}</p>
+                      <p className="text-lg font-semibold text-gray-800 leading-tight break-words">{item.description}</p>
+                      <p className="text-sm text-gray-500 mt-1">{item.amount}</p>
                     </div>
                   </div>
 
                   {item.substitutes && item.substitutes.length > 0 && (
                     <Button
                       variant="outline"
-                      className="border-green-500 text-green-600 hover:bg-green-500 hover:text-white transition-colors duration-300"
+                      size="sm"
+                      className="border-green-500 text-green-600 hover:bg-green-500 hover:text-white transition-colors duration-300 flex-shrink-0 whitespace-nowrap"
                       onClick={() => setSelectedItem(item)}
                     >
-                      <Repeat className="mr-2 h-4 w-4" />
+                      <Repeat className="mr-1 h-3 w-3" />
                       Substituir
                     </Button>
                   )}
