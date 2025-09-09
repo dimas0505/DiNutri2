@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, CheckCircle, Eye, FileText, Plus, Users, XCircle, Link as LinkIcon, Copy, History, User, Calendar, Ruler, Weight, Target, Activity, Heart, Stethoscope, Pill, Camera, Image, Smile, Trash2 } from "lucide-react";
+import { ArrowLeft, CheckCircle, Eye, FileText, Plus, Users, XCircle, Link as LinkIcon, Copy, History, User, Calendar, Ruler, Weight, Target, Activity, Heart, Stethoscope, Pill, Camera, Image, Smile, Trash2, FileDown } from "lucide-react";
 import { useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { DefaultMobileDrawer } from "@/components/layout/mobile-layout";
 import { AnamnesisNutritionistDataForm } from "@/components/nutritionist/anamnesis-nutritionist-data-form";
+import { generatePrescriptionPDF } from "@/utils/pdf-generator";
 import type { Patient, Prescription, AnamnesisRecord, FoodDiaryEntryWithPrescription, MealData, MoodType } from "@shared/schema";
 
 export default function PatientDetails({ params }: { params: { id: string } }) {
@@ -273,6 +274,53 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
 
   const handleDeletePrescription = (prescriptionId: string) => {
     deletePrescriptionMutation.mutate(prescriptionId);
+  };
+
+  const handleDownloadPrescription = async (prescriptionId: string) => {
+    // Find the full prescription by ID to ensure all data (meals, items) is present
+    const fullPrescription = prescriptions?.find((p: Prescription) => p.id === prescriptionId);
+    
+    if (patient && fullPrescription) {
+      toast({
+        title: "Preparando o PDF...",
+        description: "Seu download começará em breve.",
+      });
+      
+      try {
+        // Call the utility function to generate the PDF
+        await generatePrescriptionPDF({
+          prescription: fullPrescription,
+          patient: patient,
+          onSuccess: () => {
+            toast({
+              title: "PDF gerado com sucesso!",
+              description: "O arquivo foi baixado para seu dispositivo.",
+            });
+          },
+          onError: (error) => {
+            console.error('Error generating PDF:', error);
+            toast({
+              title: "Erro ao gerar PDF",
+              description: "Não foi possível gerar o PDF. Tente novamente.",
+              variant: "destructive",
+            });
+          }
+        });
+      } catch (error) {
+        console.error('Error generating PDF:', error);
+        toast({
+          title: "Erro ao gerar PDF",
+          description: "Não foi possível gerar o PDF. Tente novamente.",
+          variant: "destructive",
+        });
+      }
+    } else {
+      toast({
+        title: "Erro",
+        description: "Não foi possível encontrar os dados da prescrição para gerar o PDF.",
+        variant: "destructive",
+      });
+    }
   };
 
   if (patientLoading) {
@@ -845,6 +893,16 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                           >
                             <FileText className="h-4 w-4 mr-1" />
                             {duplicatePrescriptionMutation.isPending ? 'Duplicando...' : 'Duplicar'}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDownloadPrescription(prescription.id)}
+                            data-testid={`button-download-prescription-${prescription.id}`}
+                            className="bg-green-100 hover:bg-green-200 text-green-700 border border-green-200 dark:bg-green-800 dark:hover:bg-green-700 dark:text-green-200 dark:border-green-700 transition-all duration-200 rounded-lg"
+                          >
+                            <FileDown className="h-4 w-4 mr-1" />
+                            Baixar
                           </Button>
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
