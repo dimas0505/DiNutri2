@@ -24,8 +24,8 @@ export default function MyPlanPage() {
 
   // Get current patient data
   const { data: currentPatient } = useQuery<Patient>({
-    queryKey: ["/api/current-patient"],
-    queryFn: () => apiRequest("GET", "/api/current-patient"),
+    queryKey: ["/api/patient/my-profile"],
+    queryFn: () => apiRequest("GET", "/api/patient/my-profile"),
     enabled: !!user && user.role === "patient",
   });
 
@@ -56,7 +56,7 @@ export default function MyPlanPage() {
     return planMap[planType] || planType;
   };
 
-  const daysUntilExpiry = subscription ? differenceInDays(new Date(subscription.expiresAt), new Date()) : 0;
+  const daysUntilExpiry = subscription && subscription.expiresAt ? differenceInDays(new Date(subscription.expiresAt), new Date()) : 0;
 
   if (isLoading) {
     return (
@@ -115,9 +115,12 @@ export default function MyPlanPage() {
               <div>
                 <p className="text-sm font-medium text-gray-500">Válido até</p>
                 <p className="text-lg font-semibold">
-                  {format(new Date(subscription.expiresAt), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                  {subscription.expiresAt 
+                    ? format(new Date(subscription.expiresAt), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })
+                    : "Sem expiração"
+                  }
                 </p>
-                {daysUntilExpiry <= 7 && daysUntilExpiry > 0 && (
+                {subscription.expiresAt && daysUntilExpiry <= 7 && daysUntilExpiry > 0 && (
                   <p className="text-sm text-amber-600 font-medium">
                     Expira em {daysUntilExpiry} {daysUntilExpiry === 1 ? 'dia' : 'dias'}
                   </p>
@@ -136,7 +139,7 @@ export default function MyPlanPage() {
         </CardContent>
       </Card>
       
-      {subscription && daysUntilExpiry <= 7 && subscription.status === 'active' && (
+      {subscription && subscription.expiresAt && daysUntilExpiry <= 7 && subscription.status === 'active' && (
         <Alert className="border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/20">
           <AlertCircle className="h-4 w-4 text-amber-600" />
           <AlertTitle className="text-amber-800 dark:text-amber-200">
