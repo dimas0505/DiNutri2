@@ -1,4 +1,4 @@
-import { pgTable, varchar, text, timestamp, boolean, integer, jsonb, index, real } from "drizzle-orm/pg-core";
+import { pgTable, varchar, text, timestamp, boolean, integer, jsonb, index, real, pgEnum } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -13,6 +13,16 @@ export const sessions = pgTable(
   },
   (table) => [index("IDX_session_expire").on(table.expire)],
 );
+
+// Enums for subscription plans
+export const planTypeEnum = pgEnum('plan_type', ['free', 'monthly', 'quarterly']);
+export const subscriptionStatusEnum = pgEnum('subscription_status', [
+  'active',
+  'pending_payment',
+  'pending_approval',
+  'expired',
+  'canceled'
+]);
 
 // Users table
 export const users = pgTable("users", {
@@ -148,6 +158,20 @@ export const foodDiaryEntries = pgTable("food_diary_entries", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Subscriptions table
+export const subscriptions = pgTable("subscriptions", {
+  id: varchar("id").primaryKey(),
+  patientId: varchar("patient_id").notNull().references(() => patients.id, { onDelete: 'cascade' }),
+  planType: planTypeEnum("plan_type").notNull(),
+  status: subscriptionStatusEnum("status").notNull(),
+  startDate: timestamp("start_date").notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  paymentLink: text("payment_link"),
+  proofOfPaymentUrl: text("proof_of_payment_url"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ one, many }) => ({
   patientProfile: one(patients, {
@@ -173,6 +197,7 @@ export const patientsRelations = relations(patients, ({ one, many }) => ({
   moodEntries: many(moodEntries),
   anamnesisRecords: many(anamnesisRecords),
   foodDiaryEntries: many(foodDiaryEntries),
+  subscriptions: many(subscriptions),
 }));
 
 export const invitationsRelations = relations(invitations, ({ one }) => ({
@@ -221,6 +246,13 @@ export const foodDiaryEntriesRelations = relations(foodDiaryEntries, ({ one }) =
   prescription: one(prescriptions, {
     fields: [foodDiaryEntries.prescriptionId],
     references: [prescriptions.id],
+  }),
+}));
+
+export const subscriptionsRelations = relations(subscriptions, ({ one }) => ({
+  patient: one(patients, {
+    fields: [subscriptions.patientId],
+    references: [patients.id],
   }),
 }));
 
@@ -315,6 +347,12 @@ export const insertAnamnesisRecordSchema = createInsertSchema(anamnesisRecords).
 export const insertFoodDiaryEntrySchema = createInsertSchema(foodDiaryEntries).omit({
   id: true,
   createdAt: true,
+});
+
+export const insertSubscriptionSchema = createInsertSchema(subscriptions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
 });
 
 export const updatePatientSchema = insertPatientSchema.partial();
@@ -414,6 +452,8 @@ export type InsertMoodEntry = z.infer<typeof insertMoodEntrySchema>;
 export type AnamnesisRecord = typeof anamnesisRecords.$inferSelect;
 export type FoodDiaryEntry = typeof foodDiaryEntries.$inferSelect;
 export type InsertFoodDiaryEntry = z.infer<typeof insertFoodDiaryEntrySchema>;
+export type Subscription = typeof subscriptions.$inferSelect;
+export type InsertSubscription = z.infer<typeof insertSubscriptionSchema>;
 
 // Extended type for food diary entries with prescription and mood information
 export interface FoodDiaryEntryWithPrescription extends FoodDiaryEntry {

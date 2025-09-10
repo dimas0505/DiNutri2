@@ -302,6 +302,7 @@ export default function PatientPrescriptionsList() {
           activeItem="prescriptions" 
           onItemClick={(item) => {
             if (item === "home") setLocation("/");
+            else if (item === "my-plan") setLocation("/my-plan");
             else if (item === "prescriptions") setLocation("/patient/prescriptions");
             else if (item === "profile") {
               setIsProfileModalOpen(true);

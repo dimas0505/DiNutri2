@@ -333,6 +333,7 @@ export default function PatientPrescriptionView() {
           activeItem="prescriptions" 
           onItemClick={(item) => {
             if (item === "home") setLocation("/");
+            else if (item === "my-plan") setLocation("/my-plan");
             else if (item === "prescriptions") setLocation("/patient/prescriptions");
             else if (item === "profile") {
               // Open profile modal instead of logout confirmation

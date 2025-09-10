@@ -1,6 +1,6 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
-import { Home, FileText, User } from "lucide-react";
+import { Home, FileText, User, ShieldCheck } from "lucide-react";
 
 interface DNutriBottomNavProps {
   className?: string;
@@ -11,6 +11,7 @@ interface DNutriBottomNavProps {
 export function DNutriBottomNav({ className, onItemClick, activeItem = "home" }: DNutriBottomNavProps) {
   const navItems = [
     { id: "home", icon: Home, label: "Início" },
+    { id: "my-plan", icon: ShieldCheck, label: "Meu Plano" },
     { id: "prescriptions", icon: FileText, label: "Prescrições" },
     { id: "profile", icon: User, label: "Perfil" },
   ];

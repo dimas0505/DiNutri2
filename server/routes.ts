@@ -5,15 +5,16 @@ import bcrypt from "bcrypt";
 import bodyParser from "body-parser";
 import { storage, deleteFoodDiaryPhoto } from "./storage.js";
 import { setupAuth, isAuthenticated } from "./auth.js";
-import { insertPatientSchema, updatePatientSchema, insertPrescriptionSchema, updatePrescriptionSchema, insertMoodEntrySchema, insertAnamnesisRecordSchema, insertFoodDiaryEntrySchema } from "../shared/schema.js";
+import { insertPatientSchema, updatePatientSchema, insertPrescriptionSchema, updatePrescriptionSchema, insertMoodEntrySchema, insertAnamnesisRecordSchema, insertFoodDiaryEntrySchema, insertSubscriptionSchema } from "../shared/schema.js";
 import { z } from "zod";
 import { handleUpload, type HandleUploadBody } from '@vercel/blob/client';
 import { put } from '@vercel/blob';
 import multer from 'multer';
-import { eq, and } from 'drizzle-orm';
-import { anamnesisRecords, foodDiaryEntries, prescriptions, users, patients } from '../shared/schema.js';
+import { eq, and, desc, or } from 'drizzle-orm';
+import { anamnesisRecords, foodDiaryEntries, prescriptions, users, patients, subscriptions } from '../shared/schema.js';
 import { db } from './db.js';
 import sharp from 'sharp';
+import { nanoid } from 'nanoid';
 
 const SALT_ROUNDS = 10;
 
@@ -813,6 +814,223 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       console.error("Erro ao atualizar dados do nutricionista:", error);
       res.status(500).json({ message: "Falha ao atualizar dados do nutricionista." });
+    }
+  });
+
+  // --- SUBSCRIPTION MANAGEMENT ROUTES ---
+  
+  // Get patient's current subscription
+  app.get('/api/patients/:patientId/subscription', isAuthenticated, async (req: any, res) => {
+    try {
+      const patientId = req.params.patientId;
+      const userId = req.user.id;
+      
+      // Security check: ensure user can access this patient's data
+      const [patient] = await db
+        .select()
+        .from(patients)
+        .where(eq(patients.id, patientId));
+
+      if (!patient) {
+        return res.status(404).json({ error: "Paciente não encontrado." });
+      }
+
+      // Check if user is the patient themselves or their nutritionist
+      if (req.user.role === 'patient' && patient.userId !== userId) {
+        return res.status(403).json({ error: "Acesso não autorizado." });
+      }
+      if (req.user.role === 'nutritionist' && patient.ownerId !== userId) {
+        return res.status(403).json({ error: "Acesso não autorizado." });
+      }
+
+      // Get the most recent subscription
+      const [subscription] = await db
+        .select()
+        .from(subscriptions)
+        .where(eq(subscriptions.patientId, patientId))
+        .orderBy(desc(subscriptions.createdAt))
+        .limit(1);
+
+      if (!subscription) {
+        return res.status(404).json({ error: "Nenhum plano encontrado." });
+      }
+
+      return res.json(subscription);
+    } catch (error) {
+      console.error("Erro ao buscar assinatura:", error);
+      res.status(500).json({ error: "Falha ao buscar plano." });
+    }
+  });
+
+  // Patient requests plan renewal
+  app.post('/api/patients/:patientId/subscription/renew', isAuthenticated, async (req: any, res) => {
+    try {
+      const patientId = req.params.patientId;
+      const userId = req.user.id;
+      const { planType } = req.body;
+
+      // Security check: ensure user is the patient themselves
+      const [patient] = await db
+        .select()
+        .from(patients)
+        .where(eq(patients.id, patientId));
+
+      if (!patient) {
+        return res.status(404).json({ error: "Paciente não encontrado." });
+      }
+
+      if (req.user.role === 'patient' && patient.userId !== userId) {
+        return res.status(403).json({ error: "Acesso não autorizado." });
+      }
+
+      // Validate plan type
+      if (!['monthly', 'quarterly'].includes(planType)) {
+        return res.status(400).json({ error: "Tipo de plano inválido." });
+      }
+
+      // Create new subscription with pending payment status
+      const subscriptionId = nanoid();
+      const [newSubscription] = await db
+        .insert(subscriptions)
+        .values({
+          id: subscriptionId,
+          patientId,
+          planType,
+          status: 'pending_payment',
+          // Temporary dates, will be updated on approval
+          startDate: new Date(),
+          expiresAt: new Date(Date.now() + (planType === 'monthly' ? 30 : 90) * 24 * 60 * 60 * 1000),
+        })
+        .returning();
+
+      return res.status(201).json(newSubscription);
+    } catch (error) {
+      console.error("Erro ao solicitar renovação:", error);
+      res.status(500).json({ error: "Falha ao solicitar renovação." });
+    }
+  });
+
+  // Nutritionist gets all pending subscriptions for their patients
+  app.get('/api/nutritionist/subscriptions/pending', isAuthenticated, async (req: any, res) => {
+    try {
+      const nutritionistId = req.user.id;
+
+      if (req.user.role !== 'nutritionist') {
+        return res.status(403).json({ error: "Acesso negado. Apenas nutricionistas." });
+      }
+
+      // Get pending subscriptions for nutritionist's patients
+      const pendingSubscriptions = await db
+        .select({
+          subscription: subscriptions,
+          patient: { id: patients.id, name: patients.name, email: patients.email },
+        })
+        .from(subscriptions)
+        .leftJoin(patients, eq(subscriptions.patientId, patients.id))
+        .where(
+          and(
+            eq(patients.ownerId, nutritionistId),
+            or(
+              eq(subscriptions.status, 'pending_payment'),
+              eq(subscriptions.status, 'pending_approval')
+            )
+          )
+        )
+        .orderBy(desc(subscriptions.updatedAt));
+
+      return res.json(pendingSubscriptions);
+    } catch (error) {
+      console.error("Erro ao buscar assinaturas pendentes:", error);
+      res.status(500).json({ error: "Falha ao buscar assinaturas pendentes." });
+    }
+  });
+
+  // Nutritionist manages a subscription (approve, reject, etc.)
+  app.patch('/api/subscriptions/:subscriptionId/manage', isAuthenticated, async (req: any, res) => {
+    try {
+      const subscriptionId = req.params.subscriptionId;
+      const nutritionistId = req.user.id;
+      const updateData = req.body;
+
+      if (req.user.role !== 'nutritionist') {
+        return res.status(403).json({ error: "Acesso negado. Apenas nutricionistas." });
+      }
+
+      // Security check: ensure subscription belongs to nutritionist's patient
+      const [subscriptionWithPatient] = await db
+        .select({
+          subscription: subscriptions,
+          patient: patients,
+        })
+        .from(subscriptions)
+        .leftJoin(patients, eq(subscriptions.patientId, patients.id))
+        .where(eq(subscriptions.id, subscriptionId));
+
+      if (!subscriptionWithPatient || subscriptionWithPatient.patient?.ownerId !== nutritionistId) {
+        return res.status(404).json({ error: "Assinatura não encontrada ou não autorizada." });
+      }
+
+      // Update subscription
+      const [updatedSubscription] = await db
+        .update(subscriptions)
+        .set({
+          ...updateData,
+          updatedAt: new Date(),
+        })
+        .where(eq(subscriptions.id, subscriptionId))
+        .returning();
+
+      return res.json(updatedSubscription);
+    } catch (error) {
+      console.error("Erro ao gerenciar assinatura:", error);
+      res.status(500).json({ error: "Falha ao gerenciar assinatura." });
+    }
+  });
+
+  // Upload proof of payment (simplified - associates URL with subscription)
+  app.post('/api/subscriptions/:subscriptionId/upload-proof', isAuthenticated, async (req: any, res) => {
+    try {
+      const subscriptionId = req.params.subscriptionId;
+      const userId = req.user.id;
+      const { proofUrl } = req.body;
+
+      // Security check: ensure user owns this subscription
+      const [subscriptionWithPatient] = await db
+        .select({
+          subscription: subscriptions,
+          patient: patients,
+        })
+        .from(subscriptions)
+        .leftJoin(patients, eq(subscriptions.patientId, patients.id))
+        .where(eq(subscriptions.id, subscriptionId));
+
+      if (!subscriptionWithPatient) {
+        return res.status(404).json({ error: "Assinatura não encontrada." });
+      }
+
+      // Check if user is the patient or their nutritionist
+      if (req.user.role === 'patient' && subscriptionWithPatient.patient?.userId !== userId) {
+        return res.status(403).json({ error: "Acesso não autorizado." });
+      }
+      if (req.user.role === 'nutritionist' && subscriptionWithPatient.patient?.ownerId !== userId) {
+        return res.status(403).json({ error: "Acesso não autorizado." });
+      }
+
+      // Update subscription with proof of payment
+      const [updatedSubscription] = await db
+        .update(subscriptions)
+        .set({
+          proofOfPaymentUrl: proofUrl,
+          status: 'pending_approval',
+          updatedAt: new Date(),
+        })
+        .where(eq(subscriptions.id, subscriptionId))
+        .returning();
+
+      return res.json(updatedSubscription);
+    } catch (error) {
+      console.error("Erro ao enviar comprovante:", error);
+      res.status(500).json({ error: "Falha ao enviar comprovante." });
     }
   });
 
