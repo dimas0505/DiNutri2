@@ -910,6 +910,80 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Nutritionist creates a subscription for a patient
+  app.post('/api/nutritionist/patients/:patientId/subscription', isAuthenticated, async (req: any, res) => {
+    try {
+      const nutritionistId = req.user.id;
+      const patientId = req.params.patientId;
+      const { planType, status = 'active' } = req.body;
+
+      if (req.user.role !== 'nutritionist') {
+        return res.status(403).json({ error: 'Acesso negado. Apenas nutricionistas.' });
+      }
+
+      // Validate plan type
+      if (!['free', 'monthly', 'quarterly'].includes(planType)) {
+        return res.status(400).json({ error: 'Tipo de plano inválido' });
+      }
+
+      // Validate status
+      if (!['active', 'pending_payment', 'pending_approval'].includes(status)) {
+        return res.status(400).json({ error: 'Status inválido' });
+      }
+
+      // Security check: ensure patient belongs to this nutritionist
+      const [patient] = await db
+        .select()
+        .from(patients)
+        .where(and(eq(patients.id, patientId), eq(patients.ownerId, nutritionistId)));
+
+      if (!patient) {
+        return res.status(404).json({ error: 'Paciente não encontrado ou acesso negado' });
+      }
+
+      // Calculate dates based on plan type and status
+      const now = new Date();
+      let startDate = now;
+      let expiresAt = null;
+
+      if (status === 'active') {
+        if (planType === 'monthly') {
+          expiresAt = new Date(now);
+          expiresAt.setMonth(expiresAt.getMonth() + 1);
+        } else if (planType === 'quarterly') {
+          expiresAt = new Date(now);
+          expiresAt.setMonth(expiresAt.getMonth() + 3);
+        }
+        // Free plans don't expire
+      }
+
+      // Create new subscription
+      const subscriptionId = nanoid();
+      await db
+        .insert(subscriptions)
+        .values({
+          id: subscriptionId,
+          patientId: patientId,
+          planType: planType,
+          status: status,
+          startDate: startDate,
+          expiresAt: expiresAt,
+          createdAt: now,
+          updatedAt: now
+        });
+
+      const [newSubscription] = await db
+        .select()
+        .from(subscriptions)
+        .where(eq(subscriptions.id, subscriptionId));
+
+      return res.json(newSubscription);
+    } catch (error) {
+      console.error('Erro ao criar assinatura:', error);
+      return res.status(500).json({ error: 'Falha ao criar assinatura' });
+    }
+  });
+
   // Nutritionist gets all pending subscriptions for their patients
   app.get('/api/nutritionist/subscriptions/pending', isAuthenticated, async (req: any, res) => {
     try {

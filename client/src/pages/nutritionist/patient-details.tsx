@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, CheckCircle, Eye, FileText, Plus, Users, XCircle, Link as LinkIcon, Copy, History, User, Calendar, Ruler, Weight, Target, Activity, Heart, Stethoscope, Pill, Camera, Image, Smile, Trash2, FileDown } from "lucide-react";
+import { ArrowLeft, CheckCircle, Eye, FileText, Plus, Users, XCircle, Link as LinkIcon, Copy, History, User, Calendar, Ruler, Weight, Target, Activity, Heart, Stethoscope, Pill, Camera, Image, Smile, Trash2, FileDown, CreditCard } from "lucide-react";
 import { useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -12,10 +12,12 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import { DefaultMobileDrawer } from "@/components/layout/mobile-layout";
 import { AnamnesisNutritionistDataForm } from "@/components/nutritionist/anamnesis-nutritionist-data-form";
 import { generatePrescriptionPDF } from "@/utils/pdf-generator";
-import type { Patient, Prescription, AnamnesisRecord, FoodDiaryEntryWithPrescription, MealData, MoodType } from "@shared/schema";
+import type { Patient, Prescription, AnamnesisRecord, FoodDiaryEntryWithPrescription, MealData, MoodType, Subscription } from "@shared/schema";
 
 export default function PatientDetails({ params }: { params: { id: string } }) {
   const [, setLocation] = useLocation();
@@ -24,9 +26,18 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
   const [prescriptionToDelete, setPrescriptionToDelete] = useState<string | null>(null);
   const [followUpLink, setFollowUpLink] = useState<string | null>(null);
   const [entryToDelete, setEntryToDelete] = useState<string | null>(null);
+  const [isCreateSubscriptionDialogOpen, setIsCreateSubscriptionDialogOpen] = useState(false);
+  const [newSubscriptionPlanType, setNewSubscriptionPlanType] = useState<Subscription['planType']>('monthly');
+  const [newSubscriptionStatus, setNewSubscriptionStatus] = useState<Subscription['status']>('active');
 
   const { data: patient, isLoading: patientLoading } = useQuery<Patient>({
     queryKey: ["/api/patients", params.id],
+  });
+
+  const { data: currentSubscription } = useQuery<Subscription>({
+    queryKey: ["/api/patients", params.id, "subscription"],
+    queryFn: () => apiRequest("GET", `/api/patients/${params.id}/subscription`),
+    enabled: !!patient,
   });
 
   const { data: prescriptions, isLoading: prescriptionsLoading } = useQuery<Prescription[]>({
@@ -232,6 +243,30 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
     },
   });
 
+  const createSubscriptionMutation = useMutation({
+    mutationFn: ({ planType, status }: { planType: Subscription['planType'], status: Subscription['status'] }) =>
+      apiRequest("POST", `/api/nutritionist/patients/${params.id}/subscription`, {
+        planType,
+        status
+      }),
+    onSuccess: () => {
+      toast({
+        title: "Sucesso",
+        description: "Assinatura criada com sucesso!",
+        variant: "default",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/patients", params.id, "subscription"] });
+      setIsCreateSubscriptionDialogOpen(false);
+    },
+    onError: () => {
+      toast({
+        title: "Erro",
+        description: "Falha ao criar assinatura.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const calculateAge = (birthDate: string) => {
     if (!birthDate) return null;
     const birth = new Date(birthDate);
@@ -246,6 +281,27 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('pt-BR');
+  };
+
+  const renderStatusBadge = (status: Subscription['status']) => {
+    const statusMap = {
+      active: { label: "Ativo", className: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" },
+      pending_payment: { label: "Aguardando Pagamento", className: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200" },
+      pending_approval: { label: "Aguardando Aprovação", className: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200" },
+      expired: { label: "Expirado", className: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200" },
+      canceled: { label: "Cancelado", className: "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200" },
+    };
+    const config = statusMap[status] || { label: status, className: "bg-gray-100 text-gray-800" };
+    return <Badge className={config.className}>{config.label}</Badge>;
+  };
+
+  const getPlanTypeLabel = (planType: Subscription['planType']) => {
+    const planMap = {
+      free: "Gratuito",
+      monthly: "Mensal",
+      quarterly: "Trimestral",
+    };
+    return planMap[planType] || planType;
   };
 
   const getMoodEmoji = (mood: MoodType | null | undefined) => {
@@ -474,9 +530,10 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
 
             {/* Anamnese Section with Tabs */}
             <Tabs defaultValue="current" className="w-full">
-              <TabsList className="grid w-full grid-cols-2 bg-gray-100 dark:bg-gray-800 p-1 rounded-lg">
+              <TabsList className="grid w-full grid-cols-3 bg-gray-100 dark:bg-gray-800 p-1 rounded-lg">
                 <TabsTrigger value="current" className="rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-blue-600 font-medium transition-all">Anamnese Atual</TabsTrigger>
                 <TabsTrigger value="history" className="rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-blue-600 font-medium transition-all">Histórico</TabsTrigger>
+                <TabsTrigger value="subscription" className="rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-blue-600 font-medium transition-all">Assinatura</TabsTrigger>
               </TabsList>
               <TabsContent value="current">
                 <Card className="shadow-lg border-0 bg-gradient-to-br from-white to-emerald-50/30 dark:from-gray-900 dark:to-gray-800/50 overflow-hidden">
@@ -767,6 +824,77 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                             <AnamnesisNutritionistDataForm anamnesis={record} />
                           </div>
                         ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+              
+              <TabsContent value="subscription">
+                <Card className="shadow-lg border-0 bg-gradient-to-br from-white to-purple-50/30 dark:from-gray-900 dark:to-gray-800/50 overflow-hidden">
+                  <CardHeader className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white pb-6">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
+                          <CreditCard className="h-6 w-6" />
+                        </div>
+                        <CardTitle className="text-xl font-bold">Gerenciar Assinatura</CardTitle>
+                      </div>
+                      <Button
+                        onClick={() => setIsCreateSubscriptionDialogOpen(true)}
+                        className="bg-white/20 hover:bg-white/30 border-white/30 text-white text-sm px-4 py-2"
+                        disabled={!!currentSubscription?.status && currentSubscription.status === 'active'}
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Criar Plano
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="p-6">
+                    {currentSubscription ? (
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="p-4 rounded-lg bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 border">
+                            <div className="flex items-center gap-2 mb-2">
+                              <CreditCard className="h-5 w-5 text-blue-600" />
+                              <span className="font-semibold text-blue-600">Plano Atual</span>
+                            </div>
+                            <p className="text-lg font-bold">{getPlanTypeLabel(currentSubscription.planType)}</p>
+                            <div className="mt-2">
+                              {renderStatusBadge(currentSubscription.status)}
+                            </div>
+                          </div>
+                          
+                          {currentSubscription.expiresAt && (
+                            <div className="p-4 rounded-lg bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border">
+                              <div className="flex items-center gap-2 mb-2">
+                                <Calendar className="h-5 w-5 text-green-600" />
+                                <span className="font-semibold text-green-600">Validade</span>
+                              </div>
+                              <p className="text-lg font-bold">{formatDate(currentSubscription.expiresAt)}</p>
+                            </div>
+                          )}
+                        </div>
+                        
+                        {currentSubscription.startDate && (
+                          <div className="text-sm text-gray-600 dark:text-gray-300">
+                            <span>Iniciado em: {formatDate(currentSubscription.startDate)}</span>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8">
+                        <CreditCard className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                        <p className="text-gray-600 dark:text-gray-300 mb-4">
+                          Este paciente ainda não possui uma assinatura ativa.
+                        </p>
+                        <Button
+                          onClick={() => setIsCreateSubscriptionDialogOpen(true)}
+                          className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2"
+                        >
+                          <Plus className="h-4 w-4 mr-2" />
+                          Criar Primeiro Plano
+                        </Button>
                       </div>
                     )}
                   </CardContent>
@@ -1156,6 +1284,63 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
               <Copy className="h-4 w-4" />
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Subscription Dialog */}
+      <Dialog open={isCreateSubscriptionDialogOpen} onOpenChange={setIsCreateSubscriptionDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Criar Nova Assinatura</DialogTitle>
+            <DialogDescription>
+              Crie uma nova assinatura para o paciente {patient?.name}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="planType">Tipo de Plano</Label>
+              <Select value={newSubscriptionPlanType} onValueChange={(value) => setNewSubscriptionPlanType(value as Subscription['planType'])}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o tipo de plano" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="free">Gratuito</SelectItem>
+                  <SelectItem value="monthly">Mensal</SelectItem>
+                  <SelectItem value="quarterly">Trimestral</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div>
+              <Label htmlFor="status">Status Inicial</Label>
+              <Select value={newSubscriptionStatus} onValueChange={(value) => setNewSubscriptionStatus(value as Subscription['status'])}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Ativo</SelectItem>
+                  <SelectItem value="pending_payment">Aguardando Pagamento</SelectItem>
+                  <SelectItem value="pending_approval">Aguardando Aprovação</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCreateSubscriptionDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button 
+              onClick={() => createSubscriptionMutation.mutate({ 
+                planType: newSubscriptionPlanType, 
+                status: newSubscriptionStatus 
+              })}
+              disabled={createSubscriptionMutation.isPending}
+            >
+              {createSubscriptionMutation.isPending ? "Criando..." : "Criar Assinatura"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
