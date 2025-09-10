@@ -165,7 +165,7 @@ export const subscriptions = pgTable("subscriptions", {
   planType: planTypeEnum("plan_type").notNull(),
   status: subscriptionStatusEnum("status").notNull(),
   startDate: timestamp("start_date").notNull(),
-  expiresAt: timestamp("expires_at").notNull(),
+  expiresAt: timestamp("expires_at"), // Nullable for free plans
   paymentLink: text("payment_link"),
   proofOfPaymentUrl: text("proof_of_payment_url"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
