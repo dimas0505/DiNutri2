@@ -77,20 +77,20 @@ export default function MealMenuScreen({
         </div>
 
         {/* Lista de Alimentos em Cards */}
-        <div className="space-y-4">
+        <div className="space-y-3">
           {meal.items.map((item, index) => (
             <div
               key={index}
               className="bg-white rounded-xl shadow-md overflow-hidden transition-all duration-300 hover:shadow-xl hover:scale-[1.02]"
             >
-              <div className="p-5">
-                <div className="flex items-start justify-between gap-4">
+              <div className="p-3">
+                <div className="flex items-start justify-between gap-3">
                   <div className="flex items-start flex-1 min-w-0">
-                    <div className="bg-green-100 p-3 rounded-full mr-4 flex-shrink-0">
-                      <UtensilsCrossed className="h-6 w-6 text-green-700" />
+                    <div className="bg-green-100 p-2 rounded-full mr-3 flex-shrink-0">
+                      <UtensilsCrossed className="h-5 w-5 text-green-700" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-lg font-semibold text-gray-800 leading-tight break-words">{item.description}</p>
+                      <p className="font-medium text-gray-800 leading-tight break-words">{item.description}</p>
                       <p className="text-sm text-gray-500 mt-1">{item.amount}</p>
                     </div>
                   </div>
