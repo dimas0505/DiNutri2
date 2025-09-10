@@ -272,7 +272,7 @@ export default function PatientPrescriptionView() {
             );
           })()}
         
-          <div className="space-y-4 mt-6">
+          <div className="space-y-3 mt-6">
             {selectedPrescription?.meals.map(meal => {
               const isExpired = isPrescriptionExpired(selectedPrescription);
               return (
