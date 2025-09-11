@@ -36,6 +36,20 @@
       "when": 1757426035154,
       "tag": "0004_nervous_tombstone",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1757530581020,
+      "tag": "0005_rainy_tarantula",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1757533727754,
+      "tag": "0006_same_dreaming_celestial",
+      "breakpoints": true
     }
   ]
 }

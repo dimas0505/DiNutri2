@@ -15,10 +15,12 @@ import NewPatientPage from "@/pages/nutritionist/new-patient";
 import PatientDetailsPage from "@/pages/nutritionist/patient-details";
 import EditPatientPage from "@/pages/nutritionist/edit-patient";
 import PrescriptionEditorPage from "@/pages/nutritionist/prescription-editor";
+import SubscriptionsPage from "@/pages/nutritionist/subscriptions";
 import PatientPrescriptionView from "@/pages/patient/prescription-view";
 import PatientPrescriptionsList from "@/pages/patient/prescriptions-list";
 import PrescriptionPrintPage from "@/pages/patient/prescription-print";
 import PatientRegisterPage from "@/pages/patient/patient-register";
+import MyPlanPage from "@/pages/patient/my-plan";
 import AnamnesePage from "@/pages/public/anamnese";
 import FollowUpAnamnesePage from "@/pages/public/follow-up-anamnese";
 import AdminDashboard from "@/pages/admin/dashboard";
@@ -70,12 +72,14 @@ function Router() {
           <Route path="/patients/:id" component={PatientDetailsPage} />
           <Route path="/patients/:id/edit" component={EditPatientPage} />
           <Route path="/prescriptions/:id/edit" component={PrescriptionEditorPage} />
+          <Route path="/subscriptions" component={SubscriptionsPage} />
         </>
       )}
 
       {/* Rotas de Paciente (já registrado) */}
       {isAuthenticated && isPatient && (
         <>
+          <Route path="/my-plan" component={MyPlanPage} />
           <Route path="/patient/prescriptions" component={PatientPrescriptionsList} />
           <Route path="/patient/prescription" component={PatientPrescriptionView} />
           <Route path="/prescriptions/:id/print" component={PrescriptionPrintPage} />
