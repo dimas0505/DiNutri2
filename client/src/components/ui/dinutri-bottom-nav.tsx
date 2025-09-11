@@ -62,11 +62,11 @@ export function DNutriBottomNav({ className, onItemClick, activeItem = "home" }:
         </div>
 
         {/* 3. Central Highlighted Button */}
-        <div className="-mt-8">
+        <div className="-mt-4">
           <button
             onClick={() => handleItemClick("my-plan")}
             className={cn(
-              "flex h-16 w-16 flex-col items-center justify-center gap-1 rounded-full bg-white text-xs shadow-lg transition-all hover:shadow-xl",
+              "flex h-14 w-14 flex-col items-center justify-center gap-1 rounded-full bg-white text-xs shadow-lg transition-all hover:shadow-xl",
               "focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-purple-500",
               "active:scale-95",
               // Use gradient text color to match the nav background
@@ -74,9 +74,9 @@ export function DNutriBottomNav({ className, onItemClick, activeItem = "home" }:
               activeItem === "my-plan" && "ring-2 ring-white ring-offset-2 ring-offset-purple-500"
             )}
           >
-            <ShieldCheck className="h-6 w-6" />
+            <ShieldCheck className="h-5 w-5" />
             {/* Full text display without truncation */}
-            <span className="text-[10px] leading-tight">Meu Plano</span>
+            <span className="text-[9px] leading-tight">Meu Plano</span>
           </button>
         </div>
 
