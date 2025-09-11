@@ -27,9 +27,11 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
   const [followUpLink, setFollowUpLink] = useState<string | null>(null);
   const [entryToDelete, setEntryToDelete] = useState<string | null>(null);
   const [isCreateSubscriptionDialogOpen, setIsCreateSubscriptionDialogOpen] = useState(false);
+  const [isEditSubscriptionDialogOpen, setIsEditSubscriptionDialogOpen] = useState(false);
   const [newSubscriptionPlanType, setNewSubscriptionPlanType] = useState<Subscription['planType']>('monthly');
   const [newSubscriptionStatus, setNewSubscriptionStatus] = useState<Subscription['status']>('active');
   const [newSubscriptionExpiresAt, setNewSubscriptionExpiresAt] = useState<string>('');
+  const [subscriptionToDelete, setSubscriptionToDelete] = useState<string | null>(null);
 
   const { data: patient, isLoading: patientLoading } = useQuery<Patient>({
     queryKey: ["/api/patients", params.id],
@@ -279,6 +281,65 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
     },
   });
 
+  const editSubscriptionMutation = useMutation({
+    mutationFn: async ({ subscriptionId, planType, status, expiresAt }: { 
+      subscriptionId: string,
+      planType: Subscription['planType'], 
+      status: Subscription['status'],
+      expiresAt?: string
+    }) => {
+      const response = await apiRequest("PATCH", `/api/subscriptions/${subscriptionId}/manage`, {
+        planType,
+        status,
+        expiresAt
+      });
+      return await response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Sucesso",
+        description: "Assinatura editada com sucesso!",
+        variant: "default",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/patients", params.id, "subscription"] });
+      setIsEditSubscriptionDialogOpen(false);
+      setNewSubscriptionExpiresAt('');
+    },
+    onError: () => {
+      toast({
+        title: "Erro",
+        description: "Falha ao editar assinatura.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteSubscriptionMutation = useMutation({
+    mutationFn: async (subscriptionId: string) => {
+      const response = await apiRequest("DELETE", `/api/subscriptions/${subscriptionId}`);
+      if (response.status === 204) {
+        return null;
+      }
+      return await response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Assinatura excluída",
+        description: "A assinatura foi excluída com sucesso.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/patients", params.id, "subscription"] });
+      setSubscriptionToDelete(null);
+    },
+    onError: () => {
+      toast({
+        title: "Erro",
+        description: "Não foi possível excluir a assinatura. Tente novamente.",
+        variant: "destructive",
+      });
+      setSubscriptionToDelete(null);
+    },
+  });
+
   const calculateAge = (birthDate: string) => {
     if (!birthDate) return null;
     const birth = new Date(birthDate);
@@ -337,6 +398,23 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
       case 'happy': return 'Feliz';
       case 'very_happy': return 'Muito feliz';
       default: return null;
+    }
+  };
+
+  const handleDeleteSubscription = (subscriptionId: string) => {
+    deleteSubscriptionMutation.mutate(subscriptionId);
+  };
+
+  const handleEditSubscription = () => {
+    if (currentSubscription) {
+      setNewSubscriptionPlanType(currentSubscription.planType);
+      setNewSubscriptionStatus(currentSubscription.status);
+      setNewSubscriptionExpiresAt(
+        currentSubscription.expiresAt 
+          ? new Date(currentSubscription.expiresAt).toISOString().split('T')[0]
+          : ''
+      );
+      setIsEditSubscriptionDialogOpen(true);
     }
   };
 
@@ -877,15 +955,18 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                             </div>
                           </div>
                           
-                          {currentSubscription.expiresAt && (
-                            <div className="p-4 rounded-lg bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border">
-                              <div className="flex items-center gap-2 mb-2">
-                                <Calendar className="h-5 w-5 text-green-600" />
-                                <span className="font-semibold text-green-600">Validade</span>
-                              </div>
-                              <p className="text-lg font-bold">{currentSubscription.expiresAt ? formatDate(currentSubscription.expiresAt.toString()) : "Sem expiração"}</p>
+                          <div className="p-4 rounded-lg bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Calendar className="h-5 w-5 text-green-600" />
+                              <span className="font-semibold text-green-600">Validade</span>
                             </div>
-                          )}
+                            <p className="text-lg font-bold">
+                              {currentSubscription.expiresAt 
+                                ? formatDate(currentSubscription.expiresAt.toString()) 
+                                : "Sem expiração"
+                              }
+                            </p>
+                          </div>
                         </div>
                         
                         {currentSubscription.startDate && (
@@ -893,6 +974,49 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                             <span>Iniciado em: {formatDate(currentSubscription.startDate.toString())}</span>
                           </div>
                         )}
+
+                        {/* Action buttons for editing and deleting subscription */}
+                        <div className="flex flex-wrap gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+                          <Button
+                            onClick={handleEditSubscription}
+                            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2"
+                          >
+                            <User className="h-4 w-4 mr-2" />
+                            Editar Plano
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="destructive"
+                                className="px-4 py-2"
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Excluir Plano
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Tem certeza de que deseja excluir a assinatura {getPlanTypeLabel(currentSubscription.planType)} deste paciente?
+                                  <div className="mt-2 text-red-600">
+                                    Esta ação não pode ser desfeita.
+                                  </div>
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => handleDeleteSubscription(currentSubscription.id)}
+                                  disabled={deleteSubscriptionMutation.isPending}
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                >
+                                  {deleteSubscriptionMutation.isPending ? "Excluindo..." : "Excluir"}
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
                       </div>
                     ) : (
                       <div className="text-center py-8">
@@ -1338,22 +1462,22 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
               </Select>
             </div>
 
-            {/* Only show expiration date field for non-free plans */}
-            {newSubscriptionPlanType !== 'free' && (
-              <div>
-                <Label htmlFor="expiresAt">Data de Expiração (opcional)</Label>
-                <Input
-                  type="date"
-                  value={newSubscriptionExpiresAt}
-                  onChange={(e) => setNewSubscriptionExpiresAt(e.target.value)}
-                  placeholder="Se não informada, será calculada automaticamente"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Se não informada, será calculada automaticamente: 
-                  {newSubscriptionPlanType === 'monthly' ? ' 1 mês' : ' 3 meses'} a partir de hoje
-                </p>
-              </div>
-            )}
+            {/* Expiration date field for all plan types */}
+            <div>
+              <Label htmlFor="expiresAt">Data de Expiração</Label>
+              <Input
+                type="date"
+                value={newSubscriptionExpiresAt}
+                onChange={(e) => setNewSubscriptionExpiresAt(e.target.value)}
+                placeholder="Defina uma data de expiração personalizada"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                {newSubscriptionPlanType === 'free' 
+                  ? 'Para planos gratuitos, deixe em branco para "sem expiração" ou defina uma data para controle interno'
+                  : `Se não informada, será calculada automaticamente: ${newSubscriptionPlanType === 'monthly' ? '1 mês' : '3 meses'} a partir de hoje`
+                }
+              </p>
+            </div>
           </div>
 
           <DialogFooter>
@@ -1369,6 +1493,88 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
               disabled={createSubscriptionMutation.isPending}
             >
               {createSubscriptionMutation.isPending ? "Criando..." : "Criar Assinatura"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Subscription Dialog */}
+      <Dialog open={isEditSubscriptionDialogOpen} onOpenChange={setIsEditSubscriptionDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar Assinatura</DialogTitle>
+            <DialogDescription>
+              Edite a assinatura do paciente {patient?.name}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="planType">Tipo de Plano</Label>
+              <Select value={newSubscriptionPlanType} onValueChange={(value) => setNewSubscriptionPlanType(value as Subscription['planType'])}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o tipo de plano" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="free">Gratuito</SelectItem>
+                  <SelectItem value="monthly">Mensal</SelectItem>
+                  <SelectItem value="quarterly">Trimestral</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div>
+              <Label htmlFor="status">Status</Label>
+              <Select value={newSubscriptionStatus} onValueChange={(value) => setNewSubscriptionStatus(value as Subscription['status'])}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Ativo</SelectItem>
+                  <SelectItem value="pending_payment">Aguardando Pagamento</SelectItem>
+                  <SelectItem value="pending_approval">Aguardando Aprovação</SelectItem>
+                  <SelectItem value="expired">Expirado</SelectItem>
+                  <SelectItem value="canceled">Cancelado</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Expiration date field for all plan types */}
+            <div>
+              <Label htmlFor="expiresAt">Data de Expiração</Label>
+              <Input
+                type="date"
+                value={newSubscriptionExpiresAt}
+                onChange={(e) => setNewSubscriptionExpiresAt(e.target.value)}
+                placeholder="Defina uma data de expiração personalizada"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                {newSubscriptionPlanType === 'free' 
+                  ? 'Para planos gratuitos, deixe em branco para "sem expiração" ou defina uma data para controle interno'
+                  : 'Defina a data de expiração do plano'
+                }
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditSubscriptionDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button 
+              onClick={() => {
+                if (currentSubscription) {
+                  editSubscriptionMutation.mutate({ 
+                    subscriptionId: currentSubscription.id,
+                    planType: newSubscriptionPlanType, 
+                    status: newSubscriptionStatus,
+                    expiresAt: newSubscriptionExpiresAt || undefined
+                  });
+                }
+              }}
+              disabled={editSubscriptionMutation.isPending}
+            >
+              {editSubscriptionMutation.isPending ? "Salvando..." : "Salvar Alterações"}
             </Button>
           </DialogFooter>
         </DialogContent>

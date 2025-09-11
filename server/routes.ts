@@ -1120,5 +1120,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Delete/Cancel subscription (nutritionist only)
+  app.delete('/api/subscriptions/:subscriptionId', isAuthenticated, async (req: any, res) => {
+    try {
+      const subscriptionId = req.params.subscriptionId;
+      const nutritionistId = req.user.id;
+
+      if (req.user.role !== 'nutritionist') {
+        return res.status(403).json({ error: "Acesso negado. Apenas nutricionistas." });
+      }
+
+      // Security check: ensure subscription belongs to nutritionist's patient
+      const [subscriptionWithPatient] = await db
+        .select({
+          subscription: subscriptions,
+          patient: patients,
+        })
+        .from(subscriptions)
+        .leftJoin(patients, eq(subscriptions.patientId, patients.id))
+        .where(eq(subscriptions.id, subscriptionId));
+
+      if (!subscriptionWithPatient || subscriptionWithPatient.patient?.ownerId !== nutritionistId) {
+        return res.status(404).json({ error: "Assinatura não encontrada ou não autorizada." });
+      }
+
+      // Delete subscription
+      await db
+        .delete(subscriptions)
+        .where(eq(subscriptions.id, subscriptionId));
+
+      return res.status(204).send();
+    } catch (error) {
+      console.error("Erro ao excluir assinatura:", error);
+      res.status(500).json({ error: "Falha ao excluir assinatura." });
+    }
+  });
+
   return createServer(app);
 }
