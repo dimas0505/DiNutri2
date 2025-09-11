@@ -1036,7 +1036,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const subscriptionId = req.params.subscriptionId;
       const nutritionistId = req.user.id;
-      const updateData = req.body;
+      const { planType, status, expiresAt, ...otherData } = req.body;
 
       if (req.user.role !== 'nutritionist') {
         return res.status(403).json({ error: "Acesso negado. Apenas nutricionistas." });
@@ -1056,13 +1056,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Assinatura não encontrada ou não autorizada." });
       }
 
+      // Prepare update data with proper type handling
+      const updateData: any = {
+        ...otherData,
+        updatedAt: new Date(),
+      };
+
+      // Handle planType if provided
+      if (planType !== undefined) {
+        updateData.planType = planType;
+      }
+
+      // Handle status if provided  
+      if (status !== undefined) {
+        updateData.status = status;
+      }
+
+      // Handle expiresAt with proper validation and conversion
+      if (expiresAt !== undefined) {
+        if (expiresAt === '' || expiresAt === null) {
+          // Empty string or null means no expiration (for free plans)
+          updateData.expiresAt = null;
+        } else {
+          // Convert string to Date and validate it's in the future
+          const expirationDate = new Date(expiresAt);
+          if (isNaN(expirationDate.getTime())) {
+            return res.status(400).json({ error: "Data de expiração inválida." });
+          }
+          if (expirationDate <= new Date()) {
+            return res.status(400).json({ error: "Data de expiração deve ser no futuro." });
+          }
+          updateData.expiresAt = expirationDate;
+        }
+      }
+
       // Update subscription
       const [updatedSubscription] = await db
         .update(subscriptions)
-        .set({
-          ...updateData,
-          updatedAt: new Date(),
-        })
+        .set(updateData)
         .where(eq(subscriptions.id, subscriptionId))
         .returning();
 
