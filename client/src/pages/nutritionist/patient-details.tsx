@@ -353,7 +353,13 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('pt-BR');
+    const date = new Date(dateString);
+    // Format date consistently, avoiding timezone shifts for display
+    return date.toLocaleDateString('pt-BR', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    });
   };
 
   const renderStatusBadge = (status: Subscription['status']) => {
@@ -409,11 +415,17 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
     if (currentSubscription) {
       setNewSubscriptionPlanType(currentSubscription.planType);
       setNewSubscriptionStatus(currentSubscription.status);
-      setNewSubscriptionExpiresAt(
-        currentSubscription.expiresAt 
-          ? new Date(currentSubscription.expiresAt).toISOString().split('T')[0]
-          : ''
-      );
+      // Handle date initialization to avoid timezone issues
+      if (currentSubscription.expiresAt) {
+        const date = new Date(currentSubscription.expiresAt);
+        // Format date to YYYY-MM-DD for the input, avoiding timezone shifts
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        setNewSubscriptionExpiresAt(`${year}-${month}-${day}`);
+      } else {
+        setNewSubscriptionExpiresAt('');
+      }
       setIsEditSubscriptionDialogOpen(true);
     }
   };

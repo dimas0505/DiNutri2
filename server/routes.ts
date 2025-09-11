@@ -952,9 +952,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           expirationDate = null;
         } else if (expiresAt) {
           // Use custom expiration date if provided
-          expirationDate = new Date(expiresAt);
+          // Handle date input strings properly to avoid timezone issues
+          if (typeof expiresAt === 'string' && expiresAt.match(/^\d{4}-\d{2}-\d{2}$/)) {
+            // This is a date string from HTML date input (YYYY-MM-DD)
+            // Create date at noon UTC to avoid timezone shifts
+            const [year, month, day] = expiresAt.split('-').map(Number);
+            expirationDate = new Date(year, month - 1, day, 12, 0, 0, 0);
+          } else {
+            expirationDate = new Date(expiresAt);
+          }
           // Validate that the custom date is in the future
-          if (expirationDate <= now) {
+          const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          if (expirationDate <= todayStart) {
             return res.status(400).json({ error: 'Data de expiração deve ser no futuro' });
           }
         } else {
@@ -1079,11 +1088,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
           updateData.expiresAt = null;
         } else {
           // Convert string to Date and validate it's in the future
-          const expirationDate = new Date(expiresAt);
+          let expirationDate;
+          
+          if (typeof expiresAt === 'string' && expiresAt.match(/^\d{4}-\d{2}-\d{2}$/)) {
+            // This is a date string from HTML date input (YYYY-MM-DD)
+            // Create date at noon UTC to avoid timezone shifts
+            const [year, month, day] = expiresAt.split('-').map(Number);
+            expirationDate = new Date(year, month - 1, day, 12, 0, 0, 0);
+          } else {
+            expirationDate = new Date(expiresAt);
+          }
+          
           if (isNaN(expirationDate.getTime())) {
             return res.status(400).json({ error: "Data de expiração inválida." });
           }
-          if (expirationDate <= new Date()) {
+          
+          const todayStart = new Date();
+          todayStart.setHours(0, 0, 0, 0);
+          if (expirationDate < todayStart) {
             return res.status(400).json({ error: "Data de expiração deve ser no futuro." });
           }
           updateData.expiresAt = expirationDate;
