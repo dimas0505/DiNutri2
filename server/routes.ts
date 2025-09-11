@@ -915,7 +915,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const nutritionistId = req.user.id;
       const patientId = req.params.patientId;
-      const { planType, status = 'active' } = req.body;
+      const { planType, status = 'active', expiresAt } = req.body;
 
       if (req.user.role !== 'nutritionist') {
         return res.status(403).json({ error: 'Acesso negado. Apenas nutricionistas.' });
@@ -944,17 +944,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Calculate dates based on plan type and status
       const now = new Date();
       let startDate = now;
-      let expiresAt = null;
+      let expirationDate = null;
 
       if (status === 'active') {
-        if (planType === 'monthly') {
-          expiresAt = new Date(now);
-          expiresAt.setMonth(expiresAt.getMonth() + 1);
-        } else if (planType === 'quarterly') {
-          expiresAt = new Date(now);
-          expiresAt.setMonth(expiresAt.getMonth() + 3);
+        if (planType === 'free') {
+          // Free plans don't expire
+          expirationDate = null;
+        } else if (expiresAt) {
+          // Use custom expiration date if provided
+          expirationDate = new Date(expiresAt);
+          // Validate that the custom date is in the future
+          if (expirationDate <= now) {
+            return res.status(400).json({ error: 'Data de expiração deve ser no futuro' });
+          }
+        } else {
+          // Auto-calculate expiration based on plan type
+          if (planType === 'monthly') {
+            expirationDate = new Date(now);
+            expirationDate.setMonth(expirationDate.getMonth() + 1);
+          } else if (planType === 'quarterly') {
+            expirationDate = new Date(now);
+            expirationDate.setMonth(expirationDate.getMonth() + 3);
+          }
         }
-        // Free plans don't expire
       }
 
       // Create new subscription
@@ -967,7 +979,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           planType: planType,
           status: status,
           startDate: startDate,
-          expiresAt: expiresAt,
+          expiresAt: expirationDate,
           createdAt: now,
           updatedAt: now
         });

@@ -29,6 +29,7 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
   const [isCreateSubscriptionDialogOpen, setIsCreateSubscriptionDialogOpen] = useState(false);
   const [newSubscriptionPlanType, setNewSubscriptionPlanType] = useState<Subscription['planType']>('monthly');
   const [newSubscriptionStatus, setNewSubscriptionStatus] = useState<Subscription['status']>('active');
+  const [newSubscriptionExpiresAt, setNewSubscriptionExpiresAt] = useState<string>('');
 
   const { data: patient, isLoading: patientLoading } = useQuery<Patient>({
     queryKey: ["/api/patients", params.id],
@@ -36,7 +37,10 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
 
   const { data: currentSubscription } = useQuery<Subscription>({
     queryKey: ["/api/patients", params.id, "subscription"],
-    queryFn: () => apiRequest("GET", `/api/patients/${params.id}/subscription`),
+    queryFn: async () => {
+      const response = await apiRequest("GET", `/api/patients/${params.id}/subscription`);
+      return await response.json();
+    },
     enabled: !!patient,
   });
 
@@ -244,11 +248,18 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
   });
 
   const createSubscriptionMutation = useMutation({
-    mutationFn: ({ planType, status }: { planType: Subscription['planType'], status: Subscription['status'] }) =>
-      apiRequest("POST", `/api/nutritionist/patients/${params.id}/subscription`, {
+    mutationFn: async ({ planType, status, expiresAt }: { 
+      planType: Subscription['planType'], 
+      status: Subscription['status'],
+      expiresAt?: string
+    }) => {
+      const response = await apiRequest("POST", `/api/nutritionist/patients/${params.id}/subscription`, {
         planType,
-        status
-      }),
+        status,
+        expiresAt
+      });
+      return await response.json();
+    },
     onSuccess: () => {
       toast({
         title: "Sucesso",
@@ -257,6 +268,7 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
       });
       queryClient.invalidateQueries({ queryKey: ["/api/patients", params.id, "subscription"] });
       setIsCreateSubscriptionDialogOpen(false);
+      setNewSubscriptionExpiresAt('');
     },
     onError: () => {
       toast({
@@ -871,14 +883,14 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                                 <Calendar className="h-5 w-5 text-green-600" />
                                 <span className="font-semibold text-green-600">Validade</span>
                               </div>
-                              <p className="text-lg font-bold">{formatDate(currentSubscription.expiresAt)}</p>
+                              <p className="text-lg font-bold">{currentSubscription.expiresAt ? formatDate(currentSubscription.expiresAt.toString()) : "Sem expiração"}</p>
                             </div>
                           )}
                         </div>
                         
                         {currentSubscription.startDate && (
                           <div className="text-sm text-gray-600 dark:text-gray-300">
-                            <span>Iniciado em: {formatDate(currentSubscription.startDate)}</span>
+                            <span>Iniciado em: {formatDate(currentSubscription.startDate.toString())}</span>
                           </div>
                         )}
                       </div>
@@ -1325,6 +1337,23 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Only show expiration date field for non-free plans */}
+            {newSubscriptionPlanType !== 'free' && (
+              <div>
+                <Label htmlFor="expiresAt">Data de Expiração (opcional)</Label>
+                <Input
+                  type="date"
+                  value={newSubscriptionExpiresAt}
+                  onChange={(e) => setNewSubscriptionExpiresAt(e.target.value)}
+                  placeholder="Se não informada, será calculada automaticamente"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Se não informada, será calculada automaticamente: 
+                  {newSubscriptionPlanType === 'monthly' ? ' 1 mês' : ' 3 meses'} a partir de hoje
+                </p>
+              </div>
+            )}
           </div>
 
           <DialogFooter>
@@ -1334,7 +1363,8 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
             <Button 
               onClick={() => createSubscriptionMutation.mutate({ 
                 planType: newSubscriptionPlanType, 
-                status: newSubscriptionStatus 
+                status: newSubscriptionStatus,
+                expiresAt: newSubscriptionExpiresAt || undefined
               })}
               disabled={createSubscriptionMutation.isPending}
             >

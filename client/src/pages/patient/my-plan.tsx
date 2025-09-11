@@ -25,13 +25,19 @@ export default function MyPlanPage() {
   // Get current patient data
   const { data: currentPatient } = useQuery<Patient>({
     queryKey: ["/api/patient/my-profile"],
-    queryFn: () => apiRequest("GET", "/api/patient/my-profile"),
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/patient/my-profile");
+      return await response.json();
+    },
     enabled: !!user && user.role === "patient",
   });
 
   const { data: subscription, isLoading: isLoadingSubscription, isError } = useQuery<Subscription>({
     queryKey: ["/api/patients", currentPatient?.id, "subscription"],
-    queryFn: () => apiRequest("GET", `/api/patients/${currentPatient?.id}/subscription`),
+    queryFn: async () => {
+      const response = await apiRequest("GET", `/api/patients/${currentPatient?.id}/subscription`);
+      return await response.json();
+    },
     enabled: !!currentPatient?.id,
   });
 
@@ -186,9 +192,8 @@ export default function MyPlanPage() {
     return (
       <>
         <HeaderDNutri 
-          title="Meu Plano"
+          goalText="Meu Plano"
           onProfileClick={() => setIsProfileModalOpen(true)}
-          onBack={() => setLocation("/")}
         />
         <main className="p-4">
           {content}
@@ -203,8 +208,9 @@ export default function MyPlanPage() {
           }}
         />
         <ProfileModal 
-          isOpen={isProfileModalOpen} 
-          onClose={() => setIsProfileModalOpen(false)} 
+          open={isProfileModalOpen} 
+          onOpenChange={setIsProfileModalOpen}
+          patient={currentPatient || null}
         />
       </>
     );

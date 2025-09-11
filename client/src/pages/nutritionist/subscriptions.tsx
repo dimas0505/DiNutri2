@@ -266,7 +266,10 @@ export default function SubscriptionsPage() {
 
   const { data: pendingSubscriptions, isLoading, refetch } = useQuery<SubscriptionWithPatient[]>({
     queryKey: ["/api/nutritionist/subscriptions/pending"],
-    queryFn: () => apiRequest("GET", "/api/nutritionist/subscriptions/pending"),
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/nutritionist/subscriptions/pending");
+      return await response.json();
+    },
   });
 
   const handleManageSubscription = (subscription: SubscriptionWithPatient) => {
@@ -339,15 +342,12 @@ export default function SubscriptionsPage() {
   if (isMobile) {
     return (
       <MobileLayout>
-        <DefaultMobileDrawer>
-          <div className="p-4">
-            <div className="flex items-center mb-4">
-              <CreditCard className="h-6 w-6 mr-2" />
-              <span className="font-medium">Assinaturas</span>
-            </div>
-          </div>
-        </DefaultMobileDrawer>
+        <DefaultMobileDrawer />
         <div className="p-4">
+          <div className="flex items-center mb-4">
+            <CreditCard className="h-6 w-6 mr-2" />
+            <span className="font-medium">Assinaturas</span>
+          </div>
           {content}
         </div>
       </MobileLayout>
