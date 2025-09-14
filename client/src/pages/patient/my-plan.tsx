@@ -145,27 +145,37 @@ export default function MyPlanPage() {
         </CardContent>
       </Card>
       
-      {subscription && subscription.expiresAt && daysUntilExpiry <= 7 && subscription.status === 'active' && (
+      {/* --- INÍCIO DA MODIFICAÇÃO --- */}
+      {/* Bloco de Lógica para Notificações de Status do Plano */}
+
+      {/* 1. Alerta para plano JÁ EXPIRADO */}
+      {subscription && subscription.status === 'expired' && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Seu plano expirou!</AlertTitle>
+          <AlertDescription>
+            Seu plano expirou em {subscription.expiresAt 
+              ? format(new Date(subscription.expiresAt), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })
+              : "data não informada"
+            }.
+            Para continuar sua consultoria e ter acesso aos seus planos, por favor, clique no botão abaixo para solicitar a renovação.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* 2. Alerta para plano PRESTES A EXPIRAR (apenas se estiver ativo) */}
+      {subscription && subscription.status === 'active' && subscription.expiresAt && daysUntilExpiry <= 7 && daysUntilExpiry > 0 && (
         <Alert className="border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/20">
           <AlertCircle className="h-4 w-4 text-amber-600" />
           <AlertTitle className="text-amber-800 dark:text-amber-200">
             Seu plano está prestes a expirar!
           </AlertTitle>
           <AlertDescription className="text-amber-700 dark:text-amber-300">
-            Renove seu plano para não perder o acesso às suas prescrições. O plano é projetado para um acompanhamento de 4 semanas.
+            Faltam {daysUntilExpiry} dia{daysUntilExpiry !== 1 ? 's' : ''} para o vencimento. Renove seu plano para não perder o acesso às suas prescrições.
           </AlertDescription>
         </Alert>
       )}
-
-      {subscription && subscription.status === 'expired' && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Plano Expirado</AlertTitle>
-          <AlertDescription>
-            Seu plano expirou. Entre em contato com seu nutricionista para renovar e continuar tendo acesso às suas prescrições.
-          </AlertDescription>
-        </Alert>
-      )}
+      {/* --- FIM DA MODIFICAÇÃO --- */}
 
       {/* Renovation section - simplified for now */}
       <div className="text-center">
