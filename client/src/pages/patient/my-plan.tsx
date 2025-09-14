@@ -41,9 +41,12 @@ export default function MyPlanPage() {
     enabled: !!currentPatient?.id,
   });
 
-  const renderStatusBadge = (status: Subscription['status']) => {
+  const renderStatusBadge = (status: Subscription['status'], expiresAt?: Date | null) => {
+    // Check if subscription is actually expired based on date, regardless of status field
+    const isActuallyExpired = expiresAt && expiresAt < new Date();
+    
     const statusMap = {
-      active: { label: "Ativo", className: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" },
+      active: { label: isActuallyExpired ? "Expirado" : "Ativo", className: isActuallyExpired ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200" : "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" },
       pending_payment: { label: "Aguardando Pagamento", className: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200" },
       pending_approval: { label: "Aguardando Aprovação", className: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200" },
       expired: { label: "Expirado", className: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200" },
@@ -62,7 +65,7 @@ export default function MyPlanPage() {
     return planMap[planType] || planType;
   };
 
-  const daysUntilExpiry = subscription && subscription.expiresAt ? differenceInDays(new Date(subscription.expiresAt), new Date()) : 0;
+  const daysUntilExpiry = subscription && subscription.expiresAt ? differenceInDays(subscription.expiresAt, new Date()) : 0;
 
   if (isLoading) {
     return (
@@ -116,13 +119,13 @@ export default function MyPlanPage() {
                 <span className="text-lg font-semibold capitalize">
                   Plano {getPlanTypeLabel(subscription.planType)}
                 </span>
-                {renderStatusBadge(subscription.status)}
+                {renderStatusBadge(subscription.status, subscription.expiresAt)}
               </div>
               <div>
                 <p className="text-sm font-medium text-gray-500">Válido até</p>
                 <p className="text-lg font-semibold">
                   {subscription.expiresAt 
-                    ? format(new Date(subscription.expiresAt), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })
+                    ? format(subscription.expiresAt, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })
                     : "Sem expiração"
                   }
                 </p>
@@ -136,7 +139,7 @@ export default function MyPlanPage() {
                 <div>
                   <p className="text-sm font-medium text-gray-500">Início</p>
                   <p className="text-base">
-                    {format(new Date(subscription.startDate), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                    {format(subscription.startDate, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
                   </p>
                 </div>
               )}
@@ -148,14 +151,17 @@ export default function MyPlanPage() {
       {/* --- INÍCIO DA MODIFICAÇÃO --- */}
       {/* Bloco de Lógica para Notificações de Status do Plano */}
 
-      {/* 1. Alerta para plano JÁ EXPIRADO */}
-      {subscription && subscription.status === 'expired' && (
+      {/* 1. Alerta para plano JÁ EXPIRADO - Verifica tanto status quanto data de expiração */}
+      {subscription && subscription.expiresAt && (
+        subscription.status === 'expired' || 
+        (subscription.expiresAt && subscription.expiresAt < new Date())
+      ) && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Seu plano expirou!</AlertTitle>
           <AlertDescription>
             Seu plano expirou em {subscription.expiresAt 
-              ? format(new Date(subscription.expiresAt), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })
+              ? format(subscription.expiresAt, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })
               : "data não informada"
             }.
             Para continuar sua consultoria e ter acesso aos seus planos, por favor, clique no botão abaixo para solicitar a renovação.
@@ -163,8 +169,10 @@ export default function MyPlanPage() {
         </Alert>
       )}
 
-      {/* 2. Alerta para plano PRESTES A EXPIRAR (apenas se estiver ativo) */}
-      {subscription && subscription.status === 'active' && subscription.expiresAt && daysUntilExpiry <= 7 && daysUntilExpiry > 0 && (
+      {/* 2. Alerta para plano PRESTES A EXPIRAR (apenas se NÃO estiver expirado e estiver ativo) */}
+      {subscription && subscription.status === 'active' && subscription.expiresAt && 
+       subscription.expiresAt >= new Date() && 
+       daysUntilExpiry <= 7 && daysUntilExpiry > 0 && (
         <Alert className="border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/20">
           <AlertCircle className="h-4 w-4 text-amber-600" />
           <AlertTitle className="text-amber-800 dark:text-amber-200">
