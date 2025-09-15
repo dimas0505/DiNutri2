@@ -1,4 +1,4 @@
-import { pgTable, varchar, text, timestamp, boolean, integer, jsonb, index, real, pgEnum } from "drizzle-orm/pg-core";
+import { pgTable, varchar, text, timestamp, boolean, integer, jsonb, index, real, pgEnum, serial } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -171,6 +171,17 @@ export const subscriptions = pgTable("subscriptions", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
+
+// Activity Log table
+export const activityLog = pgTable("activity_log", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  activityType: varchar("activity_type", { length: 255 }).notNull(), // ex: 'login', 'view_prescription'
+  details: text("details"), // ex: 'Prescription ID: xyz'
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type ActivityLog = typeof activityLog.$inferSelect;
 
 // Relations
 export const usersRelations = relations(users, ({ one, many }) => ({

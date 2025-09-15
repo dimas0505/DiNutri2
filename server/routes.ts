@@ -10,11 +10,14 @@ import { z } from "zod";
 import { handleUpload, type HandleUploadBody } from '@vercel/blob/client';
 import { put } from '@vercel/blob';
 import multer from 'multer';
-import { eq, and, desc, or } from 'drizzle-orm';
+import { eq, and, desc, or, sql } from 'drizzle-orm';
 import { anamnesisRecords, foodDiaryEntries, prescriptions, users, patients, subscriptions } from '../shared/schema.js';
 import { db } from './db.js';
 import sharp from 'sharp';
 import { nanoid } from 'nanoid';
+import { logActivity } from './activity-logger.js';
+import ExcelJS from 'exceljs';
+import { format } from 'date-fns';
 
 const SALT_ROUNDS = 10;
 
@@ -48,7 +51,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use(bodyParser.json());
 
   // --- AUTHENTICATION ROUTES ---
-  app.post('/api/login', passport.authenticate('local'), (req, res) => {
+  app.post('/api/login', passport.authenticate('local'), (req: any, res) => {
+    if (req.user) {
+      logActivity({ userId: req.user.id, activityType: 'login' });
+    }
     res.json(req.user);
   });
 
@@ -507,6 +513,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/patient/my-prescriptions', isAuthenticated, async (req: any, res) => {
     try {
+      logActivity({ userId: req.user.id, activityType: 'view_my_prescriptions_list' });
       const prescriptions = await storage.getPublishedPrescriptionsForUser(req.user.id);
       res.json(prescriptions);
     } catch (error) {
@@ -1206,6 +1213,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Erro ao excluir assinatura:", error);
       res.status(500).json({ error: "Falha ao excluir assinatura." });
+    }
+  });
+
+  // --- REPORTS ROUTES ---
+  app.get('/api/nutritionist/reports/access-log', isAuthenticated, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'nutritionist') {
+        return res.status(403).json({ error: "Acesso negado. Apenas nutricionistas." });
+      }
+
+      const nutritionistId = req.user.id;
+
+      const patientData = await db.execute(sql`
+        SELECT
+          p.id as "patientId",
+          p.name as "patientName",
+          u.email as "patientEmail",
+          s.plan_type as "planType",
+          s.status as "planStatus",
+          s.expires_at as "planExpiresAt",
+          la.last_activity_timestamp as "lastActivityTimestamp",
+          la.last_activity_type as "lastActivityType"
+        FROM patients p
+        JOIN users u ON p.user_id = u.id
+        LEFT JOIN (
+          SELECT *, ROW_NUMBER() OVER(PARTITION BY patient_id ORDER BY created_at DESC) as rn
+          FROM subscriptions
+        ) s ON p.id = s.patient_id AND s.rn = 1
+        LEFT JOIN (
+          SELECT
+            user_id,
+            MAX(created_at) as last_activity_timestamp,
+            (array_agg(activity_type ORDER BY created_at DESC))[1] as last_activity_type
+          FROM activity_log
+          GROUP BY user_id
+        ) la ON u.id = la.user_id
+        WHERE p.owner_id = ${nutritionistId}
+        ORDER BY la.last_activity_timestamp DESC NULLS LAST, p.name;
+      `);
+
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet('Relatório de Acesso');
+
+      worksheet.columns = [
+        { header: 'ID do Paciente', key: 'patientId', width: 25 },
+        { header: 'Nome do Paciente', key: 'patientName', width: 30 },
+        { header: 'Email', key: 'patientEmail', width: 30 },
+        { header: 'Plano', key: 'planType', width: 15 },
+        { header: 'Status do Plano', key: 'planStatus', width: 20 },
+        { header: 'Vencimento', key: 'planExpiresAt', width: 20 },
+        { header: 'Último Acesso', key: 'lastActivityTimestamp', width: 25 },
+        { header: 'Última Atividade', key: 'lastActivityType', width: 40 },
+      ];
+      
+      worksheet.getRow(1).font = { bold: true };
+
+      patientData.rows.forEach((row: any) => {
+        worksheet.addRow({
+          ...row,
+          planExpiresAt: row.planExpiresAt ? format(new Date(row.planExpiresAt), 'dd/MM/yyyy') : 'N/A',
+          lastActivityTimestamp: row.lastActivityTimestamp ? format(new Date(row.lastActivityTimestamp), 'dd/MM/yyyy HH:mm:ss') : 'Nenhum acesso',
+        });
+      });
+
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', 'attachment; filename="relatorio_de_acesso.xlsx"');
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      res.send(buffer);
+
+    } catch (error) {
+      console.error("Erro ao gerar relatório de acesso:", error);
+      res.status(500).json({ message: "Falha ao gerar relatório." });
     }
   });
 
