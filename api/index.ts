@@ -1,12 +1,11 @@
-import express from "express";
-import { registerRoutes } from "../server/routes.js";
+// Vercel serverless function entry point
+import handler from "../server/index";
 
-const app = express();
+// Add debugging information for Vercel deployments
+console.log('Vercel API handler initialized:', {
+  nodeVersion: process.version,
+  environment: process.env.NODE_ENV,
+  runtime: process.env.VERCEL_REGION || 'local'
+});
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
-// Registrar rotas
-await registerRoutes(app);
-
-export default app;
+export default handler;

@@ -1,0 +1,22 @@
+# Development files
+.git
+.gitignore
+README.md
+IMPLEMENTATION_SUMMARY.md
+*.md
+
+# Build artifacts
+.replit
+.gitpod.yml
+.local
+attached_assets/
+projeto_completo_*
+scripts/
+
+# SQL files not needed in production
+*.sql
+
+# Development dependencies
+node_modules/.cache
+node_modules/@types
+.tsx
