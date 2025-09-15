@@ -35,6 +35,7 @@ export function serveStatic(app: Express) {
 // --- Fim das funções movidas ---
 
 
+// Create and configure the app once
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
@@ -51,26 +52,42 @@ app.use((req, res, next) => {
   next();
 });
 
-// A função serverless do Vercel espera uma exportação padrão (default export) que seja uma função ou um servidor.
-// Removemos o app.listen() e exportamos o app diretamente.
-export default async function handler(req: Request, res: Response) {
-  // Registra as rotas no aplicativo Express
-  await registerRoutes(app);
+// Initialize the app once (not on every request)
+let initialized = false;
 
-  // Middleware de tratamento de erros
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
-    res.status(status).json({ message });
-  });
+async function initializeApp() {
+  if (!initialized) {
+    // Register routes once
+    await registerRoutes(app);
 
-  // Em produção, serve os arquivos estáticos do build
-  if (process.env.NODE_ENV !== 'development') {
-    serveStatic(app);
+    // Middleware de tratamento de erros
+    app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+      const status = err.status || err.statusCode || 500;
+      const message = err.message || "Internal Server Error";
+      res.status(status).json({ message });
+    });
+
+    // Em produção, serve os arquivos estáticos do build
+    if (process.env.NODE_ENV !== 'development') {
+      serveStatic(app);
+    }
+
+    initialized = true;
   }
+}
 
-  // Retorna o aplicativo Express para ser usado como uma função serverless
-  app(req, res);
+// Vercel serverless function handler
+export default async function handler(req: Request, res: Response) {
+  try {
+    await initializeApp();
+    app(req, res);
+  } catch (error) {
+    console.error('Error initializing app:', error);
+    res.status(500).json({ 
+      message: 'Internal server error during initialization',
+      error: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.message : 'Unknown error') : 'Server error'
+    });
+  }
 }
 
 // Em ambiente de desenvolvimento, iniciamos o servidor normalmente

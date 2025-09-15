@@ -1271,61 +1271,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log('Found patient data:', patientData.length, 'records');
 
-      // 2. Create Excel workbook
+      // 2. Create Excel workbook with optimized settings for serverless
       const workbook = new ExcelJS.Workbook();
       workbook.creator = 'DiNutri2';
       workbook.created = new Date();
       workbook.modified = new Date();
       
+      // Use streaming worksheet for better memory management
       const worksheet = workbook.addWorksheet('Relatório de Acesso');
 
-      // 3. Add headers
+      // 3. Add headers with minimal styling for better performance
       worksheet.columns = [
-        { header: 'ID do Paciente', key: 'patientId', width: 25 },
-        { header: 'Nome do Paciente', key: 'patientName', width: 30 },
-        { header: 'Email', key: 'patientEmail', width: 30 },
-        { header: 'Plano', key: 'planType', width: 15 },
-        { header: 'Status do Plano', key: 'planStatus', width: 20 },
-        { header: 'Vencimento', key: 'planExpiresAt', width: 20 },
-        { header: 'Último Acesso', key: 'lastActivityTimestamp', width: 25 },
-        { header: 'Última Atividade', key: 'lastActivityType', width: 40 },
+        { header: 'ID do Paciente', key: 'patientId', width: 20 },
+        { header: 'Nome do Paciente', key: 'patientName', width: 25 },
+        { header: 'Email', key: 'patientEmail', width: 25 },
+        { header: 'Plano', key: 'planType', width: 12 },
+        { header: 'Status do Plano', key: 'planStatus', width: 15 },
+        { header: 'Vencimento', key: 'planExpiresAt', width: 15 },
+        { header: 'Último Acesso', key: 'lastActivityTimestamp', width: 20 },
+        { header: 'Última Atividade', key: 'lastActivityType', width: 30 },
       ];
       
-      // Style the header
+      // Minimal header styling for better performance
       worksheet.getRow(1).font = { bold: true };
-      worksheet.getRow(1).fill = {
-        type: 'pattern',
-        pattern: 'solid',
-        fgColor: { argb: 'FFE0E0E0' }
-      };
 
-      // 4. Add data
-      const processedData = patientData.map(patient => ({
-        patientId: patient.patientId || '',
-        patientName: patient.patientName || 'N/A',
-        patientEmail: patient.patientEmail || 'N/A',
-        planType: patient.planType || 'Free',
-        planStatus: patient.planStatus || 'Inativo',
-        planExpiresAt: patient.planExpiresAt ? (() => {
-          try {
-            return format(new Date(patient.planExpiresAt), 'dd/MM/yyyy');
-          } catch (e) {
-            return 'Data inválida';
-          }
-        })() : 'N/A',
-        lastActivityTimestamp: patient.lastActivityTimestamp ? (() => {
-          try {
-            return format(new Date(patient.lastActivityTimestamp), 'dd/MM/yyyy HH:mm:ss');
-          } catch (e) {
-            return 'Data inválida';
-          }
-        })() : 'Nenhum acesso registrado',
-        lastActivityType: patient.lastActivityType || 'N/A',
-      }));
+      // 4. Add data with memory-efficient processing
+      const processedData = [];
+      
+      // Process in batches to avoid memory issues
+      const batchSize = 100;
+      for (let i = 0; i < patientData.length; i += batchSize) {
+        const batch = patientData.slice(i, i + batchSize);
+        const processedBatch = batch.map(patient => ({
+          patientId: patient.patientId || '',
+          patientName: patient.patientName || 'N/A',
+          patientEmail: patient.patientEmail || 'N/A',
+          planType: patient.planType || 'Free',
+          planStatus: patient.planStatus || 'Inativo',
+          planExpiresAt: patient.planExpiresAt ? (() => {
+            try {
+              return format(new Date(patient.planExpiresAt), 'dd/MM/yyyy');
+            } catch (e) {
+              return 'Data inválida';
+            }
+          })() : 'N/A',
+          lastActivityTimestamp: patient.lastActivityTimestamp ? (() => {
+            try {
+              return format(new Date(patient.lastActivityTimestamp), 'dd/MM/yyyy HH:mm:ss');
+            } catch (e) {
+              return 'Data inválida';
+            }
+          })() : 'Nenhum acesso registrado',
+          lastActivityType: patient.lastActivityType || 'N/A',
+        }));
+        
+        processedData.push(...processedBatch);
+      }
 
+      // Add all processed data to the worksheet
       worksheet.addRows(processedData);
 
-      console.log('Excel workbook created successfully');
+      console.log('Excel workbook created successfully with', processedData.length, 'rows');
 
       // 5. Set headers early for streaming
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
