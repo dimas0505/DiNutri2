@@ -1,6 +1,6 @@
 import "dotenv/config";
 import express, { type Request, Response, NextFunction, type Express } from "express";
-import { registerRoutes } from "./routes.js";
+import { registerRoutes, setupRoutes } from "./routes.js";
 import path from "path";
 import fs from "fs";
 
@@ -51,25 +51,31 @@ app.use((req, res, next) => {
   next();
 });
 
-// A função serverless do Vercel espera uma exportação padrão (default export) que seja uma função ou um servidor.
-// Removemos o app.listen() e exportamos o app diretamente.
-export default async function handler(req: Request, res: Response) {
-  // Registra as rotas no aplicativo Express
-  await registerRoutes(app);
+// Configure routes once
+let routesRegistered = false;
+async function ensureRoutesRegistered() {
+  if (!routesRegistered) {
+    await setupRoutes(app);
+    
+    // Middleware de tratamento de erros
+    app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+      const status = err.status || err.statusCode || 500;
+      const message = err.message || "Internal Server Error";
+      res.status(status).json({ message });
+    });
 
-  // Middleware de tratamento de erros
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
-    res.status(status).json({ message });
-  });
-
-  // Em produção, serve os arquivos estáticos do build
-  if (process.env.NODE_ENV !== 'development') {
-    serveStatic(app);
+    // Em produção, serve os arquivos estáticos do build
+    if (process.env.NODE_ENV !== 'development') {
+      serveStatic(app);
+    }
+    
+    routesRegistered = true;
   }
+}
 
-  // Retorna o aplicativo Express para ser usado como uma função serverless
+// A função serverless do Vercel espera uma exportação padrão (default export) que seja uma função ou um servidor.
+export default async function handler(req: Request, res: Response) {
+  await ensureRoutesRegistered();
   app(req, res);
 }
 

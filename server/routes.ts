@@ -44,7 +44,7 @@ const isAdmin = (req: any, res: any, next: any) => {
   next();
 };
 
-export async function registerRoutes(app: Express): Promise<Server> {
+export async function setupRoutes(app: Express): Promise<void> {
   await setupAuth(app);
   
   // Middleware para parsear o corpo da requisição de upload
@@ -1289,5 +1289,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  return createServer(app);
+}
+
+export async function registerRoutes(app: Express): Promise<Server> {
+  await setupRoutes(app);
   return createServer(app);
 }
