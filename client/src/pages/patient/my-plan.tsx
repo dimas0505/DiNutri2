@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { differenceInDays, format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Loader2, AlertCircle, ShieldCheck } from "lucide-react";
+import { Loader2, AlertCircle, ShieldCheck, AlertTriangle, XCircle } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { HeaderDNutri } from "@/components/ui/header-dinutri";
 import { DNutriBottomNav } from "@/components/ui/dinutri-bottom-nav";
@@ -154,17 +154,32 @@ export default function MyPlanPage() {
   <>
     {/* 1. Alerta para plano JÁ EXPIRADO (Verifica a data primeiro) */}
     {new Date(subscription.expiresAt) < new Date() ? (
-      <Alert variant="destructive">
-        <AlertCircle className="h-4 w-4" />
-        <AlertTitle>Seu plano expirou!</AlertTitle>
-        <AlertDescription>
-          Seu plano expirou em{' '}
-          {format(new Date(subscription.expiresAt), "dd 'de' MMMM 'de' yyyy", {
-            locale: ptBR,
-          })}
-          . Para continuar sua consultoria e ter acesso aos seus planos, por
-          favor, clique no botão abaixo para solicitar a renovação.
-        </AlertDescription>
+      <Alert 
+        variant="destructive" 
+        className="border-red-500 bg-red-50 dark:bg-red-950/30 shadow-lg border-2 animate-bounce-in"
+      >
+        <div className="flex items-start gap-3">
+          <XCircle className="h-6 w-6 text-red-600 mt-1 flex-shrink-0" />
+          <div className="flex-1">
+            <AlertTitle className="text-red-800 dark:text-red-200 text-lg font-bold mb-2">
+              🚨 Seu plano expirou!
+            </AlertTitle>
+            <AlertDescription className="text-red-700 dark:text-red-300 text-base leading-relaxed">
+              <div className="space-y-2">
+                <p>
+                  <strong>Data de expiração:</strong>{' '}
+                  {format(new Date(subscription.expiresAt), "dd 'de' MMMM 'de' yyyy", {
+                    locale: ptBR,
+                  })}
+                </p>
+                <p>
+                  Para continuar sua consultoria e ter acesso aos seus planos, 
+                  <strong> clique no botão abaixo para solicitar a renovação</strong>.
+                </p>
+              </div>
+            </AlertDescription>
+          </div>
+        </div>
       </Alert>
     ) : (
       /* 2. Alerta para plano PRESTES A EXPIRAR (só executa se o plano ainda não expirou) */
