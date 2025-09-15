@@ -19,16 +19,54 @@ export default function ReportsPage() {
     });
 
     try {
+      console.log('Iniciating download request...');
+      
       const response = await fetch("/api/nutritionist/reports/access-log", {
         method: 'GET',
         credentials: 'include',
+        headers: {
+          'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        }
       });
       
+      console.log('Response status:', response.status);
+      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+      
       if (!response.ok) {
-        throw new Error("Falha ao gerar o relatório.");
+        const errorText = await response.text();
+        console.error('Server response error:', errorText);
+        
+        let errorMessage = "Falha ao gerar o relatório.";
+        try {
+          const errorJson = JSON.parse(errorText);
+          errorMessage = errorJson.message || errorMessage;
+        } catch (e) {
+          // If not JSON, use the text as error message if it's meaningful
+          if (errorText.length < 200 && errorText.trim()) {
+            errorMessage = errorText;
+          }
+        }
+        
+        throw new Error(errorMessage);
+      }
+
+      const contentType = response.headers.get('content-type');
+      console.log('Content type:', contentType);
+      
+      if (!contentType || !contentType.includes('spreadsheetml.sheet')) {
+        // Check if it's an error response disguised as success
+        const text = await response.text();
+        console.error('Unexpected content type, response body:', text);
+        throw new Error("Resposta inválida do servidor. Verifique os logs.");
       }
 
       const blob = await response.blob();
+      console.log('Blob size:', blob.size, 'bytes');
+      
+      if (blob.size === 0) {
+        throw new Error("Arquivo vazio recebido do servidor.");
+      }
+
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -44,10 +82,10 @@ export default function ReportsPage() {
       });
 
     } catch (error) {
-      console.error("Erro no download do relatório:", error);
+      console.error("Erro detalhado no download do relatório:", error);
       toast({
         title: "Erro!",
-        description: "Não foi possível baixar o relatório. Tente novamente.",
+        description: error instanceof Error ? error.message : "Não foi possível baixar o relatório. Tente novamente.",
         variant: "destructive",
       });
     } finally {

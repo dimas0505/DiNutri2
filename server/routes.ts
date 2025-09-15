@@ -1247,6 +1247,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: "Acesso negado. Apenas nutricionistas." });
       }
 
+      console.log('Starting Excel report generation for nutritionist:', nutritionistId);
+
       // 1. Collect patient data with their latest activities
       const patientData = await db
         .select({
@@ -1267,8 +1269,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .groupBy(patients.id, patients.name, users.email, subscriptions.planType, subscriptions.status, subscriptions.expiresAt)
         .orderBy(desc(sql<string>`MAX(${activityLog.createdAt})`));
 
+      console.log('Found patient data:', patientData.length, 'records');
+
       // 2. Create Excel workbook
       const workbook = new ExcelJS.Workbook();
+      workbook.creator = 'DiNutri2';
+      workbook.created = new Date();
+      workbook.modified = new Date();
+      
       const worksheet = workbook.addWorksheet('Relatório de Acesso');
 
       // 3. Add headers
@@ -1285,29 +1293,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Style the header
       worksheet.getRow(1).font = { bold: true };
+      worksheet.getRow(1).fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFE0E0E0' }
+      };
 
       // 4. Add data
-      patientData.forEach(patient => {
-        worksheet.addRow({
-          ...patient,
-          planType: patient.planType || 'N/A',
-          planStatus: patient.planStatus || 'N/A',
-          planExpiresAt: patient.planExpiresAt ? format(new Date(patient.planExpiresAt), 'dd/MM/yyyy') : 'N/A',
-          lastActivityTimestamp: patient.lastActivityTimestamp ? format(new Date(patient.lastActivityTimestamp), 'dd/MM/yyyy HH:mm:ss') : 'Nenhum acesso registrado',
-          lastActivityType: patient.lastActivityType || 'N/A',
-        });
-      });
+      const processedData = patientData.map(patient => ({
+        patientId: patient.patientId || '',
+        patientName: patient.patientName || 'N/A',
+        patientEmail: patient.patientEmail || 'N/A',
+        planType: patient.planType || 'Free',
+        planStatus: patient.planStatus || 'Inativo',
+        planExpiresAt: patient.planExpiresAt ? (() => {
+          try {
+            return format(new Date(patient.planExpiresAt), 'dd/MM/yyyy');
+          } catch (e) {
+            return 'Data inválida';
+          }
+        })() : 'N/A',
+        lastActivityTimestamp: patient.lastActivityTimestamp ? (() => {
+          try {
+            return format(new Date(patient.lastActivityTimestamp), 'dd/MM/yyyy HH:mm:ss');
+          } catch (e) {
+            return 'Data inválida';
+          }
+        })() : 'Nenhum acesso registrado',
+        lastActivityType: patient.lastActivityType || 'N/A',
+      }));
 
-      // 5. Send the file to the client
+      worksheet.addRows(processedData);
+
+      console.log('Excel workbook created successfully');
+
+      // 5. Set headers early for streaming
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-      res.setHeader('Content-Disposition', 'attachment; filename="relatorio_de_acesso.xlsx"');
+      res.setHeader('Content-Disposition', 'attachment; filename="relatorio_de_acesso_pacientes.xlsx"');
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
 
-      const buffer = await workbook.xlsx.writeBuffer();
-      res.send(buffer);
+      // 6. Use streaming for better memory management
+      try {
+        // Stream directly to the response instead of creating a buffer first
+        await workbook.xlsx.write(res);
+        console.log('Excel report streamed successfully');
+      } catch (streamError) {
+        console.error('Error streaming Excel file:', streamError);
+        // If we haven't sent headers yet, we can still send an error
+        if (!res.headersSent) {
+          res.status(500).json({ 
+            message: "Falha ao processar relatório.", 
+            error: process.env.NODE_ENV === 'development' ? (streamError instanceof Error ? streamError.message : 'Erro interno') : 'Erro interno'
+          });
+        }
+        throw streamError;
+      }
 
     } catch (error) {
-      console.error("Erro ao gerar relatório de acesso:", error);
-      res.status(500).json({ message: "Falha ao gerar relatório." });
+      console.error("Erro detalhado ao gerar relatório de acesso:", error);
+      
+      // Only send error response if headers haven't been sent
+      if (!res.headersSent) {
+        res.status(500).json({ 
+          message: "Falha ao gerar relatório.", 
+          error: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.message : 'Internal server error') : 'Internal server error'
+        });
+      } else {
+        // If headers were already sent, we can only log the error
+        console.error('Cannot send error response, headers already sent');
+      }
     }
   });
 
