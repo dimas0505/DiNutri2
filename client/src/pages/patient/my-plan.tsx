@@ -148,42 +148,43 @@ export default function MyPlanPage() {
         </CardContent>
       </Card>
       
-      {/* --- INÍCIO DA MODIFICAÇÃO --- */}
-      {/* Bloco de Lógica para Notificações de Status do Plano */}
-
-      {/* 1. Alerta para plano JÁ EXPIRADO - Verifica tanto status quanto data de expiração */}
-      {subscription && subscription.expiresAt && (
-        subscription.status === 'expired' || 
-        (subscription.expiresAt && subscription.expiresAt < new Date())
-      ) && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Seu plano expirou!</AlertTitle>
-          <AlertDescription>
-            Seu plano expirou em {subscription.expiresAt 
-              ? format(subscription.expiresAt, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })
-              : "data não informada"
-            }.
-            Para continuar sua consultoria e ter acesso aos seus planos, por favor, clique no botão abaixo para solicitar a renovação.
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {/* 2. Alerta para plano PRESTES A EXPIRAR (apenas se NÃO estiver expirado e estiver ativo) */}
-      {subscription && subscription.status === 'active' && subscription.expiresAt && 
-       subscription.expiresAt >= new Date() && 
-       daysUntilExpiry <= 7 && daysUntilExpiry > 0 && (
-        <Alert className="border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/20">
-          <AlertCircle className="h-4 w-4 text-amber-600" />
-          <AlertTitle className="text-amber-800 dark:text-amber-200">
-            Seu plano está prestes a expirar!
-          </AlertTitle>
-          <AlertDescription className="text-amber-700 dark:text-amber-300">
-            Faltam {daysUntilExpiry} dia{daysUntilExpiry !== 1 ? 's' : ''} para o vencimento. Renove seu plano para não perder o acesso às suas prescrições.
-          </AlertDescription>
-        </Alert>
-      )}
-      {/* --- FIM DA MODIFICAÇÃO --- */}
+{/* --- INÍCIO DA MODIFICAÇÃO CORRIGIDA --- */}
+{/* Bloco de Lógica para Notificações de Status do Plano */}
+{subscription && subscription.expiresAt && (
+  <>
+    {/* 1. Alerta para plano JÁ EXPIRADO (Verifica a data primeiro) */}
+    {new Date(subscription.expiresAt) < new Date() ? (
+      <Alert variant="destructive">
+        <AlertCircle className="h-4 w-4" />
+        <AlertTitle>Seu plano expirou!</AlertTitle>
+        <AlertDescription>
+          Seu plano expirou em{' '}
+          {format(new Date(subscription.expiresAt), "dd 'de' MMMM 'de' yyyy", {
+            locale: ptBR,
+          })}
+          . Para continuar sua consultoria e ter acesso aos seus planos, por
+          favor, clique no botão abaixo para solicitar a renovação.
+        </AlertDescription>
+      </Alert>
+    ) : (
+      /* 2. Alerta para plano PRESTES A EXPIRAR (só executa se o plano ainda não expirou) */
+      <>
+        {subscription.status === 'active' && daysUntilExpiry <= 7 && (
+          <Alert className="border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/20">
+            <AlertCircle className="h-4 w-4 text-amber-600" />
+            <AlertTitle className="text-amber-800 dark:text-amber-200">Seu plano está prestes a expirar!</AlertTitle>
+            <AlertDescription className="text-amber-700 dark:text-amber-300">
+              Faltam {daysUntilExpiry} dia{daysUntilExpiry !== 1 ? 's' : ''}{' '}
+              para o vencimento. Renove seu plano para não perder o acesso às
+              suas prescrições.
+            </AlertDescription>
+          </Alert>
+        )}
+      </>
+    )}
+  </>
+)}
+{/* --- FIM DA MODIFICAÇÃO CORRIGIDA --- */}
 
       {/* Renovation section - simplified for now */}
       <div className="text-center">
