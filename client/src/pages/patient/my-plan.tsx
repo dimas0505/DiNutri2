@@ -91,6 +91,59 @@ export default function MyPlanPage() {
 
   const content = (
     <div className="space-y-6 pb-20 md:pb-6">
+      {/* --- INÍCIO DA MODIFICAÇÃO CORRIGIDA --- */}
+      {/* Bloco de Lógica para Notificações de Status do Plano - MOVIDO PARA O TOPO */}
+      {subscription && subscription.expiresAt && (
+        <>
+          {/* 1. Alerta para plano JÁ EXPIRADO (Verifica a data primeiro e mostra no topo) */}
+          {new Date(subscription.expiresAt) < new Date() ? (
+            <Alert 
+              variant="destructive" 
+              className="border-red-500 bg-red-50 dark:bg-red-950/30 shadow-lg border-2 animate-bounce-in"
+            >
+              <div className="flex items-start gap-3">
+                <XCircle className="h-6 w-6 text-red-600 mt-1 flex-shrink-0" />
+                <div className="flex-1">
+                  <AlertTitle className="text-red-800 dark:text-red-200 text-lg font-bold mb-2">
+                    🚨 Seu plano expirou!
+                  </AlertTitle>
+                  <AlertDescription className="text-red-700 dark:text-red-300 text-base leading-relaxed">
+                    <div className="space-y-2">
+                      <p>
+                        <strong>Data de expiração:</strong>{' '}
+                        {format(new Date(subscription.expiresAt), "dd 'de' MMMM 'de' yyyy", {
+                          locale: ptBR,
+                        })}
+                      </p>
+                      <p>
+                        Para continuar sua consultoria e ter acesso aos seus planos, 
+                        <strong> clique no botão abaixo para solicitar a renovação</strong>.
+                      </p>
+                    </div>
+                  </AlertDescription>
+                </div>
+              </div>
+            </Alert>
+          ) : (
+            /* 2. Alerta para plano PRESTES A EXPIRAR (só executa se o plano ainda não expirou) */
+            <>
+              {subscription.status === 'active' && daysUntilExpiry <= 7 && (
+                <Alert className="border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/20">
+                  <AlertCircle className="h-4 w-4 text-amber-600" />
+                  <AlertTitle className="text-amber-800 dark:text-amber-200">Seu plano está prestes a expirar!</AlertTitle>
+                  <AlertDescription className="text-amber-700 dark:text-amber-300">
+                    Faltam {daysUntilExpiry} dia{daysUntilExpiry !== 1 ? 's' : ''}{' '}
+                    para o vencimento. Renove seu plano para não perder o acesso às
+                    suas prescrições.
+                  </AlertDescription>
+                </Alert>
+              )}
+            </>
+          )}
+        </>
+      )}
+      {/* --- FIM DA MODIFICAÇÃO CORRIGIDA --- */}
+
       <Card className="overflow-hidden shadow-lg border-primary/20">
         <CardHeader className="bg-gradient-to-br from-slate-50 to-slate-100 border-b">
           <CardTitle className="flex items-center gap-2 text-2xl font-bold text-slate-800">
@@ -147,59 +200,6 @@ export default function MyPlanPage() {
           )}
         </CardContent>
       </Card>
-      
-{/* --- INÍCIO DA MODIFICAÇÃO CORRIGIDA --- */}
-{/* Bloco de Lógica para Notificações de Status do Plano */}
-{subscription && subscription.expiresAt && (
-  <>
-    {/* 1. Alerta para plano JÁ EXPIRADO (Verifica a data primeiro) */}
-    {new Date(subscription.expiresAt) < new Date() ? (
-      <Alert 
-        variant="destructive" 
-        className="border-red-500 bg-red-50 dark:bg-red-950/30 shadow-lg border-2 animate-bounce-in"
-      >
-        <div className="flex items-start gap-3">
-          <XCircle className="h-6 w-6 text-red-600 mt-1 flex-shrink-0" />
-          <div className="flex-1">
-            <AlertTitle className="text-red-800 dark:text-red-200 text-lg font-bold mb-2">
-              🚨 Seu plano expirou!
-            </AlertTitle>
-            <AlertDescription className="text-red-700 dark:text-red-300 text-base leading-relaxed">
-              <div className="space-y-2">
-                <p>
-                  <strong>Data de expiração:</strong>{' '}
-                  {format(new Date(subscription.expiresAt), "dd 'de' MMMM 'de' yyyy", {
-                    locale: ptBR,
-                  })}
-                </p>
-                <p>
-                  Para continuar sua consultoria e ter acesso aos seus planos, 
-                  <strong> clique no botão abaixo para solicitar a renovação</strong>.
-                </p>
-              </div>
-            </AlertDescription>
-          </div>
-        </div>
-      </Alert>
-    ) : (
-      /* 2. Alerta para plano PRESTES A EXPIRAR (só executa se o plano ainda não expirou) */
-      <>
-        {subscription.status === 'active' && daysUntilExpiry <= 7 && (
-          <Alert className="border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/20">
-            <AlertCircle className="h-4 w-4 text-amber-600" />
-            <AlertTitle className="text-amber-800 dark:text-amber-200">Seu plano está prestes a expirar!</AlertTitle>
-            <AlertDescription className="text-amber-700 dark:text-amber-300">
-              Faltam {daysUntilExpiry} dia{daysUntilExpiry !== 1 ? 's' : ''}{' '}
-              para o vencimento. Renove seu plano para não perder o acesso às
-              suas prescrições.
-            </AlertDescription>
-          </Alert>
-        )}
-      </>
-    )}
-  </>
-)}
-{/* --- FIM DA MODIFICAÇÃO CORRIGIDA --- */}
 
       {/* Renovation section - simplified for now */}
       <div className="text-center">
