@@ -50,6 +50,13 @@
       "when": 1757533727754,
       "tag": "0006_same_dreaming_celestial",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1757921530400,
+      "tag": "0007_handy_christian_walker",
+      "breakpoints": true
     }
   ]
 }

@@ -172,6 +172,15 @@ export const subscriptions = pgTable("subscriptions", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// Activity Log table for tracking user activities
+export const activityLog = pgTable("activity_log", {
+  id: varchar("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  activityType: varchar("activity_type", { length: 255 }).notNull(), // ex: 'login', 'view_prescription'
+  details: text("details"), // ex: 'Prescription ID: xyz'
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ one, many }) => ({
   patientProfile: one(patients, {
@@ -253,6 +262,13 @@ export const subscriptionsRelations = relations(subscriptions, ({ one }) => ({
   patient: one(patients, {
     fields: [subscriptions.patientId],
     references: [patients.id],
+  }),
+}));
+
+export const activityLogRelations = relations(activityLog, ({ one }) => ({
+  user: one(users, {
+    fields: [activityLog.userId],
+    references: [users.id],
   }),
 }));
 
@@ -454,6 +470,7 @@ export type FoodDiaryEntry = typeof foodDiaryEntries.$inferSelect;
 export type InsertFoodDiaryEntry = z.infer<typeof insertFoodDiaryEntrySchema>;
 export type Subscription = typeof subscriptions.$inferSelect;
 export type InsertSubscription = z.infer<typeof insertSubscriptionSchema>;
+export type ActivityLog = typeof activityLog.$inferSelect;
 
 // Extended type for food diary entries with prescription and mood information
 export interface FoodDiaryEntryWithPrescription extends FoodDiaryEntry {

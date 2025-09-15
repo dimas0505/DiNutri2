@@ -10,11 +10,14 @@ import { z } from "zod";
 import { handleUpload, type HandleUploadBody } from '@vercel/blob/client';
 import { put } from '@vercel/blob';
 import multer from 'multer';
-import { eq, and, desc, or } from 'drizzle-orm';
-import { anamnesisRecords, foodDiaryEntries, prescriptions, users, patients, subscriptions } from '../shared/schema.js';
+import { eq, and, desc, or, sql } from 'drizzle-orm';
+import { anamnesisRecords, foodDiaryEntries, prescriptions, users, patients, subscriptions, activityLog } from '../shared/schema.js';
 import { db } from './db.js';
 import sharp from 'sharp';
 import { nanoid } from 'nanoid';
+import { logActivity } from './activity-logger.js';
+import ExcelJS from 'exceljs';
+import { format } from 'date-fns';
 
 const SALT_ROUNDS = 10;
 
@@ -48,7 +51,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use(bodyParser.json());
 
   // --- AUTHENTICATION ROUTES ---
-  app.post('/api/login', passport.authenticate('local'), (req, res) => {
+  app.post('/api/login', passport.authenticate('local'), (req: any, res) => {
+    // Log the login activity
+    if (req.user) {
+      logActivity({ 
+        userId: req.user.id, 
+        activityType: 'login',
+        details: `User logged in from ${req.ip || 'unknown IP'}`
+      });
+    }
     res.json(req.user);
   });
 
@@ -448,9 +459,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.get('/api/prescriptions/:id', isAuthenticated, async (req, res) => {
+  app.get('/api/prescriptions/:id', isAuthenticated, async (req: any, res) => {
     try {
       const prescription = await storage.getPrescription(req.params.id);
+      
+      // Log the activity if prescription was found
+      if (prescription) {
+        logActivity({ 
+          userId: req.user.id, 
+          activityType: 'view_prescription',
+          details: `Viewed prescription: ${prescription.title} (ID: ${req.params.id})`
+        });
+      }
+
       res.json(prescription);
     } catch (error) {
       console.error("Erro ao buscar prescrição:", error);
@@ -508,6 +529,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/patient/my-prescriptions', isAuthenticated, async (req: any, res) => {
     try {
       const prescriptions = await storage.getPublishedPrescriptionsForUser(req.user.id);
+      
+      // Log the activity
+      logActivity({ 
+        userId: req.user.id, 
+        activityType: 'view_my_prescriptions_list',
+        details: `Viewed list of ${prescriptions.length} prescriptions`
+      });
+
       res.json(prescriptions);
     } catch (error) {
       console.error("Error fetching patient prescriptions:", error);
@@ -1206,6 +1235,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Erro ao excluir assinatura:", error);
       res.status(500).json({ error: "Falha ao excluir assinatura." });
+    }
+  });
+
+  // Generate Excel access report (nutritionist only)
+  app.get('/api/nutritionist/reports/access-log', isAuthenticated, async (req: any, res) => {
+    try {
+      const nutritionistId = req.user.id;
+
+      if (req.user.role !== 'nutritionist') {
+        return res.status(403).json({ error: "Acesso negado. Apenas nutricionistas." });
+      }
+
+      // 1. Collect patient data with their latest activities
+      const patientData = await db
+        .select({
+          patientId: patients.id,
+          patientName: patients.name,
+          patientEmail: users.email,
+          planType: subscriptions.planType,
+          planStatus: subscriptions.status,
+          planExpiresAt: subscriptions.expiresAt,
+          lastActivityTimestamp: sql<string>`MAX(${activityLog.createdAt})`,
+          lastActivityType: sql<string>`(array_agg(${activityLog.activityType} ORDER BY ${activityLog.createdAt} DESC))[1]`,
+        })
+        .from(patients)
+        .leftJoin(users, eq(patients.userId, users.id))
+        .leftJoin(subscriptions, eq(patients.id, subscriptions.patientId))
+        .leftJoin(activityLog, eq(patients.userId, activityLog.userId))
+        .where(eq(patients.ownerId, nutritionistId))
+        .groupBy(patients.id, patients.name, users.email, subscriptions.planType, subscriptions.status, subscriptions.expiresAt)
+        .orderBy(desc(sql<string>`MAX(${activityLog.createdAt})`));
+
+      // 2. Create Excel workbook
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet('Relatório de Acesso');
+
+      // 3. Add headers
+      worksheet.columns = [
+        { header: 'ID do Paciente', key: 'patientId', width: 25 },
+        { header: 'Nome do Paciente', key: 'patientName', width: 30 },
+        { header: 'Email', key: 'patientEmail', width: 30 },
+        { header: 'Plano', key: 'planType', width: 15 },
+        { header: 'Status do Plano', key: 'planStatus', width: 20 },
+        { header: 'Vencimento', key: 'planExpiresAt', width: 20 },
+        { header: 'Último Acesso', key: 'lastActivityTimestamp', width: 25 },
+        { header: 'Última Atividade', key: 'lastActivityType', width: 40 },
+      ];
+      
+      // Style the header
+      worksheet.getRow(1).font = { bold: true };
+
+      // 4. Add data
+      patientData.forEach(patient => {
+        worksheet.addRow({
+          ...patient,
+          planType: patient.planType || 'N/A',
+          planStatus: patient.planStatus || 'N/A',
+          planExpiresAt: patient.planExpiresAt ? format(new Date(patient.planExpiresAt), 'dd/MM/yyyy') : 'N/A',
+          lastActivityTimestamp: patient.lastActivityTimestamp ? format(new Date(patient.lastActivityTimestamp), 'dd/MM/yyyy HH:mm:ss') : 'Nenhum acesso registrado',
+          lastActivityType: patient.lastActivityType || 'N/A',
+        });
+      });
+
+      // 5. Send the file to the client
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', 'attachment; filename="relatorio_de_acesso.xlsx"');
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      res.send(buffer);
+
+    } catch (error) {
+      console.error("Erro ao gerar relatório de acesso:", error);
+      res.status(500).json({ message: "Falha ao gerar relatório." });
     }
   });
 
