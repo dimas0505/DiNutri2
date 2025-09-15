@@ -71,6 +71,8 @@ export async function setupRoutes(app: Express): Promise<void> {
 
   app.get("/api/auth/user", (req, res) => {
     if (req.isAuthenticated()) {
+      // Log activity to track app access/usage
+      logActivity({ userId: req.user.id, activityType: 'app_access' });
       res.json(req.user);
     } else {
       res.status(401).json({ message: "Não autorizado" });
@@ -349,6 +351,9 @@ export async function setupRoutes(app: Express): Promise<void> {
   
   app.get('/api/patient/my-profile', isAuthenticated, async (req: any, res) => {
     try {
+      // Log activity to track when patient accesses their profile
+      logActivity({ userId: req.user.id, activityType: 'view_profile' });
+      
       const patientProfile = await storage.getPatientByUserId(req.user.id);
       if (patientProfile) {
         res.json(patientProfile);
@@ -694,6 +699,9 @@ export async function setupRoutes(app: Express): Promise<void> {
 
   app.post('/api/food-diary/entries', isAuthenticated, async (req: any, res) => {
     try {
+      // Log activity for food diary usage
+      logActivity({ userId: req.user.id, activityType: 'create_food_diary_entry' });
+      
       const patientProfile = await storage.getPatientByUserId(req.user.id);
       if (!patientProfile) {
         return res.status(403).json({ message: "Perfil de paciente não encontrado." });
@@ -848,6 +856,11 @@ export async function setupRoutes(app: Express): Promise<void> {
       }
       if (req.user.role === 'nutritionist' && patient.ownerId !== userId) {
         return res.status(403).json({ error: "Acesso não autorizado." });
+      }
+
+      // Log activity when patient checks their subscription (indicates app usage)
+      if (req.user.role === 'patient') {
+        logActivity({ userId: req.user.id, activityType: 'view_subscription' });
       }
 
       // Get the most recent subscription
