@@ -1,4 +1,4 @@
-import { LogOut, Home, Settings, Package2, Users2, Calendar, FileText, CreditCard } from "lucide-react";
+import { LogOut, Home, Settings, Package2, Users2, Calendar, FileText, CreditCard, LineChart } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
@@ -62,10 +62,11 @@ export function NutritionistSidebar() {
         <Tooltip>
           <TooltipTrigger asChild>
             <Link
-              href="#"
+              href="/reports"
               className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground md:h-8 md:w-8"
+              data-active={location.startsWith('/reports')}
             >
-              <FileText className="h-5 w-5" />
+              <LineChart className="h-5 w-5" />
               <span className="sr-only">Relatórios</span>
             </Link>
           </TooltipTrigger>
