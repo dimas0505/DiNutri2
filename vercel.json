@@ -1,18 +1,5 @@
 {
   "version": 2,
-  "functions": {
-    "api/index.ts": {
-      "maxDuration": 30,
-      "memory": 1024,
-      "runtime": "nodejs18.x"
-    },
-    "api/nutritionist/reports/access-log.ts": {
-      "maxDuration": 30,
-      "memory": 1024,
-      "runtime": "nodejs18.x"
-    }
-  },
-  "outputDirectory": "dist/public",
   "builds": [
     {
       "src": "package.json",
@@ -20,8 +7,31 @@
       "config": {
         "distDir": "dist/public"
       }
+    },
+    {
+      "src": "server/index.ts",
+      "use": "@vercel/node",
+      "config": {
+        "runtime": "nodejs18.x"
+      }
+    },
+    {
+      "src": "api/nutritionist/reports/access-log.ts",
+      "use": "@vercel/node",
+      "config": {
+        "runtime": "nodejs18.x",
+        "maxDuration": 30,
+        "memory": 1024
+      }
     }
   ],
+  "functions": {
+    "api/nutritionist/reports/access-log.ts": {
+      "maxDuration": 30,
+      "memory": 1024,
+      "runtime": "nodejs18.x"
+    }
+  },
   "headers": [
     {
       "source": "/api/(.*)",
@@ -30,13 +40,6 @@
         { "key": "Access-Control-Allow-Origin", "value": "*" },
         { "key": "Access-Control-Allow-Methods", "value": "GET,OPTIONS,PATCH,DELETE,POST,PUT" },
         { "key": "Access-Control-Allow-Headers", "value": "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version" }
-      ]
-    },
-    {
-      "source": "/api/nutritionist/reports/(.*)",
-      "headers": [
-        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" },
-        { "key": "Content-Type", "value": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }
       ]
     },
     {
@@ -90,8 +93,12 @@
   ],
   "rewrites": [
     {
+      "source": "/api/nutritionist/reports/(.*)",
+      "destination": "/api/nutritionist/reports/$1"
+    },
+    {
       "source": "/api/(.*)",
-      "destination": "/api/index"
+      "destination": "/server"
     },
     {
       "source": "/(.*)",
