@@ -10,11 +10,14 @@ import { z } from "zod";
 import { handleUpload, type HandleUploadBody } from '@vercel/blob/client';
 import { put } from '@vercel/blob';
 import multer from 'multer';
-import { eq, and, desc, or } from 'drizzle-orm';
-import { anamnesisRecords, foodDiaryEntries, prescriptions, users, patients, subscriptions } from '../shared/schema.js';
+import { eq, and, desc, or, sql } from 'drizzle-orm';
+import { anamnesisRecords, foodDiaryEntries, prescriptions, users, patients, subscriptions, activityLog } from '../shared/schema.js';
 import { db } from './db.js';
 import sharp from 'sharp';
 import { nanoid } from 'nanoid';
+import { logActivity } from './activity-logger.js';
+import ExcelJS from 'exceljs';
+import { format } from 'date-fns';
 
 const SALT_ROUNDS = 10;
 
@@ -41,14 +44,17 @@ const isAdmin = (req: any, res: any, next: any) => {
   next();
 };
 
-export async function registerRoutes(app: Express): Promise<Server> {
+export async function setupRoutes(app: Express): Promise<void> {
   await setupAuth(app);
   
   // Middleware para parsear o corpo da requisição de upload
   app.use(bodyParser.json());
 
   // --- AUTHENTICATION ROUTES ---
-  app.post('/api/login', passport.authenticate('local'), (req, res) => {
+  app.post('/api/login', passport.authenticate('local'), (req: any, res) => {
+    if (req.user) {
+      logActivity({ userId: req.user.id, activityType: 'login' });
+    }
     res.json(req.user);
   });
 
@@ -65,6 +71,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/auth/user", (req, res) => {
     if (req.isAuthenticated()) {
+      // Log activity to track app access/usage
+      logActivity({ userId: req.user.id, activityType: 'app_access' });
       res.json(req.user);
     } else {
       res.status(401).json({ message: "Não autorizado" });
@@ -343,6 +351,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.get('/api/patient/my-profile', isAuthenticated, async (req: any, res) => {
     try {
+      // Log activity to track when patient accesses their profile
+      logActivity({ userId: req.user.id, activityType: 'view_profile' });
+      
       const patientProfile = await storage.getPatientByUserId(req.user.id);
       if (patientProfile) {
         res.json(patientProfile);
@@ -507,6 +518,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/patient/my-prescriptions', isAuthenticated, async (req: any, res) => {
     try {
+      logActivity({ userId: req.user.id, activityType: 'view_my_prescriptions_list' });
       const prescriptions = await storage.getPublishedPrescriptionsForUser(req.user.id);
       res.json(prescriptions);
     } catch (error) {
@@ -687,6 +699,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/food-diary/entries', isAuthenticated, async (req: any, res) => {
     try {
+      // Log activity for food diary usage
+      logActivity({ userId: req.user.id, activityType: 'create_food_diary_entry' });
+      
       const patientProfile = await storage.getPatientByUserId(req.user.id);
       if (!patientProfile) {
         return res.status(403).json({ message: "Perfil de paciente não encontrado." });
@@ -841,6 +856,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       if (req.user.role === 'nutritionist' && patient.ownerId !== userId) {
         return res.status(403).json({ error: "Acesso não autorizado." });
+      }
+
+      // Log activity when patient checks their subscription (indicates app usage)
+      if (req.user.role === 'patient') {
+        logActivity({ userId: req.user.id, activityType: 'view_subscription' });
       }
 
       // Get the most recent subscription
@@ -1209,5 +1229,118 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // --- REPORTS ROUTES ---
+  app.get('/api/nutritionist/reports/access-log', isAuthenticated, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'nutritionist') {
+        return res.status(403).json({ error: "Acesso negado. Apenas nutricionistas." });
+      }
+
+      const nutritionistId = req.user.id;
+
+      // 1. Busca todos os pacientes do nutricionista usando uma abordagem mais simples
+      const patientsOfNutritionist = await db
+        .select({
+          id: patients.id,
+          name: patients.name,
+          userId: patients.userId,
+          userEmail: users.email
+        })
+        .from(patients)
+        .leftJoin(users, eq(patients.userId, users.id))
+        .where(eq(patients.ownerId, nutritionistId));
+
+      // 2. Prepara os dados para o relatório de forma iterativa e segura
+      const reportData = [];
+      for (const patient of patientsOfNutritionist) {
+        // Pula para o próximo paciente se não houver dados básicos
+        if (!patient.id || !patient.name) {
+          continue;
+        }
+
+        // Para cada paciente, busca a assinatura mais recente de forma segura
+        let latestSubscription = null;
+        try {
+          const subscriptionResult = await db
+            .select()
+            .from(subscriptions)
+            .where(eq(subscriptions.patientId, patient.id))
+            .orderBy(desc(subscriptions.createdAt))
+            .limit(1);
+          
+          latestSubscription = subscriptionResult[0] || null;
+        } catch (error) {
+          console.error(`Erro ao buscar assinatura para paciente ${patient.id}:`, error);
+        }
+
+        // Para cada paciente, busca a última atividade registrada de forma segura
+        let latestActivity = null;
+        try {
+          if (patient.userId) {
+            const activityResult = await db
+              .select()
+              .from(activityLog)
+              .where(eq(activityLog.userId, patient.userId))
+              .orderBy(desc(activityLog.createdAt))
+              .limit(1);
+            
+            latestActivity = activityResult[0] || null;
+          }
+        } catch (error) {
+          console.error(`Erro ao buscar atividade para paciente ${patient.id}:`, error);
+        }
+
+        reportData.push({
+          patientId: patient.id,
+          patientName: patient.name || 'N/A',
+          patientEmail: patient.userEmail || 'N/A',
+          planType: latestSubscription?.planType || 'Nenhum',
+          planStatus: latestSubscription?.status || 'Nenhum',
+          planExpiresAt: latestSubscription?.expiresAt || null,
+          lastActivityTimestamp: latestActivity?.createdAt || null,
+          lastActivityType: latestActivity?.activityType || 'Nenhuma atividade',
+        });
+      }
+
+      // 3. Criação do arquivo Excel (lógica existente, sem alterações)
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet('Relatório de Acesso');
+
+      worksheet.columns = [
+        { header: 'ID do Paciente', key: 'patientId', width: 25 },
+        { header: 'Nome do Paciente', key: 'patientName', width: 30 },
+        { header: 'Email', key: 'patientEmail', width: 30 },
+        { header: 'Plano', key: 'planType', width: 15 },
+        { header: 'Status do Plano', key: 'planStatus', width: 20 },
+        { header: 'Vencimento', key: 'planExpiresAt', width: 20 },
+        { header: 'Último Acesso', key: 'lastActivityTimestamp', width: 25 },
+        { header: 'Última Atividade', key: 'lastActivityType', width: 40 },
+      ];
+      
+      worksheet.getRow(1).font = { bold: true };
+
+      reportData.forEach(data => {
+        worksheet.addRow({
+          ...data,
+          planExpiresAt: data.planExpiresAt ? format(new Date(data.planExpiresAt), 'dd/MM/yyyy') : 'N/A',
+          lastActivityTimestamp: data.lastActivityTimestamp ? format(new Date(data.lastActivityTimestamp), 'dd/MM/yyyy HH:mm:ss') : 'Nenhum acesso',
+        });
+      });
+      
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', 'attachment; filename="relatorio_de_acesso.xlsx"');
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      res.send(buffer);
+
+    } catch (error) {
+      console.error("Erro ao gerar relatório de acesso:", error);
+      res.status(500).json({ message: "Falha ao gerar relatório." });
+    }
+  });
+}
+
+export async function registerRoutes(app: Express): Promise<Server> {
+  await setupRoutes(app);
   return createServer(app);
 }
