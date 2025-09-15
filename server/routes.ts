@@ -11,7 +11,7 @@ import { handleUpload, type HandleUploadBody } from '@vercel/blob/client';
 import { put } from '@vercel/blob';
 import multer from 'multer';
 import { eq, and, desc, or, sql } from 'drizzle-orm';
-import { anamnesisRecords, foodDiaryEntries, prescriptions, users, patients, subscriptions } from '../shared/schema.js';
+import { anamnesisRecords, foodDiaryEntries, prescriptions, users, patients, subscriptions, activityLog } from '../shared/schema.js';
 import { db } from './db.js';
 import sharp from 'sharp';
 import { nanoid } from 'nanoid';
@@ -1225,34 +1225,47 @@ export async function setupRoutes(app: Express): Promise<void> {
 
       const nutritionistId = req.user.id;
 
-      const patientData = await db.execute(sql`
-        SELECT
-          p.id as "patientId",
-          p.name as "patientName",
-          u.email as "patientEmail",
-          s.plan_type as "planType",
-          s.status as "planStatus",
-          s.expires_at as "planExpiresAt",
-          la.last_activity_timestamp as "lastActivityTimestamp",
-          la.last_activity_type as "lastActivityType"
-        FROM patients p
-        JOIN users u ON p.user_id = u.id
-        LEFT JOIN (
-          SELECT *, ROW_NUMBER() OVER(PARTITION BY patient_id ORDER BY created_at DESC) as rn
-          FROM subscriptions
-        ) s ON p.id = s.patient_id AND s.rn = 1
-        LEFT JOIN (
-          SELECT
-            user_id,
-            MAX(created_at) as last_activity_timestamp,
-            (array_agg(activity_type ORDER BY created_at DESC))[1] as last_activity_type
-          FROM activity_log
-          GROUP BY user_id
-        ) la ON u.id = la.user_id
-        WHERE p.owner_id = ${nutritionistId}
-        ORDER BY la.last_activity_timestamp DESC NULLS LAST, p.name;
-      `);
+      // 1. Busca todos os pacientes do nutricionista, incluindo dados do usuário associado.
+      const patientsOfNutritionist = await db.query.patients.findMany({
+        where: eq(patients.ownerId, nutritionistId),
+        with: {
+          user: true, // Garante que os dados do usuário (como email) sejam incluídos
+        },
+      });
 
+      // 2. Prepara os dados para o relatório de forma iterativa e segura
+      const reportData = [];
+      for (const patient of patientsOfNutritionist) {
+        // Pula para o próximo paciente se não houver um usuário associado
+        if (!patient.user) {
+          continue;
+        }
+
+        // Para cada paciente, busca a assinatura mais recente de forma segura
+        const latestSubscription = await db.query.subscriptions.findFirst({
+          where: eq(subscriptions.patientId, patient.id),
+          orderBy: [desc(subscriptions.createdAt)],
+        });
+
+        // Para cada paciente, busca a última atividade registrada de forma segura
+        const latestActivity = await db.query.activityLog.findFirst({
+          where: eq(activityLog.userId, patient.userId!),
+          orderBy: [desc(activityLog.createdAt)],
+        });
+
+        reportData.push({
+          patientId: patient.id,
+          patientName: patient.name,
+          patientEmail: patient.user.email || 'N/A',
+          planType: latestSubscription?.planType || 'Nenhum',
+          planStatus: latestSubscription?.status || 'Nenhum',
+          planExpiresAt: latestSubscription?.expiresAt,
+          lastActivityTimestamp: latestActivity?.createdAt,
+          lastActivityType: latestActivity?.activityType || 'Nenhuma atividade',
+        });
+      }
+
+      // 3. Criação do arquivo Excel (lógica existente, sem alterações)
       const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet('Relatório de Acesso');
 
@@ -1269,14 +1282,14 @@ export async function setupRoutes(app: Express): Promise<void> {
       
       worksheet.getRow(1).font = { bold: true };
 
-      patientData.rows.forEach((row: any) => {
+      reportData.forEach(data => {
         worksheet.addRow({
-          ...row,
-          planExpiresAt: row.planExpiresAt ? format(new Date(row.planExpiresAt), 'dd/MM/yyyy') : 'N/A',
-          lastActivityTimestamp: row.lastActivityTimestamp ? format(new Date(row.lastActivityTimestamp), 'dd/MM/yyyy HH:mm:ss') : 'Nenhum acesso',
+          ...data,
+          planExpiresAt: data.planExpiresAt ? format(new Date(data.planExpiresAt), 'dd/MM/yyyy') : 'N/A',
+          lastActivityTimestamp: data.lastActivityTimestamp ? format(new Date(data.lastActivityTimestamp), 'dd/MM/yyyy HH:mm:ss') : 'Nenhum acesso',
         });
       });
-
+      
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
       res.setHeader('Content-Disposition', 'attachment; filename="relatorio_de_acesso.xlsx"');
 
@@ -1288,8 +1301,6 @@ export async function setupRoutes(app: Express): Promise<void> {
       res.status(500).json({ message: "Falha ao gerar relatório." });
     }
   });
-
-  return createServer(app);
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
