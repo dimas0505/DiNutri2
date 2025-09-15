@@ -1225,42 +1225,66 @@ export async function setupRoutes(app: Express): Promise<void> {
 
       const nutritionistId = req.user.id;
 
-      // 1. Busca todos os pacientes do nutricionista, incluindo dados do usuário associado.
-      const patientsOfNutritionist = await db.query.patients.findMany({
-        where: eq(patients.ownerId, nutritionistId),
-        with: {
-          user: true, // Garante que os dados do usuário (como email) sejam incluídos
-        },
-      });
+      // 1. Busca todos os pacientes do nutricionista usando uma abordagem mais simples
+      const patientsOfNutritionist = await db
+        .select({
+          id: patients.id,
+          name: patients.name,
+          userId: patients.userId,
+          userEmail: users.email
+        })
+        .from(patients)
+        .leftJoin(users, eq(patients.userId, users.id))
+        .where(eq(patients.ownerId, nutritionistId));
 
       // 2. Prepara os dados para o relatório de forma iterativa e segura
       const reportData = [];
       for (const patient of patientsOfNutritionist) {
-        // Pula para o próximo paciente se não houver um usuário associado
-        if (!patient.user) {
+        // Pula para o próximo paciente se não houver dados básicos
+        if (!patient.id || !patient.name) {
           continue;
         }
 
         // Para cada paciente, busca a assinatura mais recente de forma segura
-        const latestSubscription = await db.query.subscriptions.findFirst({
-          where: eq(subscriptions.patientId, patient.id),
-          orderBy: [desc(subscriptions.createdAt)],
-        });
+        let latestSubscription = null;
+        try {
+          const subscriptionResult = await db
+            .select()
+            .from(subscriptions)
+            .where(eq(subscriptions.patientId, patient.id))
+            .orderBy(desc(subscriptions.createdAt))
+            .limit(1);
+          
+          latestSubscription = subscriptionResult[0] || null;
+        } catch (error) {
+          console.error(`Erro ao buscar assinatura para paciente ${patient.id}:`, error);
+        }
 
         // Para cada paciente, busca a última atividade registrada de forma segura
-        const latestActivity = await db.query.activityLog.findFirst({
-          where: eq(activityLog.userId, patient.userId!),
-          orderBy: [desc(activityLog.createdAt)],
-        });
+        let latestActivity = null;
+        try {
+          if (patient.userId) {
+            const activityResult = await db
+              .select()
+              .from(activityLog)
+              .where(eq(activityLog.userId, patient.userId))
+              .orderBy(desc(activityLog.createdAt))
+              .limit(1);
+            
+            latestActivity = activityResult[0] || null;
+          }
+        } catch (error) {
+          console.error(`Erro ao buscar atividade para paciente ${patient.id}:`, error);
+        }
 
         reportData.push({
           patientId: patient.id,
-          patientName: patient.name,
-          patientEmail: patient.user.email || 'N/A',
+          patientName: patient.name || 'N/A',
+          patientEmail: patient.userEmail || 'N/A',
           planType: latestSubscription?.planType || 'Nenhum',
           planStatus: latestSubscription?.status || 'Nenhum',
-          planExpiresAt: latestSubscription?.expiresAt,
-          lastActivityTimestamp: latestActivity?.createdAt,
+          planExpiresAt: latestSubscription?.expiresAt || null,
+          lastActivityTimestamp: latestActivity?.createdAt || null,
           lastActivityType: latestActivity?.activityType || 'Nenhuma atividade',
         });
       }

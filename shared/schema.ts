@@ -192,6 +192,7 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   ownedPatients: many(patients, { relationName: 'ownedPatients' }),
   prescriptions: many(prescriptions),
   invitations: many(invitations),
+  activityLogs: many(activityLog),
 }));
 
 export const patientsRelations = relations(patients, ({ one, many }) => ({
@@ -264,6 +265,13 @@ export const subscriptionsRelations = relations(subscriptions, ({ one }) => ({
   patient: one(patients, {
     fields: [subscriptions.patientId],
     references: [patients.id],
+  }),
+}));
+
+export const activityLogRelations = relations(activityLog, ({ one }) => ({
+  user: one(users, {
+    fields: [activityLog.userId],
+    references: [users.id],
   }),
 }));
 
@@ -369,7 +377,7 @@ export const insertSubscriptionSchema = createInsertSchema(subscriptions).omit({
 export const updatePatientSchema = insertPatientSchema.partial();
 
 // Enhanced anamnesis schema with mandatory fields for patient registration
-export const anamnesisSchema = insertPatientSchema.omit({ ownerId: true, userId: true }).extend({
+export const anamnesisSchema = insertPatientSchema.omit({ ownerId: true }).extend({
   // Password fields for account creation
   password: z.string().min(6, "A senha deve ter no mínimo 6 caracteres."),
   confirmPassword: z.string(),
