@@ -1,9 +1,10 @@
 {
   "version": 2,
   "functions": {
-    "server/index.ts": {
+    "api/index.ts": {
       "maxDuration": 30,
-      "memory": 1024
+      "memory": 1024,
+      "runtime": "nodejs20.x"
     }
   },
   "outputDirectory": "dist/public",
@@ -16,8 +17,11 @@
       }
     },
     {
-      "src": "server/index.ts",
-      "use": "@vercel/node"
+      "src": "api/index.ts",
+      "use": "@vercel/node",
+      "config": {
+        "maxLambdaSize": "50mb"
+      }
     }
   ],
   "headers": [
@@ -89,7 +93,7 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "/server/index.ts"
+      "destination": "/api/index"
     },
     {
       "source": "/(.*)",

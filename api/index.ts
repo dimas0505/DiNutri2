@@ -1,12 +1,3 @@
-import express from "express";
-import { registerRoutes } from "../server/routes.js";
-
-const app = express();
-
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
-// Registrar rotas
-await registerRoutes(app);
-
-export default app;
+// Vercel serverless function entry point
+import handler from "../server/index.js";
+export default handler;
