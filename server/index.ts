@@ -16,8 +16,9 @@ export function log(message: string, source = "express") {
 }
 
 export function serveStatic(app: Express) {
-  // @ts-ignore
-  const distPath = path.resolve(import.meta.dirname, "..", "dist", "public");
+  // Use __dirname equivalent for ES modules
+  const currentDir = process.cwd();
+  const distPath = path.resolve(currentDir, "dist", "public");
 
   if (!fs.existsSync(distPath)) {
     log(`A pasta de build não foi encontrada em: ${distPath}. Servindo placeholder.`);
