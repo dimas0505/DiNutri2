@@ -54,6 +54,7 @@
     "@types/multer": "^2.0.0",
     "@types/uuid": "^10.0.0",
     "@vercel/blob": "^0.23.0",
+    "@vercel/node": "^5.3.22",
     "bcrypt": "^6.0.0",
     "body-parser": "^1.20.2",
     "browser-image-compression": "^2.0.2",

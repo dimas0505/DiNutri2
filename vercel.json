@@ -5,6 +5,11 @@
       "maxDuration": 30,
       "memory": 1024,
       "runtime": "nodejs18.x"
+    },
+    "api/nutritionist/reports/access-log.ts": {
+      "maxDuration": 30,
+      "memory": 1024,
+      "runtime": "nodejs18.x"
     }
   },
   "outputDirectory": "dist/public",
