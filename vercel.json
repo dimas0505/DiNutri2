@@ -10,7 +10,10 @@
     },
     {
       "src": "server/index.ts",
-      "use": "@vercel/node"
+      "use": "@vercel/node",
+      "config": {
+        "runtime": "nodejs18.x"
+      }
     }
   ],
   "headers": [
@@ -75,7 +78,7 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "/server/index.ts"
+      "destination": "/server"
     },
     {
       "source": "/(.*)",
