@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Plus, Copy, Upload, Download, Calendar as CalendarIcon } from "lucide-react";
@@ -72,6 +72,16 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
     queryKey: ["/api/patients", selectedPatientId, "prescriptions"],
     enabled: !!selectedPatientId,
   });
+
+  // Memoized filtered patients list (excluding current patient)
+  const availablePatients = useMemo(() => {
+    return allPatients?.filter(p => p.id !== prescription?.patientId) || [];
+  }, [allPatients, prescription?.patientId]);
+
+  // Memoized source prescription
+  const sourcePrescription = useMemo(() => {
+    return selectedPatientPrescriptions?.find(p => p.id === selectedPrescriptionId);
+  }, [selectedPatientPrescriptions, selectedPrescriptionId]);
 
   const updatePrescriptionMutation = useMutation({
     mutationFn: async (data: { title: string; meals: MealData[]; generalNotes: string; expiresAt?: Date }) => {
@@ -207,8 +217,7 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
       return;
     }
 
-    // Get the selected prescription to extract its title
-    const sourcePrescription = selectedPatientPrescriptions?.find(p => p.id === selectedPrescriptionId);
+    // Use the memoized source prescription
     const newTitle = sourcePrescription?.title ? `${sourcePrescription.title} (cópia)` : "Prescrição duplicada";
 
     duplicatePrescriptionMutation.mutate({
@@ -631,11 +640,17 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
                   <SelectValue placeholder="Selecione um paciente" />
                 </SelectTrigger>
                 <SelectContent>
-                  {allPatients?.filter(p => p.id !== prescription?.patientId).map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.name}
-                    </SelectItem>
-                  ))}
+                  {availablePatients.length > 0 ? (
+                    availablePatients.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.name}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                      Nenhum outro paciente disponível
+                    </div>
+                  )}
                 </SelectContent>
               </Select>
             </div>
@@ -643,27 +658,27 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
             {selectedPatientId && (
               <div className="space-y-2">
                 <Label htmlFor="prescription-select">Prescrição</Label>
-                <Select
-                  value={selectedPrescriptionId}
-                  onValueChange={setSelectedPrescriptionId}
-                >
-                  <SelectTrigger id="prescription-select">
-                    <SelectValue placeholder="Selecione uma prescrição" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {selectedPatientPrescriptions && selectedPatientPrescriptions.length > 0 ? (
-                      selectedPatientPrescriptions.map((p) => (
+                {selectedPatientPrescriptions && selectedPatientPrescriptions.length > 0 ? (
+                  <Select
+                    value={selectedPrescriptionId}
+                    onValueChange={setSelectedPrescriptionId}
+                  >
+                    <SelectTrigger id="prescription-select">
+                      <SelectValue placeholder="Selecione uma prescrição" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {selectedPatientPrescriptions.map((p) => (
                         <SelectItem key={p.id} value={p.id}>
                           {p.title} ({p.status === 'published' ? 'Publicado' : 'Rascunho'})
                         </SelectItem>
-                      ))
-                    ) : (
-                      <SelectItem value="no-prescriptions" disabled>
-                        Nenhuma prescrição encontrada
-                      </SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <div className="rounded-md border border-input bg-muted px-3 py-2 text-sm text-muted-foreground">
+                    Este paciente não possui prescrições
+                  </div>
+                )}
               </div>
             )}
           </div>
