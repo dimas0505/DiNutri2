@@ -508,6 +508,12 @@ export async function setupRoutes(app: Express): Promise<void> {
     try {
       const { targetPatientId, title } = req.body;
       
+      // Verify that the source prescription belongs to the authenticated nutritionist
+      const sourcePrescription = await storage.getPrescription(req.params.id);
+      if (!sourcePrescription || sourcePrescription.nutritionistId !== req.user.id) {
+        return res.status(403).json({ message: "Source prescription not found or access denied" });
+      }
+      
       // Verify that the target patient belongs to the authenticated nutritionist
       const targetPatient = await storage.getPatient(targetPatientId);
       if (!targetPatient || targetPatient.ownerId !== req.user.id) {

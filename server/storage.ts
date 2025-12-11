@@ -483,6 +483,9 @@ export class DatabaseStorage implements IStorage {
   }
 
   async duplicatePrescriptionToPatient(sourcePrescriptionId: string, targetPatientId: string, title: string): Promise<Prescription> {
+    // NOTE: Authorization checks should be performed by the caller (route handler)
+    // to ensure the user has permission to access the source prescription and target patient
+    
     const original = await this.getPrescription(sourcePrescriptionId);
     if (!original) throw new Error("Prescription not found");
     
