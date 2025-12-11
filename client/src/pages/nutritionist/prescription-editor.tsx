@@ -629,30 +629,30 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="patient-select">Paciente</Label>
-              <Select
-                value={selectedPatientId}
-                onValueChange={(value) => {
-                  setSelectedPatientId(value);
-                  setSelectedPrescriptionId(""); // Reset prescription selection when patient changes
-                }}
-              >
-                <SelectTrigger id="patient-select">
-                  <SelectValue placeholder="Selecione um paciente" />
-                </SelectTrigger>
-                <SelectContent>
-                  {availablePatients.length > 0 ? (
-                    availablePatients.map((p) => (
+              {availablePatients.length > 0 ? (
+                <Select
+                  value={selectedPatientId}
+                  onValueChange={(value) => {
+                    setSelectedPatientId(value);
+                    setSelectedPrescriptionId(""); // Reset prescription selection when patient changes
+                  }}
+                >
+                  <SelectTrigger id="patient-select">
+                    <SelectValue placeholder="Selecione um paciente" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availablePatients.map((p) => (
                       <SelectItem key={p.id} value={p.id}>
                         {p.name}
                       </SelectItem>
-                    ))
-                  ) : (
-                    <div className="px-2 py-1.5 text-sm text-muted-foreground">
-                      Nenhum outro paciente disponível
-                    </div>
-                  )}
-                </SelectContent>
-              </Select>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <div className="rounded-md border border-input bg-muted px-3 py-2 text-sm text-muted-foreground">
+                  Nenhum outro paciente disponível
+                </div>
+              )}
             </div>
 
             {selectedPatientId && (
