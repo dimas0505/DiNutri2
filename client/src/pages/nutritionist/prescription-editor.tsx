@@ -12,6 +12,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import MealEditor from "@/components/prescription/meal-editor";
 import { useToast } from "@/hooks/use-toast";
@@ -35,6 +37,11 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
   const [meals, setMeals] = useState<MealData[]>([]);
   const [expiresAt, setExpiresAt] = useState<Date | undefined>(undefined);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Duplicate prescription dialog state
+  const [isDuplicateDialogOpen, setIsDuplicateDialogOpen] = useState(false);
+  const [selectedPatientId, setSelectedPatientId] = useState<string>("");
+  const [selectedPrescriptionId, setSelectedPrescriptionId] = useState<string>("");
 
   const { data: prescription, isLoading } = useQuery<Prescription>({
     queryKey: ["/api/prescriptions", params.id],
@@ -53,6 +60,17 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
   const { data: patient } = useQuery<Patient>({
     queryKey: ["/api/patients", prescription?.patientId],
     enabled: !!prescription?.patientId,
+  });
+
+  // Fetch all patients for duplication dialog
+  const { data: allPatients } = useQuery<Patient[]>({
+    queryKey: ["/api/patients"],
+  });
+
+  // Fetch prescriptions for selected patient in duplication dialog
+  const { data: selectedPatientPrescriptions } = useQuery<Prescription[]>({
+    queryKey: ["/api/patients", selectedPatientId, "prescriptions"],
+    enabled: !!selectedPatientId,
   });
 
   const updatePrescriptionMutation = useMutation({
@@ -105,6 +123,35 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
     },
   });
 
+  const duplicatePrescriptionMutation = useMutation({
+    mutationFn: async ({ sourcePrescriptionId, targetPatientId, newTitle }: { sourcePrescriptionId: string; targetPatientId: string; newTitle: string }) => {
+      return await apiRequest("POST", `/api/prescriptions/${sourcePrescriptionId}/duplicate-to-patient`, {
+        targetPatientId,
+        title: newTitle,
+      });
+    },
+    onSuccess: (response) => {
+      toast({
+        title: "Sucesso",
+        description: "Prescrição duplicada com sucesso!",
+      });
+      setIsDuplicateDialogOpen(false);
+      setSelectedPatientId("");
+      setSelectedPrescriptionId("");
+      // Navigate to the new prescription
+      if (response && response.id) {
+        setLocation(`/prescriptions/${response.id}/edit`);
+      }
+    },
+    onError: () => {
+      toast({
+        title: "Erro",
+        description: "Falha ao duplicar prescrição.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const addMeal = () => {
     const newMeal: MealData = {
       id: uuidv4(),
@@ -144,6 +191,31 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
       return;
     }
     publishPrescriptionMutation.mutate();
+  };
+
+  const handleOpenDuplicateDialog = () => {
+    setIsDuplicateDialogOpen(true);
+  };
+
+  const handleDuplicatePrescription = () => {
+    if (!selectedPrescriptionId) {
+      toast({
+        title: "Erro",
+        description: "Selecione uma prescrição para duplicar.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Get the selected prescription to extract its title
+    const sourcePrescription = selectedPatientPrescriptions?.find(p => p.id === selectedPrescriptionId);
+    const newTitle = sourcePrescription?.title ? `${sourcePrescription.title} (cópia)` : "Prescrição duplicada";
+
+    duplicatePrescriptionMutation.mutate({
+      sourcePrescriptionId: selectedPrescriptionId,
+      targetPatientId: prescription?.patientId || "",
+      newTitle,
+    });
   };
 
   // CSV parsing function
@@ -415,6 +487,7 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
                 <span className="sm:hidden">Exportar JSON</span>
               </Button>
               <Button
+                onClick={handleOpenDuplicateDialog}
                 variant="outline"
                 className="w-full sm:w-auto flex items-center justify-center space-x-2 shadow-md border-2 border-teal-200 dark:border-teal-800 bg-gradient-to-r from-teal-50 via-background to-cyan-50 dark:from-teal-950/30 dark:via-background dark:to-cyan-950/30 hover:from-teal-100 hover:via-muted hover:to-cyan-100 dark:hover:from-teal-900/50 dark:hover:via-muted dark:hover:to-cyan-900/50"
                 size="lg"
@@ -534,6 +607,86 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
           </CardContent>
         </Card>
       </main>
+
+      {/* Duplicate Prescription Dialog */}
+      <Dialog open={isDuplicateDialogOpen} onOpenChange={setIsDuplicateDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Duplicar Prescrição de Outro Paciente</DialogTitle>
+            <DialogDescription>
+              Selecione um paciente e uma prescrição existente para duplicar para {patient?.name}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="patient-select">Paciente</Label>
+              <Select
+                value={selectedPatientId}
+                onValueChange={(value) => {
+                  setSelectedPatientId(value);
+                  setSelectedPrescriptionId(""); // Reset prescription selection when patient changes
+                }}
+              >
+                <SelectTrigger id="patient-select">
+                  <SelectValue placeholder="Selecione um paciente" />
+                </SelectTrigger>
+                <SelectContent>
+                  {allPatients?.filter(p => p.id !== prescription?.patientId).map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {selectedPatientId && (
+              <div className="space-y-2">
+                <Label htmlFor="prescription-select">Prescrição</Label>
+                <Select
+                  value={selectedPrescriptionId}
+                  onValueChange={setSelectedPrescriptionId}
+                >
+                  <SelectTrigger id="prescription-select">
+                    <SelectValue placeholder="Selecione uma prescrição" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {selectedPatientPrescriptions && selectedPatientPrescriptions.length > 0 ? (
+                      selectedPatientPrescriptions.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>
+                          {p.title} ({p.status === 'published' ? 'Publicado' : 'Rascunho'})
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="no-prescriptions" disabled>
+                        Nenhuma prescrição encontrada
+                      </SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsDuplicateDialogOpen(false);
+                setSelectedPatientId("");
+                setSelectedPrescriptionId("");
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleDuplicatePrescription}
+              disabled={!selectedPrescriptionId || duplicatePrescriptionMutation.isPending}
+            >
+              {duplicatePrescriptionMutation.isPending ? "Duplicando..." : "Duplicar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
