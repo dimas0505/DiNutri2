@@ -504,6 +504,30 @@ export async function setupRoutes(app: Express): Promise<void> {
     }
   });
 
+  app.post('/api/prescriptions/:id/duplicate-to-patient', isAuthenticated, async (req: any, res) => {
+    try {
+      const { targetPatientId, title } = req.body;
+      
+      // Verify that the source prescription belongs to the authenticated nutritionist
+      const sourcePrescription = await storage.getPrescription(req.params.id);
+      if (!sourcePrescription || sourcePrescription.nutritionistId !== req.user.id) {
+        return res.status(403).json({ message: "Source prescription not found or access denied" });
+      }
+      
+      // Verify that the target patient belongs to the authenticated nutritionist
+      const targetPatient = await storage.getPatient(targetPatientId);
+      if (!targetPatient || targetPatient.ownerId !== req.user.id) {
+        return res.status(403).json({ message: "Target patient not found or access denied" });
+      }
+      
+      const prescription = await storage.duplicatePrescriptionToPatient(req.params.id, targetPatientId, title);
+      res.json(prescription);
+    } catch (error) {
+      console.error("Error duplicating prescription to patient:", error);
+      res.status(500).json({ message: "Failed to duplicate prescription to patient" });
+    }
+  });
+
   app.delete('/api/prescriptions/:id', isAuthenticated, async (req, res) => {
     try {
       await storage.deletePrescription(req.params.id);

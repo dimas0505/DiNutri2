@@ -69,6 +69,7 @@ export interface IStorage {
   updatePrescription(id: string, prescription: UpdatePrescription): Promise<Prescription>;
   publishPrescription(id: string): Promise<Prescription>;
   duplicatePrescription(id: string, title: string): Promise<Prescription>;
+  duplicatePrescriptionToPatient(sourcePrescriptionId: string, targetPatientId: string, title: string): Promise<Prescription>;
   deletePrescription(id: string): Promise<void>;
 
   // Mood operations (NEW)
@@ -471,6 +472,30 @@ export class DatabaseStorage implements IStorage {
     const duplicatedWithId = {
       id: nanoid(),
       patientId: original.patientId,
+      nutritionistId: original.nutritionistId,
+      title,
+      status: "draft" as const,
+      meals: original.meals as any,
+      generalNotes: original.generalNotes,
+    };
+    const [duplicated] = await db.insert(prescriptions).values(duplicatedWithId).returning();
+    return duplicated;
+  }
+
+  async duplicatePrescriptionToPatient(sourcePrescriptionId: string, targetPatientId: string, title: string): Promise<Prescription> {
+    // NOTE: Authorization checks should be performed by the caller (route handler)
+    // to ensure the user has permission to access the source prescription and target patient
+    
+    const original = await this.getPrescription(sourcePrescriptionId);
+    if (!original) throw new Error("Prescription not found");
+    
+    // Verify target patient exists
+    const targetPatient = await this.getPatient(targetPatientId);
+    if (!targetPatient) throw new Error("Target patient not found");
+    
+    const duplicatedWithId = {
+      id: nanoid(),
+      patientId: targetPatientId,
       nutritionistId: original.nutritionistId,
       title,
       status: "draft" as const,
