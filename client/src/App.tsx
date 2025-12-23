@@ -34,11 +34,10 @@ function Router() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Carregando...</p>
-        </div>
+      <div className="flex flex-col items-center justify-center h-screen bg-white">
+        {/* Aponta para o novo GIF na pasta public */}
+        <img src="/loading-animation.gif" alt="Carregando..." className="w-64 h-64" />
+        <p className="mt-4 text-lg font-semibold text-gray-600">Carregando, por favor aguarde...</p>
       </div>
     );
   }
