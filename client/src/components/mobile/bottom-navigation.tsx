@@ -35,15 +35,15 @@ export function BottomNavigation({ items = defaultPatientItems, currentPath = ""
               <div
                 className={cn(
                   "p-2 rounded-xl transition-all duration-200",
-                  isActive ? "bg-[#4E9F87]/10 text-[#4E9F87]" : "text-gray-400",
+                  isActive ? "bg-[#7C3AED]/10 text-[#7C3AED]" : "text-gray-400",
                 )}
               >
-                <Icon className={cn("w-6 h-6", isActive ? "text-[#4E9F87]" : "text-gray-400")} />
+                <Icon className={cn("w-6 h-6", isActive ? "text-[#7C3AED]" : "text-gray-400")} />
               </div>
               <span
                 className={cn(
                   "text-[10px] font-medium transition-colors",
-                  isActive ? "text-[#4E9F87]" : "text-gray-400",
+                  isActive ? "text-[#7C3AED]" : "text-gray-400",
                 )}
               >
                 {item.label}
