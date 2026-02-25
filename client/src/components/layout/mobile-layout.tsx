@@ -16,6 +16,7 @@ interface MobileLayoutProps {
   className?: string;
   showBottomNav?: boolean;
   drawerContent?: React.ReactNode;
+  hideHeader?: boolean;
 }
 
 export function MobileLayout({
@@ -27,6 +28,7 @@ export function MobileLayout({
   className,
   showBottomNav = true,
   drawerContent,
+  hideHeader = false,
 }: MobileLayoutProps) {
   const isMobile = useIsMobile();
   const { isNutritionist, isPatient } = useAuth();
@@ -90,13 +92,15 @@ export function MobileLayout({
 
   return (
     <div className="min-h-screen bg-background">
-      <MobileHeader
-        title={title}
-        subtitle={subtitle}
-        showBack={showBack}
-        onBack={onBack}
-        drawerContent={drawerContent}
-      />
+      {!hideHeader && (
+        <MobileHeader
+          title={title}
+          subtitle={subtitle}
+          showBack={showBack}
+          onBack={onBack}
+          drawerContent={drawerContent}
+        />
+      )}
       
       <main className={cn(
         "mobile-container",
