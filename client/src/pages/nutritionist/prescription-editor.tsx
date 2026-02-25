@@ -135,12 +135,13 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
 
   const duplicatePrescriptionMutation = useMutation({
     mutationFn: async ({ sourcePrescriptionId, targetPatientId, newTitle }: { sourcePrescriptionId: string; targetPatientId: string; newTitle: string }) => {
-      return await apiRequest("POST", `/api/prescriptions/${sourcePrescriptionId}/duplicate-to-patient`, {
+      const response = await apiRequest("POST", `/api/prescriptions/${sourcePrescriptionId}/duplicate-to-patient`, {
         targetPatientId,
         title: newTitle,
       });
+      return response.json();
     },
-    onSuccess: (response) => {
+    onSuccess: (response: { id?: string }) => {
       toast({
         title: "Sucesso",
         description: "Prescrição duplicada com sucesso!",
