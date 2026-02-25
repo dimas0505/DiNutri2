@@ -94,15 +94,15 @@ export default function PatientDashboard() {
   return (
     <MobileLayout hideHeader>
       <div className="min-h-screen bg-[#F0F1F7] pb-24">
-        <section className="bg-gradient-to-b from-[#5B21B6] to-[#7C3AED] text-white px-5 pt-[max(12px,env(safe-area-inset-top))] pb-8 rounded-b-[22px] shadow-sm">
+        <section className="bg-gradient-to-b from-[#5B21B6] to-[#7C3AED] text-white px-5 pt-3 pb-8 rounded-b-[22px] shadow-sm">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-full bg-white/85 flex items-center justify-center">
                 <User className="w-6 h-6 text-[#7C3AED]" />
               </div>
               <div>
-                <p className="text-sm text-white/90 leading-none">{getGreeting()},</p>
-                <h1 className="text-[34px] font-bold leading-tight">{(user as any)?.firstName || "Paciente"}</h1>
+                <p className="text-[30px] text-white/90 leading-none">{getGreeting()},</p>
+                <h1 className="text-[40px] font-bold leading-tight">{(user as any)?.firstName || "Paciente"}</h1>
               </div>
             </div>
 
@@ -130,8 +130,8 @@ export default function PatientDashboard() {
         </section>
 
         <section className="px-5 pt-5">
-          <h2 className="text-[38px] font-bold text-[#252638]">Menu do Paciente</h2>
-          <p className="text-[20px] text-[#6C7282] mt-1">Acesse suas informações e acompanhe sua evolução</p>
+          <h2 className="text-[32px] font-bold text-[#252638]">Menu do Paciente</h2>
+          <p className="text-[26px] text-[#6C7282] mt-1">Acesse suas informações e acompanhe sua evolução</p>
 
           <div className="mt-4 grid grid-cols-2 gap-3">
             {dashboardCards.map((card) => {
@@ -141,13 +141,13 @@ export default function PatientDashboard() {
                   key={card.title}
                   type="button"
                   onClick={() => setLocation(card.href)}
-                  className="bg-white rounded-2xl px-3 py-5 min-h-[154px] border border-[#E9E9EF] shadow-[0_2px_8px_rgba(12,12,13,0.04)] flex flex-col items-center justify-center text-center"
+                  className="bg-white rounded-2xl px-3 py-5 min-h-[184px] border border-[#E9E9EF] shadow-[0_2px_8px_rgba(12,12,13,0.04)] flex flex-col items-center justify-center text-center"
                 >
                   <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center", card.iconBg)}>
                     <Icon className={cn("w-7 h-7", card.iconColor)} />
                   </div>
-                  <h3 className="mt-3 text-[21px] font-bold text-[#272838] leading-tight">{card.title}</h3>
-                  <p className="mt-1 text-[12px] text-[#6B7280] leading-snug">{card.subtitle}</p>
+                  <h3 className="mt-3 text-[31px] font-bold text-[#272838] leading-tight">{card.title}</h3>
+                  <p className="mt-1 text-[22px] text-[#6B7280] leading-snug">{card.subtitle}</p>
                 </button>
               );
             })}
