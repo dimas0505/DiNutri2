@@ -832,7 +832,10 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                     {!historyLoading && (
                       <div className="mt-6">
                         {currentAnamnesisRecord ? (
-                          <AnamnesisNutritionistDataForm anamnesis={currentAnamnesisRecord} />
+                          <AnamnesisNutritionistDataForm
+                            anamnesis={currentAnamnesisRecord}
+                            patient={patient}
+                          />
                         ) : (
                           <div className="p-4 rounded-lg bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 border border-yellow-200/50 dark:border-yellow-700/50">
                             <div className="flex items-center gap-3 mb-3">
@@ -923,7 +926,10 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                             )}
                             
                             {/* Renderiza o novo formulário para dados do nutricionista */}
-                            <AnamnesisNutritionistDataForm anamnesis={record} />
+                            <AnamnesisNutritionistDataForm
+                              anamnesis={record}
+                              patient={patient}
+                            />
                           </div>
                         ))}
                       </div>
