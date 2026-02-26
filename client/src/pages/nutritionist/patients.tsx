@@ -1,137 +1,183 @@
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { Search, Plus, Eye, FileText, Link as LinkIcon, Copy, MoreVertical, Users, Trash2 } from "lucide-react";
+import { ChevronDown, Link as LinkIcon, MoreHorizontal, Plus, Search, UserRound } from "lucide-react";
 import Header from "@/components/layout/header";
 import { NutritionistSidebar } from "@/components/layout/nutritionist-sidebar";
-import { MobileLayout, DefaultMobileDrawer } from "@/components/layout/mobile-layout";
-import { MobileCard, MobileCardHeader, MobileCardTitle, MobileCardContent } from "@/components/mobile/card";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { DefaultMobileDrawer, MobileLayout } from "@/components/layout/mobile-layout";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { useIsMobile } from "@/hooks/use-mobile";
 import { apiRequest } from "@/lib/queryClient";
-import type { Patient } from "@shared/schema";
 import { cn } from "@/lib/utils";
+import type { Patient } from "@shared/schema";
 
-function PatientCard({ patient, onViewDetails, onNewPrescription, onDeletePatient }: {
-  patient: Patient;
-  onViewDetails: () => void;
-  onNewPrescription: () => void;
-  onDeletePatient: () => void;
+type DateFilter = "all" | "1m" | "2m" | "3m" | "custom";
+type LoginFilter = "all" | "yes" | "no";
+type GenderFilter = "all" | "M" | "F";
+type SortBy = "updatedAt" | "createdAt" | "name" | "appLogin";
+
+const DATE_OPTIONS: Array<{ value: DateFilter; label: string }> = [
+  { value: "all", label: "Todo período" },
+  { value: "1m", label: "1 mês atrás" },
+  { value: "2m", label: "2 meses atrás" },
+  { value: "3m", label: "3 meses atrás" },
+  { value: "custom", label: "Personalizar data" },
+];
+
+const LOGIN_OPTIONS: Array<{ value: LoginFilter; label: string }> = [
+  { value: "all", label: "Sem especificar" },
+  { value: "yes", label: "Sim" },
+  { value: "no", label: "Não" },
+];
+
+const GENDER_OPTIONS: Array<{ value: GenderFilter; label: string }> = [
+  { value: "all", label: "Sem especificar" },
+  { value: "M", label: "Masculino" },
+  { value: "F", label: "Feminino" },
+];
+
+const SORT_OPTIONS: Array<{ value: SortBy; label: string }> = [
+  { value: "updatedAt", label: "Data de modificação" },
+  { value: "createdAt", label: "Data de cadastro" },
+  { value: "name", label: "Ordem alfabética" },
+  { value: "appLogin", label: "Login no app" },
+];
+
+function formatDate(date: Date | string | null | undefined) {
+  if (!date) return "-";
+  const parsed = date instanceof Date ? date : new Date(date);
+  if (Number.isNaN(parsed.getTime())) return "-";
+  return parsed.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
+
+function getDateThreshold(filter: DateFilter): number | null {
+  if (filter === "all" || filter === "custom") return null;
+  const months = Number(filter.replace("m", ""));
+  const threshold = new Date();
+  threshold.setMonth(threshold.getMonth() - months);
+  return threshold.getTime();
+}
+
+function FilterGroup<T extends string>({
+  label,
+  options,
+  value,
+  onChange,
+}: {
+  label: string;
+  options: Array<{ value: T; label: string }>;
+  value: T;
+  onChange: (value: T) => void;
 }) {
-  const calculateAge = (birthDate: string | null) => {
-    if (!birthDate) return null;
-    const birth = new Date(birthDate);
-    const today = new Date();
-    let age = today.getFullYear() - birth.getFullYear();
-    const monthDiff = today.getMonth() - birth.getMonth();
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
-      age--;
-    }
-    return age;
-  };
+  return (
+    <div className="space-y-2">
+      <p className="text-sm font-medium text-foreground">{label}</p>
+      <div className="flex flex-wrap gap-2">
+        {options.map((option) => (
+          <Button
+            key={option.value}
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => onChange(option.value)}
+            className={cn(
+              "h-8 rounded-full border-border px-3 text-xs font-medium",
+              value === option.value ? "bg-primary text-primary-foreground border-primary hover:bg-primary/90" : "bg-background",
+            )}
+          >
+            {option.label}
+          </Button>
+        ))}
+      </div>
+    </div>
+  );
+}
 
-  const age = calculateAge(patient.birthDate);
+function PatientGridCard({
+  patient,
+  onOpen,
+  onDelete,
+}: {
+  patient: Patient;
+  onOpen: () => void;
+  onDelete: () => void;
+}) {
+  const updatedLabel = patient.updatedAt ? formatDate(patient.updatedAt) : "-";
 
   return (
-    <Card 
-      className="cursor-pointer transition-all duration-300 hover:shadow-xl hover:shadow-blue-100/50 hover:-translate-y-1 bg-gradient-to-br from-white to-blue-50/30 dark:from-gray-900 dark:to-gray-800/50 border-0 shadow-lg overflow-hidden group"
-      onClick={onViewDetails}
+    <Card
+      className="cursor-pointer border-border bg-card shadow-none transition-colors hover:bg-muted/30"
+      onClick={onOpen}
       data-testid={`card-patient-${patient.id}`}
     >
-      <CardContent className="p-6 flex items-center justify-between relative">
-        {/* Gradient border effect on hover */}
-        <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-indigo-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-        
-        <div className="flex-1 min-w-0 relative z-10">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="p-2 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg">
-              <Users className="h-5 w-5 text-white" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-lg font-bold text-gray-900 dark:text-white truncate" data-testid={`text-patient-name-${patient.id}`}> 
-                {patient.name}
-              </p>
-              <p className="text-sm text-gray-600 dark:text-gray-300 truncate" data-testid={`text-patient-email-${patient.id}`}> 
-                {patient.email}
-              </p>
-            </div>
+      <CardContent className="space-y-4 p-4">
+        <div className="flex items-start gap-3">
+          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+            <UserRound className="h-5 w-5" />
           </div>
-          
-          <div className="flex items-center gap-2 flex-wrap">
-            <Badge 
-              variant={patient.userId ? "default" : "secondary"}
-              className={patient.userId ? 
-                "bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0 shadow-sm" : 
-                "bg-gradient-to-r from-amber-400 to-orange-400 text-white border-0 shadow-sm"
-              }
+          <div className="min-w-0 flex-1 space-y-1">
+            <p className="truncate text-sm font-semibold text-foreground" data-testid={`text-patient-name-${patient.id}`}>
+              {patient.name}
+            </p>
+            <p className="truncate text-xs text-muted-foreground">Modificado em {updatedLabel}</p>
+            <Button
+              variant="ghost"
+              size="sm"
+              type="button"
+              className="h-auto px-0 py-0.5 text-xs text-muted-foreground hover:bg-transparent hover:text-foreground"
+              onClick={(event) => event.stopPropagation()}
             >
-              {patient.userId ? "Ativo" : "Cadastro Pendente"}
-            </Badge>
-            {age !== null && (
-              <Badge 
-                variant="outline" 
-                className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-blue-200 dark:border-blue-700 text-blue-700 dark:text-blue-300"
-              >
-                {age} anos
-              </Badge>
-            )}
-          </div>
-        </div>
-        
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="h-10 w-10 p-0 ml-3 flex-shrink-0 hover:bg-gradient-to-r hover:from-blue-500/10 hover:to-purple-500/10 transition-all duration-200 relative z-10" 
-              onClick={(e) => e.stopPropagation()}
-            >
-              <MoreVertical className="h-4 w-4" />
-              <span className="sr-only">Opções</span>
+              + nova tag
             </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="bg-white/95 backdrop-blur-md border-0 shadow-xl">
-            <DropdownMenuItem 
-              onClick={(e) => { e.stopPropagation(); onViewDetails(); }}
-              className="hover:bg-blue-50 transition-colors"
-            >
-              <Eye className="h-4 w-4 mr-2 text-blue-600" /> Ver detalhes
-            </DropdownMenuItem>
-            <DropdownMenuItem 
-              onClick={(e) => { e.stopPropagation(); onNewPrescription(); }}
-              disabled={!patient.userId}
-              className="hover:bg-purple-50 transition-colors disabled:opacity-50"
-            >
-              <FileText className="h-4 w-4 mr-2 text-purple-600" /> Nova prescrição
-            </DropdownMenuItem>
-            <DropdownMenuItem 
-              onClick={(e) => { e.stopPropagation(); onDeletePatient(); }}
-              className="hover:bg-red-50 transition-colors text-red-600"
-            >
-              <Trash2 className="h-4 w-4 mr-2 text-red-600" /> Excluir
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild onClick={(event) => event.stopPropagation()}>
+              <Button type="button" variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0 text-muted-foreground hover:bg-muted/50">
+                <MoreHorizontal className="h-4 w-4" />
+                <span className="sr-only">Opções</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-40">
+              <DropdownMenuItem onClick={onOpen}>Visualizar</DropdownMenuItem>
+              <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={onDelete}>
+                Excluir
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+
+        <div className="flex flex-wrap gap-2 pt-1">
+          <Badge variant={patient.userId ? "default" : "secondary"}>{patient.userId ? "Logou no app" : "Sem login"}</Badge>
+          {patient.sex && <Badge variant="outline">{patient.sex === "M" ? "Masculino" : patient.sex === "F" ? "Feminino" : patient.sex}</Badge>}
+        </div>
       </CardContent>
     </Card>
   );
 }
 
 export default function PatientsPage() {
-  const [searchQuery, setSearchQuery] = useState("");
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const isMobile = useIsMobile();
+  const queryClient = useQueryClient();
+
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filtersOpen, setFiltersOpen] = useState(true);
+  const [modifiedDateFilter, setModifiedDateFilter] = useState<DateFilter>("all");
+  const [createdDateFilter, setCreatedDateFilter] = useState<DateFilter>("all");
+  const [loginFilter, setLoginFilter] = useState<LoginFilter>("all");
+  const [genderFilter, setGenderFilter] = useState<GenderFilter>("all");
+  const [sortBy, setSortBy] = useState<SortBy>("updatedAt");
+
+  const hasCustomDateFilter = modifiedDateFilter === "custom" || createdDateFilter === "custom";
+
   const [invitationLink, setInvitationLink] = useState<string | null>(null);
   const [patientToDelete, setPatientToDelete] = useState<Patient | null>(null);
-  const queryClient = useQueryClient();
 
   const { data: patients = [], isLoading } = useQuery<Patient[]>({
     queryKey: ["/api/patients"],
@@ -139,32 +185,23 @@ export default function PatientsPage() {
 
   const createInvitationMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/invitations");
-      return res.json();
+      const response = await apiRequest("POST", "/api/invitations");
+      return response.json();
     },
     onSuccess: (data) => {
-      const { token } = data;
-      const fullUrl = `${window.location.origin}/anamnese?token=${token}`;
-      setInvitationLink(fullUrl);
+      const url = `${window.location.origin}/anamnese?token=${data.token}`;
+      setInvitationLink(url);
       toast({ title: "Link de convite gerado!" });
     },
     onError: () => {
-      toast({
-        title: "Erro",
-        description: "Não foi possível gerar o link de convite.",
-        variant: "destructive",
-      });
+      toast({ title: "Erro", description: "Não foi possível gerar o link de convite.", variant: "destructive" });
     },
   });
 
   const deletePatientMutation = useMutation({
-    mutationFn: (patientId: string) =>
-      apiRequest("DELETE", `/api/patients/${patientId}`),
+    mutationFn: (patientId: string) => apiRequest("DELETE", `/api/patients/${patientId}`),
     onSuccess: () => {
-      toast({
-        title: "Paciente excluído com sucesso!",
-        variant: "default",
-      });
+      toast({ title: "Paciente excluído com sucesso!" });
       queryClient.invalidateQueries({ queryKey: ["/api/patients"] });
       setPatientToDelete(null);
     },
@@ -178,432 +215,248 @@ export default function PatientsPage() {
     },
   });
 
-  const handleCopyToClipboard = () => {
-    if (!invitationLink) return;
-    navigator.clipboard.writeText(invitationLink);
-    toast({ description: "Link copiado para a área de transferência!" });
-  }; 
+  const filteredPatients = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    const modifiedThreshold = getDateThreshold(modifiedDateFilter);
+    const createdThreshold = getDateThreshold(createdDateFilter);
 
-  const filteredPatients = patients.filter(patient =>
-    patient.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (patient.email && patient.email.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+    return [...patients]
+      .filter((patient) => {
+        const searchable = [
+          patient.name,
+          patient.email,
+          patient.notes,
+          patient.id,
+          String(patient.weightKg ?? ""),
+          String(patient.heightCm ?? ""),
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+        if (query && !searchable.includes(query)) return false;
 
-  const calculateAge = (birthDate: string) => {
-    if (!birthDate) return null;
-    const birth = new Date(birthDate);
-    const today = new Date();
-    const age = today.getFullYear() - birth.getFullYear();
-    const monthDiff = today.getMonth() - birth.getMonth();
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
-      return age - 1;
-    }
-    return age;
-  };
+        if (loginFilter === "yes" && !patient.userId) return false;
+        if (loginFilter === "no" && patient.userId) return false;
 
-  const mobileContent = (
-    <MobileLayout 
-      title="Meus Pacientes" 
-      drawerContent={<DefaultMobileDrawer />}
-    >
-      <div className="space-y-6 py-4 relative">
-        {/* Enhanced Header Section */}
-        <div className="relative">
-          <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-6 text-white shadow-lg">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
-                <Users className="h-6 w-6" />
-              </div>
-              <div>
-                <h1 className="text-xl font-bold">Meus Pacientes</h1>
-                <p className="text-blue-100 text-sm opacity-90">Gerencie seus pacientes com facilidade</p>
-              </div>
-            </div>
-          </div>
+        if (genderFilter !== "all" && patient.sex !== genderFilter) return false;
+
+        if (modifiedThreshold && patient.updatedAt) {
+          const updated = new Date(patient.updatedAt).getTime();
+          if (!Number.isNaN(updated) && updated < modifiedThreshold) return false;
+        }
+
+        if (createdThreshold && patient.createdAt) {
+          const created = new Date(patient.createdAt).getTime();
+          if (!Number.isNaN(created) && created < createdThreshold) return false;
+        }
+
+        return true;
+      })
+      .sort((a, b) => {
+        if (sortBy === "name") {
+          return a.name.localeCompare(b.name, "pt-BR");
+        }
+
+        if (sortBy === "appLogin") {
+          return Number(Boolean(b.userId)) - Number(Boolean(a.userId));
+        }
+
+        const left = sortBy === "createdAt" ? a.createdAt : a.updatedAt;
+        const right = sortBy === "createdAt" ? b.createdAt : b.updatedAt;
+        const leftTime = left ? new Date(left).getTime() : 0;
+        const rightTime = right ? new Date(right).getTime() : 0;
+        return rightTime - leftTime;
+      });
+  }, [patients, searchQuery, modifiedDateFilter, createdDateFilter, loginFilter, genderFilter, sortBy]);
+
+  const dashboardContent = (
+    <main className="mx-auto w-full max-w-7xl space-y-6 p-4 lg:p-6">
+      <header className="flex flex-wrap items-start justify-between gap-4">
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">Pacientes cadastrados</h1>
+        <div className="flex min-w-0 flex-wrap items-center gap-2 text-sm text-muted-foreground">
+          <Button type="button" variant="link" className="h-auto p-0 text-muted-foreground">
+            Exportar pacientes
+          </Button>
+          <span aria-hidden="true">|</span>
+          <Button type="button" variant="link" className="h-auto p-0 text-muted-foreground">
+            Desativar materiais em massa
+          </Button>
         </div>
+      </header>
 
-        {/* Enhanced Search and Actions */}
-        <div className="space-y-4">
-          <div className="relative">
-            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
-            <Input
-              type="search"
-              placeholder="Buscar pacientes..."
-              className="pl-12 h-12 bg-white/90 backdrop-blur-sm border-0 shadow-lg rounded-xl text-base"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              data-testid="input-search-patients"
-            />
-          </div>
-          <div className="flex gap-3">
-            <Button 
+      <Card className="border-border bg-card">
+        <CardContent className="space-y-4 p-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <Button type="button" className="w-full sm:w-auto" onClick={() => setLocation("/patients/new")} data-testid="button-new-patient">
+              <Plus className="mr-2 h-4 w-4" />
+              Adicionar paciente
+            </Button>
+
+            <Button
+              type="button"
               variant="outline"
+              className="w-full sm:w-auto"
               onClick={() => createInvitationMutation.mutate()}
               disabled={createInvitationMutation.isPending}
-              className="flex-1 h-12 text-sm bg-white/90 backdrop-blur-sm border-2 border-blue-200 hover:border-blue-300 hover:bg-blue-50 transition-all duration-200 rounded-xl shadow-md"
               data-testid="button-invite-patient"
             >
-              <LinkIcon className="h-4 w-4 mr-2 text-blue-600" />
-              {createInvitationMutation.isPending ? "Gerando..." : "Convidar"}
+              <LinkIcon className="mr-2 h-4 w-4" />
+              {createInvitationMutation.isPending ? "Gerando..." : "Gerar convite"}
             </Button>
-            <Button 
-              onClick={() => setLocation("/patients/new")}
-              className="flex-1 h-12 text-sm bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 rounded-xl shadow-lg transition-all duration-200 transform hover:scale-[1.02]"
-              data-testid="button-new-patient"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Adicionar
-            </Button>
-          </div>
-        </div>
 
-        {/* Enhanced Patients List */}
-        <div className="space-y-4">
-          {isLoading ? (
-            <div className="flex flex-col items-center justify-center py-16">
-              <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center mb-4 animate-pulse">
-                <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-              </div>
-              <p className="text-gray-600 font-medium">Carregando pacientes...</p>
-            </div>
-          ) : filteredPatients.length === 0 ? (
-            <div className="text-center py-16">
-              <div className="w-20 h-20 bg-gradient-to-r from-blue-100 to-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Users className="h-10 w-10 text-gray-400" />
-              </div>
-              <p className="text-gray-600 font-medium text-lg mb-2">
-                {searchQuery ? "Nenhum paciente encontrado" : "Nenhum paciente cadastrado"}
-              </p>
-              <p className="text-gray-400 text-sm">
-                {searchQuery ? "Tente ajustar sua busca" : "Comece adicionando seu primeiro paciente"}
-              </p>
-            </div>
-          ) : (
-            filteredPatients.map((patient) => (
-              <PatientCard
-                key={patient.id}
-                patient={patient}
-                onViewDetails={() => setLocation(`/patients/${patient.id}`)}
-                onNewPrescription={() => setLocation(`/patients/${patient.id}`)}
-                onDeletePatient={() => setPatientToDelete(patient)}
-              />
-            ))
-          )}
-        </div>
-      </div>
-    </MobileLayout>
-  );
-
-  const desktopContent = (
-    <>
-      {/* Modern CSS Animations */}
-      <style>{`
-        @keyframes blob {
-          0% {
-            transform: translate(0px, 0px) scale(1);
-          }
-          33% {
-            transform: translate(30px, -50px) scale(1.1);
-          }
-          66% {
-            transform: translate(-20px, 20px) scale(0.9);
-          }
-          100% {
-            transform: translate(0px, 0px) scale(1);
-          }
-        }
-        .animate-blob {
-          animation: blob 8s infinite;
-        }
-        .animation-delay-2000 {
-          animation-delay: 2s;
-        }
-        .animation-delay-4000 {
-          animation-delay: 4s;
-        }
-      `}</style>
-
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-100 relative overflow-hidden">
-        <NutritionistSidebar />
-        
-        {/* Enhanced Background decorative elements */}
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute -top-40 -right-40 w-96 h-96 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob"></div>
-          <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-gradient-to-br from-purple-400 to-indigo-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-2000"></div>
-          <div className="absolute top-40 left-40 w-80 h-80 bg-gradient-to-br from-indigo-400 to-blue-500 rounded-full mix-blend-multiply filter blur-xl opacity-15 animate-blob animation-delay-4000"></div>
-        </div>
-
-        <div className="pl-14">
-          <Header title="Meus Pacientes" />
-          <main className="max-w-7xl mx-auto p-4 lg:p-6 relative z-10">
-          {/* Enhanced Header Section */}
-          <div className="mb-8">
-            <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-8 text-white shadow-xl">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm">
-                    <Users className="h-8 w-8" />
-                  </div>
-                  <div>
-                    <h1 className="text-3xl font-bold mb-2">Meus Pacientes</h1>
-                    <p className="text-blue-100 text-lg opacity-90">Gerencie todos os seus pacientes em um só lugar</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="text-3xl font-bold">{patients.length}</div>
-                  <div className="text-blue-100 text-sm opacity-75">Total de Pacientes</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Enhanced Search and Actions Section */}
-          <div className="mb-8 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-            <div className="flex-1 relative">
-              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+            <div className="relative min-w-0 flex-1">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 type="search"
-                placeholder="Buscar pacientes por nome ou email..."
-                className="pl-12 h-12 bg-white/90 backdrop-blur-sm border-0 shadow-lg rounded-xl text-base"
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="Busque pelo nome, apelido, CPF, telefone ou pela tag do paciente"
+                className="h-10 pl-9"
                 data-testid="input-search-patients"
               />
             </div>
-            <div className="flex gap-4">
-              <Button 
-                variant="outline"
-                onClick={() => createInvitationMutation.mutate()}
-                disabled={createInvitationMutation.isPending}
-                className="flex items-center space-x-2 h-12 px-6 bg-white/90 backdrop-blur-sm border-2 border-blue-200 hover:border-blue-300 hover:bg-blue-50 transition-all duration-200 rounded-xl shadow-md"
-                data-testid="button-invite-patient"
-              >
-                <LinkIcon className="h-5 w-5 text-blue-600" />
-                <span className="font-medium">{createInvitationMutation.isPending ? "Gerando..." : "Convidar Paciente"}</span>
-              </Button>
-              <Button 
-                onClick={() => setLocation("/patients/new")}
-                className="flex items-center space-x-2 h-12 px-6 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 rounded-xl shadow-lg transition-all duration-200 transform hover:scale-[1.02] font-medium"
-                data-testid="button-new-patient"
-              >
-                <Plus className="h-5 w-5" />
-                <span>Adicionar Manualmente</span>
-              </Button>
-            </div>
+
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setFiltersOpen((prev) => !prev)}
+              className="w-full sm:w-auto"
+              data-testid="button-toggle-filters"
+            >
+              {filtersOpen ? "ocultar filtros" : "exibir filtros"}
+              <ChevronDown className={cn("ml-2 h-4 w-4 transition-transform", filtersOpen && "rotate-180")} />
+            </Button>
           </div>
-        {/* Enhanced Table Card */}
-        <Card className="shadow-xl border-0 bg-white/95 backdrop-blur-lg rounded-2xl overflow-hidden">
-          <CardHeader className="bg-gradient-to-r from-slate-50 to-blue-50 border-b border-slate-200/50 pb-6">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg">
-                <Users className="h-5 w-5 text-white" />
+
+          {filtersOpen && (
+            <div className="space-y-4 rounded-xl border border-border bg-background/60 p-4">
+              <div className="grid gap-4 lg:grid-cols-2">
+                <FilterGroup label="Data de modificação" options={DATE_OPTIONS} value={modifiedDateFilter} onChange={setModifiedDateFilter} />
+                <FilterGroup label="Data de criação" options={DATE_OPTIONS} value={createdDateFilter} onChange={setCreatedDateFilter} />
+                <FilterGroup label="Logou no app?" options={LOGIN_OPTIONS} value={loginFilter} onChange={setLoginFilter} />
+                <FilterGroup label="Gênero do paciente" options={GENDER_OPTIONS} value={genderFilter} onChange={setGenderFilter} />
               </div>
-              <div>
-                <CardTitle className="text-xl font-bold text-gray-900">Lista de Pacientes</CardTitle>
-                <CardDescription className="text-gray-600">Gerencie seus pacientes e acesse seus detalhes com facilidade.</CardDescription>
+
+              {hasCustomDateFilter && (
+                <p className="text-xs text-muted-foreground">
+                  Filtro por data personalizada em breve. Exibindo resultados sem limite de data personalizada.
+                </p>
+              )}
+
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-foreground">Ordenar resultados por:</p>
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {SORT_OPTIONS.map((option) => (
+                    <Button
+                      key={option.value}
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setSortBy(option.value)}
+                      className={cn(
+                        "h-8 rounded-full border-border px-3 text-xs font-medium",
+                        sortBy === option.value ? "bg-primary text-primary-foreground border-primary hover:bg-primary/90" : "bg-background",
+                      )}
+                    >
+                      {option.label}
+                    </Button>
+                  ))}
+                </div>
               </div>
             </div>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gradient-to-r from-gray-50 to-slate-50 border-b border-gray-200">
-                  <tr>
-                    <th className="text-left p-6 font-semibold text-gray-700">Paciente</th>
-                    <th className="text-left p-6 font-semibold text-gray-700 hidden sm:table-cell">Idade</th>
-                    <th className="text-left p-6 font-semibold text-gray-700 hidden md:table-cell">Status</th>
-                    <th className="text-left p-6 font-semibold text-gray-700">Ações</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {isLoading ? (
-                    <tr>
-                      <td colSpan={4} className="p-12 text-center">
-                        <div className="flex flex-col items-center">
-                          <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center mb-4 animate-pulse">
-                            <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                          </div>
-                          <p className="text-gray-600 font-medium">Carregando pacientes...</p>
-                        </div>
-                      </td>
-                    </tr>
-                  ) : filteredPatients.length === 0 ? (
-                    <tr>
-                      <td colSpan={4} className="p-12 text-center">
-                        <div className="flex flex-col items-center">
-                          <div className="w-20 h-20 bg-gradient-to-r from-blue-100 to-purple-100 rounded-full flex items-center justify-center mb-4">
-                            <Users className="h-10 w-10 text-gray-400" />
-                          </div>
-                          <p className="text-gray-600 font-medium text-lg mb-2">
-                            {searchQuery ? "Nenhum paciente encontrado" : "Nenhum paciente cadastrado"}
-                          </p>
-                          <p className="text-gray-400">
-                            {searchQuery ? "Tente ajustar sua busca" : "Comece adicionando seu primeiro paciente"}
-                          </p>
-                        </div>
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredPatients.map((patient) => (
-                      <tr key={patient.id} className="hover:bg-gradient-to-r hover:from-blue-50/50 hover:to-purple-50/50 transition-all duration-200 cursor-pointer group" onClick={() => setLocation(`/patients/${patient.id}`)}>
-                        <td className="p-6">
-                          <div className="flex items-center gap-3">
-                            <div className="p-2 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg opacity-80 group-hover:opacity-100 transition-opacity">
-                              <Users className="h-4 w-4 text-white" />
-                            </div>
-                            <div>
-                              <div className="font-semibold text-gray-900 group-hover:text-blue-700 transition-colors" data-testid={`text-patient-name-${patient.id}`}> 
-                                {patient.name}
-                              </div>
-                              <div className="text-sm text-gray-500" data-testid={`text-patient-email-${patient.id}`}> 
-                                {patient.email}
-                              </div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="p-6 hidden sm:table-cell">
-                          <span className="text-gray-600 font-medium">
-                            {patient.birthDate ? `${calculateAge(patient.birthDate)} anos` : "-"}
-                          </span>
-                        </td>
-                        <td className="p-6 hidden md:table-cell">
-                          <Badge 
-                            variant={patient.userId ? "default" : "secondary"}
-                            className={patient.userId ? 
-                              "bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0 shadow-sm" : 
-                              "bg-gradient-to-r from-amber-400 to-orange-400 text-white border-0 shadow-sm"
-                            }
-                          >
-                            {patient.userId ? "Ativo" : "Pendente"}
-                          </Badge>
-                        </td>
-                        <td className="p-6">
-                          <div className="flex items-center space-x-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(e) => { e.stopPropagation(); setLocation(`/patients/${patient.id}`); }}
-                              title="Ver detalhes"
-                              className="h-9 w-9 p-0 hover:bg-blue-100 hover:text-blue-600 transition-all duration-200"
-                              data-testid={`button-view-patient-${patient.id}`}
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              disabled={!patient.userId}
-                              title={!patient.userId ? "Paciente precisa ter um login" : "Nova prescrição"}
-                              onClick={(e) => { e.stopPropagation(); setLocation(`/patients/${patient.id}`); }}
-                              className="h-9 w-9 p-0 hover:bg-purple-100 hover:text-purple-600 transition-all duration-200 disabled:opacity-50"
-                              data-testid={`button-new-prescription-${patient.id}`}
-                            >
-                              <FileText className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(e) => { e.stopPropagation(); setPatientToDelete(patient); }}
-                              title="Excluir paciente"
-                              className="h-9 w-9 p-0 hover:bg-red-100 hover:text-red-600 transition-all duration-200"
-                              data-testid={`button-delete-patient-${patient.id}`}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
-        </main>
-        </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {isLoading ? (
+          <Card className="col-span-full border-border bg-card">
+            <CardContent className="py-12 text-center text-sm text-muted-foreground">Carregando pacientes...</CardContent>
+          </Card>
+        ) : filteredPatients.length === 0 ? (
+          <Card className="col-span-full border-border bg-card">
+            <CardContent className="py-12 text-center">
+              <p className="text-sm font-medium text-foreground">Nenhum paciente encontrado</p>
+              <p className="text-sm text-muted-foreground">Tente ajustar os filtros ou a busca para visualizar resultados.</p>
+            </CardContent>
+          </Card>
+        ) : (
+          filteredPatients.map((patient) => (
+            <PatientGridCard
+              key={patient.id}
+              patient={patient}
+              onOpen={() => setLocation(`/patients/${patient.id}`)}
+              onDelete={() => setPatientToDelete(patient)}
+            />
+          ))
+        )}
       </div>
-    </>
+    </main>
   );
 
   return (
     <>
-      {isMobile ? mobileContent : desktopContent}
+      <div className="min-h-screen bg-background">
+        <div className="hidden md:block">
+          <NutritionistSidebar />
+          <div className="pl-14">
+            <Header title="Pacientes cadastrados" />
+            {dashboardContent}
+          </div>
+        </div>
 
-      {/* Delete Patient Confirmation Dialog */}
+        <div className="md:hidden">
+          <MobileLayout title="Pacientes cadastrados" drawerContent={<DefaultMobileDrawer />}>
+            {dashboardContent}
+          </MobileLayout>
+        </div>
+      </div>
+
       <AlertDialog open={!!patientToDelete} onOpenChange={(open) => !open && setPatientToDelete(null)}>
-        <AlertDialogContent className="bg-white/95 backdrop-blur-lg border-0 shadow-2xl rounded-2xl">
+        <AlertDialogContent>
           <AlertDialogHeader>
-            <div className="flex items-center gap-3 mb-2">
-              <div className="p-2 bg-gradient-to-r from-red-500 to-rose-500 rounded-lg">
-                <Trash2 className="h-5 w-5 text-white" />
-              </div>
-              <div>
-                <AlertDialogTitle className="text-xl font-bold text-gray-900">Excluir Paciente</AlertDialogTitle>
-                <AlertDialogDescription className="text-gray-600">
-                  Esta ação não pode ser desfeita. Isso excluirá permanentemente o paciente e todos os seus dados associados.
-                </AlertDialogDescription>
-              </div>
-            </div>
+            <AlertDialogTitle>Excluir paciente</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação não pode ser desfeita. O paciente e os dados relacionados serão removidos.
+            </AlertDialogDescription>
           </AlertDialogHeader>
           {patientToDelete && (
-            <div className="p-4 bg-gradient-to-r from-red-50 to-rose-50 rounded-xl border border-red-200">
-              <p className="font-semibold text-red-800 mb-1">{patientToDelete.name}</p>
-              <p className="text-sm text-red-600">{patientToDelete.email}</p>
+            <div className="rounded-md border border-border bg-muted/40 p-3">
+              <p className="truncate text-sm font-medium text-foreground">{patientToDelete.name}</p>
+              <p className="truncate text-xs text-muted-foreground">{patientToDelete.email}</p>
             </div>
           )}
           <AlertDialogFooter>
-            <AlertDialogCancel className="bg-gray-100 hover:bg-gray-200 text-gray-700 border-0 rounded-lg">
-              Cancelar
-            </AlertDialogCancel>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => patientToDelete && deletePatientMutation.mutate(patientToDelete.id)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               disabled={deletePatientMutation.isPending}
-              className="bg-red-600 hover:bg-red-700 text-white border-0 rounded-lg"
+              onClick={() => patientToDelete && deletePatientMutation.mutate(patientToDelete.id)}
             >
-              {deletePatientMutation.isPending ? 'Excluindo...' : 'Excluir'}
+              {deletePatientMutation.isPending ? "Excluindo..." : "Excluir"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      <Dialog open={!!invitationLink} onOpenChange={(isOpen) => !isOpen && setInvitationLink(null)}>
-        <DialogContent className="bg-white/95 backdrop-blur-lg border-0 shadow-2xl rounded-2xl">
+      <Dialog open={!!invitationLink} onOpenChange={(open) => !open && setInvitationLink(null)}>
+        <DialogContent>
           <DialogHeader>
-            <div className="flex items-center gap-3 mb-2">
-              <div className="p-2 bg-gradient-to-r from-green-500 to-emerald-500 rounded-lg">
-                <LinkIcon className="h-5 w-5 text-white" />
-              </div>
-              <div>
-                <DialogTitle className="text-xl font-bold text-gray-900">Link de Convite Gerado</DialogTitle>
-                <DialogDescription className="text-gray-600">
-                  Envie este link para o seu paciente. Ele será válido para um único cadastro.
-                </DialogDescription>
-              </div>
-            </div>
+            <DialogTitle>Link de convite gerado</DialogTitle>
+            <DialogDescription>Envie este link para o paciente finalizar o cadastro.</DialogDescription>
           </DialogHeader>
-          <div className="flex items-center space-x-3 p-4 bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl border border-gray-200">
-            <Input 
-              value={invitationLink || ""} 
-              readOnly 
-              className="bg-white/80 border-0 shadow-sm text-sm"
-            />
-            <Button 
-              variant="outline" 
-              onClick={handleCopyToClipboard} 
-              size="icon"
-              className="flex-shrink-0 h-10 w-10 bg-white hover:bg-blue-50 border-2 border-blue-200 hover:border-blue-300 transition-all duration-200"
-            >
-              <Copy className="h-4 w-4 text-blue-600" />
+          <div className="flex flex-wrap items-center gap-2 rounded-md border border-border bg-muted/40 p-3">
+            <Input value={invitationLink || ""} readOnly className="min-w-0 flex-1" />
+            <Button type="button" variant="outline" onClick={() => invitationLink && navigator.clipboard.writeText(invitationLink)}>
+              <LinkIcon className="mr-2 h-4 w-4" /> Copiar
             </Button>
           </div>
           <DialogFooter>
-            <Button 
-              variant="secondary" 
-              onClick={() => setInvitationLink(null)}
-              className="bg-gray-100 hover:bg-gray-200 text-gray-700 border-0 rounded-lg"
-            >
+            <Button variant="secondary" onClick={() => setInvitationLink(null)}>
               Fechar
+            </Button>
+            <Button onClick={() => createInvitationMutation.mutate()} disabled={createInvitationMutation.isPending}>
+              {createInvitationMutation.isPending ? "Gerando..." : "Gerar novo link"}
             </Button>
           </DialogFooter>
         </DialogContent>

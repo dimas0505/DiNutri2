@@ -631,10 +631,32 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
 
             {/* Anamnese Section with Tabs */}
             <Tabs defaultValue="current" className="w-full">
+ codex/update-patient-view-to-match-apk-design-wk2j3x
+              <TabsList className="grid w-full grid-cols-1 gap-1 rounded-xl border border-border/70 bg-muted/70 p-1 sm:grid-cols-3 sm:gap-0">
+                <TabsTrigger
+                  value="current"
+                  className="rounded-md px-3 text-sm font-medium transition-all data-[state=active]:bg-white data-[state=active]:text-foreground"
+                >
+                  Anamnese Atual
+                </TabsTrigger>
+                <TabsTrigger
+                  value="history"
+                  className="rounded-md px-3 text-sm font-medium transition-all data-[state=active]:bg-white data-[state=active]:text-foreground"
+                >
+                  Histórico
+                </TabsTrigger>
+                <TabsTrigger
+                  value="subscription"
+                  className="rounded-md px-3 text-sm font-medium transition-all data-[state=active]:bg-white data-[state=active]:text-foreground"
+                >
+                  Assinatura
+                </TabsTrigger>
+
               <TabsList className="grid w-full grid-cols-3 bg-muted/70 p-1 rounded-xl border border-border/70">
                 <TabsTrigger value="current" className="rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-foreground font-medium transition-all">Anamnese Atual</TabsTrigger>
                 <TabsTrigger value="history" className="rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-foreground font-medium transition-all">Histórico</TabsTrigger>
                 <TabsTrigger value="subscription" className="rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-foreground font-medium transition-all">Assinatura</TabsTrigger>
+main
               </TabsList>
               <TabsContent value="current">
                 <Card className="border border-border/70 bg-card shadow-sm overflow-hidden">
@@ -1122,7 +1144,7 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                 ) : prescriptions && prescriptions.length > 0 ? (
                   <div className="space-y-4">
                     {prescriptions.map((prescription) => (
-                      <div key={prescription.id} className="p-4 sm:p-5 rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200/50 dark:border-blue-700/50 hover:shadow-md transition-all duration-200 transform hover:scale-[1.01] overflow-hidden">
+                      <div key={prescription.id} className="p-4 sm:p-5 rounded-xl bg-card border border-border/70 hover:shadow-sm transition-all duration-200 overflow-hidden">
                         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-3">
                           <div className="flex items-center gap-3 min-w-0 flex-1">
                             <div className="p-2 bg-blue-100 dark:bg-blue-800 rounded-lg flex-shrink-0">
@@ -1140,8 +1162,8 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                           <Badge 
                             variant={prescription.status === 'published' ? 'default' : 'secondary'}
                             className={`${prescription.status === 'published' 
-                              ? 'bg-green-100 text-green-800 border-green-200 dark:bg-green-800 dark:text-green-100 dark:border-green-700' 
-                              : 'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600'
+                              ? 'bg-primary/10 text-primary border-primary/20' 
+                              : 'bg-muted text-muted-foreground border-border'
                             } px-3 py-1 font-medium flex-shrink-0 self-start`}
                             data-testid={`badge-prescription-status-${prescription.id}`}
                           >
@@ -1155,46 +1177,46 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                         )}
                         <div className="flex flex-wrap items-center gap-2 mt-4">
                           <Button
-                            variant="ghost"
+                            variant="default"
                             size="sm"
                             onClick={() => setLocation(`/prescriptions/${prescription.id}/edit`)}
                             data-testid={`button-edit-prescription-${prescription.id}`}
-                            className="bg-blue-100 hover:bg-blue-200 text-blue-700 border border-blue-200 dark:bg-blue-800 dark:hover:bg-blue-700 dark:text-blue-200 dark:border-blue-700 transition-all duration-200 rounded-lg"
+                            className="min-w-0"
                           >
                             <Eye className="h-4 w-4 mr-1" />
-                            {prescription.status === 'published' ? 'Visualizar' : 'Editar'}
+                            <span className="truncate">{prescription.status === 'published' ? 'Visualizar' : 'Editar'}</span>
                           </Button>
                           <Button
-                            variant="ghost"
+                            variant="outline"
                             size="sm"
                             onClick={() => duplicatePrescriptionMutation.mutate(prescription.id)}
                             disabled={duplicatePrescriptionMutation.isPending}
                             data-testid={`button-duplicate-prescription-${prescription.id}`}
-                            className="bg-purple-100 hover:bg-purple-200 text-purple-700 border border-purple-200 dark:bg-purple-800 dark:hover:bg-purple-700 dark:text-purple-200 dark:border-purple-700 transition-all duration-200 rounded-lg"
+                            className="min-w-0"
                           >
                             <FileText className="h-4 w-4 mr-1" />
-                            {duplicatePrescriptionMutation.isPending ? 'Duplicando...' : 'Duplicar'}
+                            <span className="truncate">{duplicatePrescriptionMutation.isPending ? 'Duplicando...' : 'Duplicar'}</span>
                           </Button>
                           <Button
-                            variant="ghost"
+                            variant="outline"
                             size="sm"
                             onClick={() => handleDownloadPrescription(prescription.id)}
                             data-testid={`button-download-prescription-${prescription.id}`}
-                            className="bg-green-100 hover:bg-green-200 text-green-700 border border-green-200 dark:bg-green-800 dark:hover:bg-green-700 dark:text-green-200 dark:border-green-700 transition-all duration-200 rounded-lg"
+                            className="min-w-0"
                           >
                             <FileDown className="h-4 w-4 mr-1" />
-                            Baixar
+                            <span className="truncate">Baixar</span>
                           </Button>
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
                               <Button
-                                variant="ghost"
+                                variant="outline"
                                 size="sm"
-                                className="bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 dark:bg-red-900/30 dark:hover:bg-red-900/50 dark:text-red-300 dark:border-red-700/50 transition-all duration-200 rounded-lg"
+                                className="min-w-0 border-destructive/40 text-destructive hover:bg-destructive/10"
                                 data-testid={`button-delete-prescription-${prescription.id}`}
                               >
                                 <Trash2 className="h-4 w-4 mr-1" />
-                                Excluir
+                                <span className="truncate">Excluir</span>
                               </Button>
                             </AlertDialogTrigger>
                             <AlertDialogContent>

@@ -13,11 +13,19 @@ const buttonVariants = cva(
         destructive:
           "bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90",
         outline:
+ codex/update-patient-view-to-match-apk-design-wk2j3x
+          "border border-input bg-background hover:bg-muted/50 hover:text-foreground",
+        secondary:
+          "bg-secondary text-secondary-foreground hover:bg-secondary/85",
+        brand: "bg-accent text-accent-foreground hover:bg-accent/90",
+        ghost: "hover:bg-muted/50 hover:text-foreground",
+
           "border border-input bg-background hover:bg-muted/60 hover:text-foreground",
         secondary:
           "bg-secondary text-secondary-foreground hover:bg-secondary/85",
         brand: "bg-accent text-accent-foreground shadow-sm hover:bg-accent/90",
         ghost: "hover:bg-muted hover:text-foreground",
+ main
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {
