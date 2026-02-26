@@ -40,6 +40,13 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
 app.use((req, res, next) => {
+  if (!req.path.startsWith("/api")) {
+    res.setHeader("Content-Language", "pt-BR");
+  }
+  next();
+});
+
+app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
   res.on("finish", () => {
@@ -103,4 +110,3 @@ if (process.env.NODE_ENV === 'development') {
     });
   })();
 }
-

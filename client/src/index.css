@@ -3,25 +3,25 @@
 @tailwind utilities;
 
 :root {
-  --background: hsl(0 0% 100%);
+  --background: hsl(225 25% 98%);
   --foreground: hsl(222.2 84% 4.9%);
   --card: hsl(0 0% 100%);
   --card-foreground: hsl(222.2 84% 4.9%);
   --popover: hsl(0 0% 100%);
   --popover-foreground: hsl(222.2 84% 4.9%);
-  --primary: hsl(221.2 83.2% 53.3%);
+  --primary: hsl(160 84% 39%);
   --primary-foreground: hsl(210 40% 98%);
-  --secondary: hsl(210 40% 96%);
+  --secondary: hsl(225 20% 95%);
   --secondary-foreground: hsl(222.2 84% 4.9%);
   --muted: hsl(210 40% 96%);
   --muted-foreground: hsl(215.4 16.3% 46.9%);
-  --accent: hsl(221.2 83.2% 53.3%);
+  --accent: hsl(258 83% 55%);
   --accent-foreground: hsl(210 40% 98%);
   --destructive: hsl(0 84.2% 60.2%);
   --destructive-foreground: hsl(210 40% 98%);
-  --border: hsl(214.3 31.8% 91.4%);
-  --input: hsl(214.3 31.8% 91.4%);
-  --ring: hsl(221.2 83.2% 53.3%);
+  --border: hsl(220 18% 90%);
+  --input: hsl(220 18% 90%);
+  --ring: hsl(160 72% 42%);
   --chart-1: hsl(203.8863 88.2845% 53.1373%);
   --chart-2: hsl(159.7826 100% 36.0784%);
   --chart-3: hsl(42.0290 92.8251% 56.2745%);
@@ -38,7 +38,7 @@
   --font-sans: Inter, sans-serif;
   --font-serif: Georgia, serif;
   --font-mono: Menlo, monospace;
-  --radius: 0.5rem;
+  --radius: 0.875rem;
   
   /* DNutri Mockup Color Tokens */
   --dn-header-from: #8B5CF6;
@@ -58,25 +58,25 @@
 }
 
 .dark {
-  --background: hsl(0 0% 0%);
+  --background: hsl(224 18% 10%);
   --foreground: hsl(200 6.6667% 91.1765%);
   --card: hsl(228 9.8039% 10%);
   --card-foreground: hsl(0 0% 85.0980%);
   --popover: hsl(0 0% 0%);
   --popover-foreground: hsl(200 6.6667% 91.1765%);
-  --primary: hsl(203.7736 87.6033% 52.5490%);
+  --primary: hsl(160 72% 42%);
   --primary-foreground: hsl(0 0% 100%);
-  --secondary: hsl(195.0000 15.3846% 94.9020%);
+  --secondary: hsl(224 14% 18%);
   --secondary-foreground: hsl(210 25% 7.8431%);
   --muted: hsl(0 0% 9.4118%);
   --muted-foreground: hsl(210 3.3898% 46.2745%);
-  --accent: hsl(203.7736 87.6033% 52.5490%);
+  --accent: hsl(258 80% 62%);
   --accent-foreground: hsl(0 0% 100%);
   --destructive: hsl(0 84.2% 60.2%);
   --destructive-foreground: hsl(210 40% 98%);
   --border: hsl(210 5.2632% 14.9020%);
   --input: hsl(207.6923 27.6596% 18.4314%);
-  --ring: hsl(221.2 83.2% 53.3%);
+  --ring: hsl(160 72% 42%);
   --chart-1: hsl(203.8863 88.2845% 53.1373%);
   --chart-2: hsl(159.7826 100% 36.0784%);
   --chart-3: hsl(42.0290 92.8251% 56.2745%);
@@ -93,7 +93,7 @@
   --font-sans: Inter, sans-serif;
   --font-serif: Georgia, serif;
   --font-mono: Menlo, monospace;
-  --radius: 0.5rem;
+  --radius: 0.875rem;
   --shadow-2xs: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00);
   --shadow-xs: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00);
   --shadow-sm: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00), 0px 1px 2px -1px hsl(202.8169 89.1213% 53.1373% / 0.00);
