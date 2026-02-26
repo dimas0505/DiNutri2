@@ -143,6 +143,14 @@ export const anamnesisRecords = pgTable("anamnesis_records", {
   vet: real("vet"),
   usedFormula: text("used_formula"),
   
+  // Macronutrient distribution targets
+  targetCarbPercent: integer("target_carb_percent"),
+  targetProteinPercent: integer("target_protein_percent"),
+  targetFatPercent: integer("target_fat_percent"),
+  targetCarbG: real("target_carb_g"),
+  targetProteinG: real("target_protein_g"),
+  targetFatG: real("target_fat_g"),
+
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -361,6 +369,12 @@ export const insertAnamnesisRecordSchema = createInsertSchema(anamnesisRecords).
   get: z.coerce.number().min(0, "GET deve ser um valor positivo").optional().nullable(),
   vet: z.coerce.number().min(0, "VET deve ser um valor positivo").optional().nullable(),
   usedFormula: z.string().optional().nullable(),
+  targetCarbPercent: z.coerce.number().min(0).max(100).optional().nullable(),
+  targetProteinPercent: z.coerce.number().min(0).max(100).optional().nullable(),
+  targetFatPercent: z.coerce.number().min(0).max(100).optional().nullable(),
+  targetCarbG: z.coerce.number().min(0).optional().nullable(),
+  targetProteinG: z.coerce.number().min(0).optional().nullable(),
+  targetFatG: z.coerce.number().min(0).optional().nullable(),
 });
 
 export const insertFoodDiaryEntrySchema = createInsertSchema(foodDiaryEntries).omit({

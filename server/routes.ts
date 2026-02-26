@@ -818,6 +818,12 @@ export async function setupRoutes(app: Express): Promise<void> {
         get: z.coerce.number().min(0, "GET deve ser um valor positivo").optional().nullable(),
         vet: z.coerce.number().min(0, "VET deve ser um valor positivo").optional().nullable(),
         usedFormula: z.string().optional().nullable(),
+        targetCarbPercent: z.coerce.number().min(0).max(100).optional().nullable(),
+        targetProteinPercent: z.coerce.number().min(0).max(100).optional().nullable(),
+        targetFatPercent: z.coerce.number().min(0).max(100).optional().nullable(),
+        targetCarbG: z.coerce.number().min(0).optional().nullable(),
+        targetProteinG: z.coerce.number().min(0).optional().nullable(),
+        targetFatG: z.coerce.number().min(0).optional().nullable(),
       });
 
       // Validate the data
@@ -842,6 +848,12 @@ export async function setupRoutes(app: Express): Promise<void> {
           get: data.get,
           vet: data.vet,
           usedFormula: data.usedFormula,
+          targetCarbPercent: data.targetCarbPercent,
+          targetProteinPercent: data.targetProteinPercent,
+          targetFatPercent: data.targetFatPercent,
+          targetCarbG: data.targetCarbG,
+          targetProteinG: data.targetProteinG,
+          targetFatG: data.targetFatG,
         })
         .where(eq(anamnesisRecords.id, anamnesisId))
         .returning();
