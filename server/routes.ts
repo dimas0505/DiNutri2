@@ -72,7 +72,7 @@ export async function setupRoutes(app: Express): Promise<void> {
   app.get("/api/auth/user", (req, res) => {
     if (req.isAuthenticated()) {
       // Log activity to track app access/usage
-      logActivity({ userId: req.user.id, activityType: 'app_access' });
+      logActivity({ userId: (req.user as any).id, activityType: 'app_access' });
       res.json(req.user);
     } else {
       res.status(401).json({ message: "Não autorizado" });
