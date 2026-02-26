@@ -9,15 +9,23 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/90",
+        default: "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90",
         destructive:
-          "bg-destructive text-destructive-foreground hover:bg-destructive/90",
+          "bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90",
         outline:
+ codex/update-patient-view-to-match-apk-design-k6gnsy
           "border border-input bg-background hover:bg-muted/50 hover:text-foreground",
         secondary:
           "bg-secondary text-secondary-foreground hover:bg-secondary/85",
         brand: "bg-accent text-accent-foreground hover:bg-accent/90",
         ghost: "hover:bg-muted/50 hover:text-foreground",
+
+          "border border-input bg-background hover:bg-muted/60 hover:text-foreground",
+        secondary:
+          "bg-secondary text-secondary-foreground hover:bg-secondary/85",
+        brand: "bg-accent text-accent-foreground shadow-sm hover:bg-accent/90",
+        ghost: "hover:bg-muted hover:text-foreground",
+ main
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {

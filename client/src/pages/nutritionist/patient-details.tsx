@@ -631,10 +631,17 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
 
             {/* Anamnese Section with Tabs */}
             <Tabs defaultValue="current" className="w-full">
+ codex/update-patient-view-to-match-apk-design-k6gnsy
               <TabsList className="grid w-full grid-cols-3 bg-muted/70 p-1 rounded-xl border border-border/70 overflow-x-auto">
                 <TabsTrigger value="current" className="rounded-md px-3 data-[state=active]:bg-white data-[state=active]:text-foreground font-medium transition-all whitespace-nowrap">Anamnese Atual</TabsTrigger>
                 <TabsTrigger value="history" className="rounded-md px-3 data-[state=active]:bg-white data-[state=active]:text-foreground font-medium transition-all whitespace-nowrap">Histórico</TabsTrigger>
                 <TabsTrigger value="subscription" className="rounded-md px-3 data-[state=active]:bg-white data-[state=active]:text-foreground font-medium transition-all whitespace-nowrap">Assinatura</TabsTrigger>
+
+              <TabsList className="grid w-full grid-cols-3 bg-muted/70 p-1 rounded-xl border border-border/70">
+                <TabsTrigger value="current" className="rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-foreground font-medium transition-all">Anamnese Atual</TabsTrigger>
+                <TabsTrigger value="history" className="rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-foreground font-medium transition-all">Histórico</TabsTrigger>
+                <TabsTrigger value="subscription" className="rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-foreground font-medium transition-all">Assinatura</TabsTrigger>
+ main
               </TabsList>
               <TabsContent value="current">
                 <Card className="border border-border/70 bg-card shadow-sm overflow-hidden">
@@ -831,7 +838,10 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                     {!historyLoading && (
                       <div className="mt-6">
                         {currentAnamnesisRecord ? (
-                          <AnamnesisNutritionistDataForm anamnesis={currentAnamnesisRecord} />
+                          <AnamnesisNutritionistDataForm
+                            anamnesis={currentAnamnesisRecord}
+                            patient={patient}
+                          />
                         ) : (
                           <div className="p-4 rounded-lg bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 border border-yellow-200/50 dark:border-yellow-700/50">
                             <div className="flex items-center gap-3 mb-3">
@@ -922,7 +932,10 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                             )}
                             
                             {/* Renderiza o novo formulário para dados do nutricionista */}
-                            <AnamnesisNutritionistDataForm anamnesis={record} />
+                            <AnamnesisNutritionistDataForm
+                              anamnesis={record}
+                              patient={patient}
+                            />
                           </div>
                         ))}
                       </div>
