@@ -3,19 +3,28 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { MobileHeader } from "@/components/mobile";
 import { BottomNavigation } from "@/components/mobile";
 import { useAuth } from "@/hooks/useAuth";
-import { Home, Users, FileText, User, Menu, LogOut, Shield, UserPlus, Settings, ShieldCheck } from "lucide-react";
+import { Home, Users, FileText, User, LogOut, Shield, UserPlus, Settings, ShieldCheck, BookOpen } from "lucide-react";
 import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
+import type { LucideIcon } from "lucide-react";
 
 interface MobileLayoutProps {
   children: React.ReactNode;
   title?: string;
   subtitle?: string;
   showBack?: boolean;
+  showBackButton?: boolean;
   onBack?: () => void;
   className?: string;
   showBottomNav?: boolean;
+  hideHeader?: boolean;
   drawerContent?: React.ReactNode;
+}
+
+interface LayoutNavItem {
+  label: string;
+  href: string;
+  icon: LucideIcon;
 }
 
 export function MobileLayout({
@@ -23,95 +32,51 @@ export function MobileLayout({
   title,
   subtitle,
   showBack = false,
+  showBackButton,
   onBack,
   className,
   showBottomNav = true,
+  hideHeader = false,
   drawerContent,
 }: MobileLayoutProps) {
   const isMobile = useIsMobile();
-  const { isNutritionist, isPatient } = useAuth();
-  const [location, setLocation] = useLocation();
+  const { isPatient, isNutritionist } = useAuth();
+  const [location] = useLocation();
 
-  // Navigation items based on user role
-  const getNavigationItems = () => {
-    if (isNutritionist) {
-      return [
-        {
-          id: 'patients',
-          label: 'Pacientes',
-          icon: Users,
-          href: '/patients',
-          active: location.startsWith('/patients'),
-        },
-        {
-          id: 'profile',
-          label: 'Perfil',
-          icon: User,
-          href: '/profile',
-          active: location.startsWith('/profile'),
-        },
-      ];
-    } else if (isPatient) {
-      return [
-        {
-          id: 'prescription',
-          label: 'Início',
-          icon: Home,
-          href: '/patient/prescription',
-          active: location.startsWith('/patient/prescription') && !location.startsWith('/patient/prescriptions'),
-        },
-        {
-          id: 'prescriptions',
-          label: 'Prescrições',
-          icon: FileText,
-          href: '/patient/prescriptions',
-          active: location.startsWith('/patient/prescriptions'),
-        },
-        {
-          id: 'profile',
-          label: 'Perfil',
-          icon: User,
-          href: '/patient/profile',
-          active: location.startsWith('/patient/profile'),
-        },
-      ];
-    }
-    return [];
-  };
-
-  const handleBottomNavClick = (item: any) => {
-    setLocation(item.href);
-  };
+  const navItems: LayoutNavItem[] = isPatient
+    ? [
+        { icon: Home, label: "Início", href: "/dashboard" },
+        { icon: BookOpen, label: "Diário", href: "/diary" },
+        { icon: User, label: "Perfil", href: "/profile" },
+      ]
+    : isNutritionist
+      ? [
+          { icon: Users, label: "Pacientes", href: "/patients" },
+          { icon: User, label: "Perfil", href: "/admin/profile" },
+        ]
+      : [];
 
   if (!isMobile) {
-    // Return children without mobile layout on desktop
     return <div className={className}>{children}</div>;
   }
 
   return (
     <div className="min-h-screen bg-background">
-      <MobileHeader
-        title={title}
-        subtitle={subtitle}
-        showBack={showBack}
-        onBack={onBack}
-        drawerContent={drawerContent}
-      />
-      
-      <main className={cn(
-        "mobile-container",
-        showBottomNav && "pb-20", // Add padding for bottom navigation
-        className
-      )}>
+      {!hideHeader && (
+        <MobileHeader
+          title={title}
+          subtitle={subtitle}
+          showBack={showBackButton ?? showBack}
+          onBack={onBack}
+          drawerContent={drawerContent}
+        />
+      )}
+
+      <main className={cn("mobile-container", showBottomNav && navItems.length > 0 && "pb-20", className)}>
         {children}
       </main>
 
-      {showBottomNav && (
-        <BottomNavigation
-          items={getNavigationItems()}
-          onItemClick={handleBottomNavClick}
-        />
-      )}
+      {showBottomNav && navItems.length > 0 && <BottomNavigation items={navItems} currentPath={location} />}
     </div>
   );
 }
@@ -126,32 +91,37 @@ export function DefaultMobileDrawer({ onProfileClick }: DefaultMobileDrawerProps
   const [, setLocation] = useLocation();
 
   const handleLogout = () => {
-    // Redireciona diretamente para a rota de logout que fará o redirecionamento
     window.location.href = "/api/logout";
   };
 
   const navigationItems = [
-    ...(isAdmin ? [
-      { label: 'Painel Principal', href: '/admin', icon: Shield, action: 'navigate' },
-      { label: 'Criar Usuário', href: '/admin/create-user', icon: UserPlus, action: 'navigate' },
-      { label: 'Meu Perfil', href: '/admin/profile', icon: Settings, action: 'navigate' },
-    ] : []),
-    ...(isNutritionist ? [
-      { label: 'Pacientes', href: '/patients', icon: Users, action: 'navigate' },
-      { label: 'Nova Prescrição', href: '/patients/new', icon: FileText, action: 'navigate' },
-    ] : []),
-    ...(isPatient ? [
-      { label: 'Início', href: '/patient/prescription', icon: Home, action: 'navigate' },
-      { label: 'Meu Plano', href: '/my-plan', icon: ShieldCheck, action: 'navigate' },
-      { label: 'Prescrições', href: '/patient/prescriptions', icon: FileText, action: 'navigate' },
-      { label: 'Perfil', href: '', icon: User, action: 'profile' },
-    ] : []),
+    ...(isAdmin
+      ? [
+          { label: "Painel Principal", href: "/admin", icon: Shield, action: "navigate" },
+          { label: "Criar Usuário", href: "/admin/create-user", icon: UserPlus, action: "navigate" },
+          { label: "Meu Perfil", href: "/admin/profile", icon: Settings, action: "navigate" },
+        ]
+      : []),
+    ...(isNutritionist
+      ? [
+          { label: "Pacientes", href: "/patients", icon: Users, action: "navigate" },
+          { label: "Nova Prescrição", href: "/patients/new", icon: FileText, action: "navigate" },
+        ]
+      : []),
+    ...(isPatient
+      ? [
+          { label: "Início", href: "/dashboard", icon: Home, action: "navigate" },
+          { label: "Meu Plano", href: "/my-plan", icon: ShieldCheck, action: "navigate" },
+          { label: "Prescrições", href: "/patient/prescriptions", icon: FileText, action: "navigate" },
+          { label: "Perfil", href: "/profile", icon: User, action: "navigate" },
+        ]
+      : []),
   ];
 
   const handleItemClick = (item: any) => {
-    if (item.action === 'navigate') {
+    if (item.action === "navigate") {
       setLocation(item.href);
-    } else if (item.action === 'profile' && onProfileClick) {
+    } else if (item.action === "profile" && onProfileClick) {
       onProfileClick();
     }
   };
@@ -171,8 +141,7 @@ export function DefaultMobileDrawer({ onProfileClick }: DefaultMobileDrawerProps
           </button>
         );
       })}
-      
-      {/* Separator and logout option */}
+
       {navigationItems.length > 0 && (
         <div className="border-t pt-2 mt-4">
           <button
