@@ -13,7 +13,7 @@ export default function Home() {
     } else if (isNutritionist) {
       setLocation("/patients");
     } else if (isPatient) {
-      setLocation("/patient/prescription");
+      setLocation("/dashboard");
     }
   }, [isAdmin, isNutritionist, isPatient, setLocation]);
 

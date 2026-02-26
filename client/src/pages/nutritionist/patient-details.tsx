@@ -520,19 +520,18 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
       />
       
       <main className="max-w-7xl mx-auto p-4 lg:p-6">
-        {/* Enhanced Header Section */}
-        <div className="mb-8 p-6 rounded-xl bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 text-white shadow-xl">
+        <div className="mb-8 p-6 rounded-2xl border border-border/70 bg-card shadow-sm">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-bold mb-2">Detalhes do Paciente</h1>
-              <p className="text-blue-100 opacity-90">Visualize e gerencie as informações completas do paciente</p>
+              <h1 className="text-2xl font-bold mb-2 text-foreground">Detalhes do Paciente</h1>
+              <p className="text-muted-foreground">Visualize e gerencie as informações completas do paciente</p>
             </div>
             <Button
               onClick={() => createPrescriptionMutation.mutate()}
               disabled={patientLoading || createPrescriptionMutation.isPending || !hasAccountLinked}
               title={!hasAccountLinked ? "Paciente precisa ter um login para criar prescrições" : "Nova Prescrição"}
               data-testid="button-new-prescription"
-              className="bg-white/20 hover:bg-white/30 border-white/30 text-white font-medium px-6 py-3 rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 backdrop-blur-sm"
+              className="font-medium px-6 py-3 rounded-lg"
             >
               <Plus className="h-5 w-5 mr-2" />
               {createPrescriptionMutation.isPending ? "Criando..." : "Nova Prescrição"}
@@ -543,22 +542,22 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Patient Info */}
           <div className="lg:col-span-1 space-y-6">
-            <Card className="shadow-lg border-0 bg-gradient-to-br from-white to-blue-50/30 dark:from-gray-900 dark:to-gray-800/50 overflow-hidden">
-              <CardHeader className="bg-gradient-to-r from-blue-600 to-purple-600 text-white pb-6">
+            <Card className="border border-border/70 bg-card shadow-sm overflow-hidden">
+              <CardHeader className="pb-4 border-b bg-muted/30">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
                     <User className="h-6 w-6" />
                   </div>
                   <div>
-                    <CardTitle className="text-xl font-bold">Informações do Paciente</CardTitle>
-                    <p className="text-blue-100 text-sm opacity-90">{patient.name}</p>
+                    <CardTitle className="text-xl font-bold text-foreground">Informações do Paciente</CardTitle>
+                    <p className="text-muted-foreground text-sm">{patient.name}</p>
                   </div>
                 </div>
               </CardHeader>
               <CardContent className="p-6">
                 <div className="space-y-4">
                   {patient.birthDate && (
-                    <div className="flex items-center gap-3 p-3 rounded-lg bg-gradient-to-r from-slate-50 to-blue-50 dark:from-slate-900/20 dark:to-blue-900/20 border border-slate-200/50 dark:border-slate-700/50">
+                    <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/40 border border-border/60">
                       <div className="p-2 bg-slate-100 dark:bg-slate-800 rounded-lg">
                         <Calendar className="h-4 w-4 text-slate-600 dark:text-slate-300" />
                       </div>
@@ -569,7 +568,7 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                     </div>
                   )}
                   {patient.sex && (
-                    <div className="flex items-center gap-3 p-3 rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200/50 dark:border-blue-700/50">
+                    <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/40 border border-border/60">
                       <div className="p-2 bg-blue-100 dark:bg-blue-800 rounded-lg">
                         <User className="h-4 w-4 text-blue-600 dark:text-blue-300" />
                       </div>
@@ -580,7 +579,7 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                     </div>
                   )}
                   {patient.heightCm && (
-                    <div className="flex items-center gap-3 p-3 rounded-lg bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-900/20 dark:to-blue-900/20 border border-indigo-200/50 dark:border-indigo-700/50">
+                    <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/40 border border-border/60">
                       <div className="p-2 bg-indigo-100 dark:bg-indigo-800 rounded-lg">
                         <Ruler className="h-4 w-4 text-indigo-600 dark:text-indigo-300" />
                       </div>
@@ -591,7 +590,7 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                     </div>
                   )}
                   {patient.weightKg && (
-                    <div className="flex items-center gap-3 p-3 rounded-lg bg-gradient-to-r from-blue-50 to-slate-50 dark:from-blue-900/20 dark:to-slate-900/20 border border-blue-200/50 dark:border-blue-700/50">
+                    <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/40 border border-border/60">
                       <div className="p-2 bg-blue-100 dark:bg-blue-800 rounded-lg">
                         <Weight className="h-4 w-4 text-blue-600 dark:text-blue-300" />
                       </div>
@@ -632,14 +631,14 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
 
             {/* Anamnese Section with Tabs */}
             <Tabs defaultValue="current" className="w-full">
-              <TabsList className="grid w-full grid-cols-3 bg-gray-100 dark:bg-gray-800 p-1 rounded-lg">
-                <TabsTrigger value="current" className="rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-blue-600 font-medium transition-all">Anamnese Atual</TabsTrigger>
-                <TabsTrigger value="history" className="rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-blue-600 font-medium transition-all">Histórico</TabsTrigger>
-                <TabsTrigger value="subscription" className="rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-blue-600 font-medium transition-all">Assinatura</TabsTrigger>
+              <TabsList className="grid w-full grid-cols-3 bg-muted/70 p-1 rounded-xl border border-border/70 overflow-x-auto">
+                <TabsTrigger value="current" className="rounded-md px-3 data-[state=active]:bg-white data-[state=active]:text-foreground font-medium transition-all whitespace-nowrap">Anamnese Atual</TabsTrigger>
+                <TabsTrigger value="history" className="rounded-md px-3 data-[state=active]:bg-white data-[state=active]:text-foreground font-medium transition-all whitespace-nowrap">Histórico</TabsTrigger>
+                <TabsTrigger value="subscription" className="rounded-md px-3 data-[state=active]:bg-white data-[state=active]:text-foreground font-medium transition-all whitespace-nowrap">Assinatura</TabsTrigger>
               </TabsList>
               <TabsContent value="current">
-                <Card className="shadow-lg border-0 bg-gradient-to-br from-white to-emerald-50/30 dark:from-gray-900 dark:to-gray-800/50 overflow-hidden">
-                  <CardHeader className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white pb-6">
+                <Card className="border border-border/70 bg-card shadow-sm overflow-hidden">
+                  <CardHeader className="pb-4 border-b bg-muted/30">
                     <div className="flex items-center gap-3">
                       <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
                         <Stethoscope className="h-6 w-6" />
@@ -861,8 +860,8 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                 </Card>
               </TabsContent>
               <TabsContent value="history">
-                <Card className="shadow-lg border-0 bg-gradient-to-br from-white to-gray-50/30 dark:from-gray-900 dark:to-gray-800/50 overflow-hidden">
-                  <CardHeader className="bg-gradient-to-r from-gray-600 to-slate-600 text-white pb-6">
+                <Card className="border border-border/70 bg-card shadow-sm overflow-hidden">
+                  <CardHeader className="pb-4 border-b bg-muted/30">
                     <div className="flex items-center gap-3">
                       <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
                         <History className="h-6 w-6" />
@@ -933,8 +932,8 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
               </TabsContent>
               
               <TabsContent value="subscription">
-                <Card className="shadow-lg border-0 bg-gradient-to-br from-white to-purple-50/30 dark:from-gray-900 dark:to-gray-800/50 overflow-hidden">
-                  <CardHeader className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white pb-6">
+                <Card className="border border-border/70 bg-card shadow-sm overflow-hidden">
+                  <CardHeader className="pb-4 border-b bg-muted/30">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
@@ -1050,8 +1049,8 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
               </TabsContent>
             </Tabs>
 
-            <Card className="shadow-lg border-0 bg-gradient-to-br from-white to-green-50/30 dark:from-gray-900 dark:to-gray-800/50 overflow-hidden">
-              <CardHeader className="bg-gradient-to-r from-green-600 to-emerald-600 text-white pb-6">
+            <Card className="border border-border/70 bg-card shadow-sm overflow-hidden">
+              <CardHeader className="pb-4 border-b bg-muted/30">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
                     <Users className="h-6 w-6" />
@@ -1097,8 +1096,8 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
 
           {/* Prescriptions */}
           <div className="lg:col-span-2">
-            <Card className="shadow-lg border-0 bg-gradient-to-br from-white to-purple-50/30 dark:from-gray-900 dark:to-gray-800/50 overflow-hidden">
-              <CardHeader className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white pb-6">
+            <Card className="border border-border/70 bg-card shadow-sm overflow-hidden">
+              <CardHeader className="pb-4 border-b bg-muted/30">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
@@ -1117,7 +1116,7 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                 ) : prescriptions && prescriptions.length > 0 ? (
                   <div className="space-y-4">
                     {prescriptions.map((prescription) => (
-                      <div key={prescription.id} className="p-4 sm:p-5 rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200/50 dark:border-blue-700/50 hover:shadow-md transition-all duration-200 transform hover:scale-[1.01] overflow-hidden">
+                      <div key={prescription.id} className="p-4 sm:p-5 rounded-xl bg-card border border-border/70 hover:shadow-sm transition-all duration-200 overflow-hidden">
                         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-3">
                           <div className="flex items-center gap-3 min-w-0 flex-1">
                             <div className="p-2 bg-blue-100 dark:bg-blue-800 rounded-lg flex-shrink-0">
@@ -1135,8 +1134,8 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                           <Badge 
                             variant={prescription.status === 'published' ? 'default' : 'secondary'}
                             className={`${prescription.status === 'published' 
-                              ? 'bg-green-100 text-green-800 border-green-200 dark:bg-green-800 dark:text-green-100 dark:border-green-700' 
-                              : 'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600'
+                              ? 'bg-primary/10 text-primary border-primary/20' 
+                              : 'bg-muted text-muted-foreground border-border'
                             } px-3 py-1 font-medium flex-shrink-0 self-start`}
                             data-testid={`badge-prescription-status-${prescription.id}`}
                           >
@@ -1150,46 +1149,46 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                         )}
                         <div className="flex flex-wrap items-center gap-2 mt-4">
                           <Button
-                            variant="ghost"
+                            variant="default"
                             size="sm"
                             onClick={() => setLocation(`/prescriptions/${prescription.id}/edit`)}
                             data-testid={`button-edit-prescription-${prescription.id}`}
-                            className="bg-blue-100 hover:bg-blue-200 text-blue-700 border border-blue-200 dark:bg-blue-800 dark:hover:bg-blue-700 dark:text-blue-200 dark:border-blue-700 transition-all duration-200 rounded-lg"
+                            className="min-w-0"
                           >
                             <Eye className="h-4 w-4 mr-1" />
-                            {prescription.status === 'published' ? 'Visualizar' : 'Editar'}
+                            <span className="truncate">{prescription.status === 'published' ? 'Visualizar' : 'Editar'}</span>
                           </Button>
                           <Button
-                            variant="ghost"
+                            variant="outline"
                             size="sm"
                             onClick={() => duplicatePrescriptionMutation.mutate(prescription.id)}
                             disabled={duplicatePrescriptionMutation.isPending}
                             data-testid={`button-duplicate-prescription-${prescription.id}`}
-                            className="bg-purple-100 hover:bg-purple-200 text-purple-700 border border-purple-200 dark:bg-purple-800 dark:hover:bg-purple-700 dark:text-purple-200 dark:border-purple-700 transition-all duration-200 rounded-lg"
+                            className="min-w-0"
                           >
                             <FileText className="h-4 w-4 mr-1" />
-                            {duplicatePrescriptionMutation.isPending ? 'Duplicando...' : 'Duplicar'}
+                            <span className="truncate">{duplicatePrescriptionMutation.isPending ? 'Duplicando...' : 'Duplicar'}</span>
                           </Button>
                           <Button
-                            variant="ghost"
+                            variant="outline"
                             size="sm"
                             onClick={() => handleDownloadPrescription(prescription.id)}
                             data-testid={`button-download-prescription-${prescription.id}`}
-                            className="bg-green-100 hover:bg-green-200 text-green-700 border border-green-200 dark:bg-green-800 dark:hover:bg-green-700 dark:text-green-200 dark:border-green-700 transition-all duration-200 rounded-lg"
+                            className="min-w-0"
                           >
                             <FileDown className="h-4 w-4 mr-1" />
-                            Baixar
+                            <span className="truncate">Baixar</span>
                           </Button>
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
                               <Button
-                                variant="ghost"
+                                variant="outline"
                                 size="sm"
-                                className="bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 dark:bg-red-900/30 dark:hover:bg-red-900/50 dark:text-red-300 dark:border-red-700/50 transition-all duration-200 rounded-lg"
+                                className="min-w-0 border-destructive/40 text-destructive hover:bg-destructive/10"
                                 data-testid={`button-delete-prescription-${prescription.id}`}
                               >
                                 <Trash2 className="h-4 w-4 mr-1" />
-                                Excluir
+                                <span className="truncate">Excluir</span>
                               </Button>
                             </AlertDialogTrigger>
                             <AlertDialogContent>
@@ -1232,7 +1231,7 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                         onClick={() => createPrescriptionMutation.mutate()}
                         disabled={patientLoading || createPrescriptionMutation.isPending}
                         data-testid="button-create-first-prescription"
-                        className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-medium px-6 py-3 rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
+                        className="font-medium px-6 py-3 rounded-lg"
                       >
                         <Plus className="h-5 w-5 mr-2" />
                         {createPrescriptionMutation.isPending ? "Criando..." : "Criar Primeira Prescrição"}
@@ -1254,8 +1253,8 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
 
         {/* Food Diary Section */}
         <div className="mt-8">
-          <Card className="shadow-lg border-0 bg-gradient-to-br from-white to-orange-50/30 dark:from-gray-900 dark:to-gray-800/50 overflow-hidden">
-            <CardHeader className="bg-gradient-to-r from-orange-600 to-amber-600 text-white pb-6">
+          <Card className="border border-border/70 bg-card shadow-sm overflow-hidden">
+            <CardHeader className="pb-4 border-b bg-muted/30">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
                   <Camera className="h-6 w-6" />
