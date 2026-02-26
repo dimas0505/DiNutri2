@@ -28,6 +28,23 @@ import AdminDashboard from "@/pages/admin/dashboard";
 import CreateUserPage from "@/pages/admin/create-user";
 import AdminProfilePage from "@/pages/admin/profile";
 import EditUserPage from "@/pages/admin/edit-user";
+import PatientDashboard from "@/pages/patient/dashboard";
+import { MobileLayout } from "@/components/layout/mobile-layout";
+import { Wrench } from "lucide-react";
+
+function ComingSoonPage({ title }: { title: string }) {
+  return (
+    <MobileLayout title={title} showBackButton>
+      <div className="flex flex-col items-center justify-center p-8 h-[60vh] text-center">
+        <div className="w-20 h-20 bg-[#4E9F87]/10 rounded-full flex items-center justify-center mb-6">
+          <Wrench className="w-10 h-10 text-[#4E9F87]" />
+        </div>
+        <h2 className="text-2xl font-bold text-gray-800 mb-2">Em Breve</h2>
+        <p className="text-gray-500">A aba de {title} estará disponível em atualizações futuras do app!</p>
+      </div>
+    </MobileLayout>
+  );
+}
 
 function Router() {
   const { isAuthenticated, isLoading, isAdmin, isNutritionist, isPatient } = useAuth();
@@ -81,10 +98,17 @@ function Router() {
       {/* Rotas de Paciente (já registrado) */}
       {isAuthenticated && isPatient && (
         <>
+          <Route path="/dashboard" component={PatientDashboard} />
           <Route path="/my-plan" component={MyPlanPage} />
           <Route path="/patient/prescriptions" component={PatientPrescriptionsList} />
           <Route path="/patient/prescription" component={PatientPrescriptionView} />
           <Route path="/prescriptions/:id/print" component={PrescriptionPrintPage} />
+          <Route path="/evolution" component={() => <ComingSoonPage title="Evolução" />} />
+          <Route path="/diary" component={() => <ComingSoonPage title="Diário" />} />
+          <Route path="/goals" component={() => <ComingSoonPage title="Metas" />} />
+          <Route path="/exams" component={() => <ComingSoonPage title="Exames" />} />
+          <Route path="/guidelines" component={() => <ComingSoonPage title="Orientações" />} />
+          <Route path="/profile" component={() => <ComingSoonPage title="Perfil" />} />
         </>
       )}
 
