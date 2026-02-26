@@ -1,6 +1,4 @@
-import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import type { Subscription, Patient } from "@shared/schema";
 import { useAuth } from "@/hooks/useAuth";
@@ -10,17 +8,13 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { differenceInDays, format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Loader2, AlertCircle, ShieldCheck, AlertTriangle, XCircle } from "lucide-react";
+import { Loader2, AlertCircle, ShieldCheck, XCircle } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { HeaderDNutri } from "@/components/ui/header-dinutri";
-import { DNutriBottomNav } from "@/components/ui/dinutri-bottom-nav";
-import { ProfileModal } from "@/components/ui/profile-modal";
+import { MobileLayout } from "@/components/layout/mobile-layout";
 
 export default function MyPlanPage() {
   const { user, isAuthenticated, isLoading } = useAuth();
-  const [, setLocation] = useLocation();
   const isMobile = useIsMobile();
-  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
   // Get current patient data
   const { data: currentPatient } = useQuery<Patient>({
@@ -224,29 +218,9 @@ export default function MyPlanPage() {
 
   if (isMobile) {
     return (
-      <>
-        <HeaderDNutri 
-          goalText="Meu Plano"
-          onProfileClick={() => setIsProfileModalOpen(true)}
-        />
-        <main className="p-4">
-          {content}
-        </main>
-        <DNutriBottomNav
-          activeItem="my-plan"
-          onItemClick={(item) => {
-            if (item === "home") setLocation("/");
-            else if (item === "prescriptions") setLocation("/patient/prescriptions");
-            else if (item === "my-plan") setLocation("/my-plan");
-            else if (item === "profile") setIsProfileModalOpen(true);
-          }}
-        />
-        <ProfileModal 
-          open={isProfileModalOpen} 
-          onOpenChange={setIsProfileModalOpen}
-          patient={currentPatient || null}
-        />
-      </>
+      <MobileLayout title="Meu Plano" showBackButton>
+        <main className="p-4">{content}</main>
+      </MobileLayout>
     );
   }
 
