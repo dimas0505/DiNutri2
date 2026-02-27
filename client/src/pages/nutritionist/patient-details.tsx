@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { DefaultMobileDrawer } from "@/components/layout/mobile-layout";
 import { AnamnesisNutritionistDataForm } from "@/components/nutritionist/anamnesis-nutritionist-data-form";
+import { PatientLayout, type PatientModuleItem } from "@/components/nutritionist/patient-layout";
 import { generatePrescriptionPDF } from "@/utils/pdf-generator";
 import type { Patient, Prescription, AnamnesisRecord, FoodDiaryEntryWithPrescription, MealData, MoodType, Subscription } from "@shared/schema";
 
@@ -32,6 +33,34 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
   const [newSubscriptionStatus, setNewSubscriptionStatus] = useState<Subscription['status']>('active');
   const [newSubscriptionExpiresAt, setNewSubscriptionExpiresAt] = useState<string>('');
   const [subscriptionToDelete, setSubscriptionToDelete] = useState<string | null>(null);
+  const [activeModule, setActiveModule] = useState("profile");
+  const [activeClinicalTab, setActiveClinicalTab] = useState("current");
+
+  const modules: PatientModuleItem[] = [
+    { id: "profile", label: "Perfil do paciente", icon: User },
+    { id: "anamnesis", label: "Anamnese", icon: Stethoscope },
+    { id: "subscription", label: "Assinatura", icon: CreditCard },
+    { id: "prescriptions", label: "Planejamento alimentar", icon: FileText },
+    { id: "diary", label: "Evolução fotográfica", icon: Camera },
+  ];
+
+  const handleModuleChange = (moduleId: string) => {
+    setActiveModule(moduleId);
+
+    if (moduleId === "anamnesis") {
+      setActiveClinicalTab("current");
+      document.getElementById("anamnesis")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+
+    if (moduleId === "subscription") {
+      setActiveClinicalTab("subscription");
+      document.getElementById("anamnesis")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+
+    document.getElementById(moduleId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   const { data: patient, isLoading: patientLoading } = useQuery<Patient>({
     queryKey: ["/api/patients", params.id],
@@ -520,7 +549,8 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
       />
       
       <main className="max-w-7xl mx-auto p-4 lg:p-6">
-        <div className="mb-8 p-6 rounded-2xl border border-border/70 bg-card shadow-sm">
+        <PatientLayout modules={modules} activeModule={activeModule} onModuleChange={handleModuleChange}>
+        <div id="profile" className="mb-8 p-6 rounded-2xl border border-border/70 bg-card shadow-sm scroll-mt-24">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <h1 className="text-2xl font-bold mb-2 text-foreground">Detalhes do Paciente</h1>
@@ -630,7 +660,7 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
             </Card>
 
             {/* Anamnese Section with Tabs */}
-            <Tabs defaultValue="current" className="w-full">
+            <Tabs value={activeClinicalTab} onValueChange={(value) => { setActiveClinicalTab(value); setActiveModule(value === "subscription" ? "subscription" : "anamnesis"); }} id="anamnesis" className="w-full scroll-mt-24">
               <TabsList className="grid w-full grid-cols-3 bg-muted/70 p-1 rounded-xl border border-border/70">
                 <TabsTrigger value="current" className="rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-foreground font-medium transition-all">Anamnese Atual</TabsTrigger>
                 <TabsTrigger value="history" className="rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-foreground font-medium transition-all">Histórico</TabsTrigger>
@@ -1101,7 +1131,7 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
           </div>
 
           {/* Prescriptions */}
-          <div className="lg:col-span-2">
+          <div id="prescriptions" className="lg:col-span-2 scroll-mt-24">
             <Card className="border border-border/70 bg-card shadow-sm overflow-hidden">
               <CardHeader className="pb-4 border-b bg-muted/30">
                 <div className="flex items-center justify-between">
@@ -1258,7 +1288,7 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
         </div>
 
         {/* Food Diary Section */}
-        <div className="mt-8">
+        <div id="diary" className="mt-8 scroll-mt-24">
           <Card className="border border-border/70 bg-card shadow-sm overflow-hidden">
             <CardHeader className="pb-4 border-b bg-muted/30">
               <div className="flex items-center gap-3">
@@ -1394,6 +1424,7 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
             </CardContent>
           </Card>
         </div>
+        </PatientLayout>
       </main>
 
       {/* AlertDialog for photo deletion confirmation */}
