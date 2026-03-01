@@ -3,6 +3,8 @@ import express, { type Request, Response, NextFunction, type Express } from "exp
 import { registerRoutes, setupRoutes } from "./routes.js";
 import path from "path";
 import fs from "fs";
+import { migrate } from "drizzle-orm/neon-serverless/migrator";
+import { db } from "./db.js";
 
 // --- Funções movidas de vite.ts para cá ---
 export function log(message: string, source = "express") {
@@ -55,6 +57,13 @@ app.use((req, res, next) => {
 let routesRegistered = false;
 async function ensureRoutesRegistered() {
   if (!routesRegistered) {
+    // Apply any pending DB migrations (creates tables if they don't exist)
+    try {
+      await migrate(db, { migrationsFolder: path.resolve(import.meta.dirname, "..", "migrations") });
+    } catch (err) {
+      console.error("Migration error (non-fatal):", err);
+    }
+
     await setupRoutes(app);
     
     // Middleware de tratamento de erros
