@@ -135,7 +135,7 @@ export default function PatientDashboard() {
             </button>
           </div>
 
-            <div className="mt-4 space-y-2">
+          <div className="mt-4 space-y-2">
             <div className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-white/18 text-sm">
               <span className="w-2.5 h-2.5 bg-white rounded-sm" />
               Objetivo: {getGoalLabel(patientProfile?.goal)}
