@@ -681,7 +681,7 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
             {/* Anamnese Section with Tabs */}
             <Tabs defaultValue="current" className="w-full">
               <TabsList className="grid w-full grid-cols-4 bg-muted/70 p-1 rounded-xl border border-border/70">
-                <TabsTrigger value="current" className="rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-foreground font-medium transition-all text-xs sm:text-sm">Anamnese</TabsTrigger>
+                <TabsTrigger value="current" className="rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-foreground font-medium transition-all text-xs sm:text-sm">Anamnese Atual</TabsTrigger>
                 <TabsTrigger value="history" className="rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-foreground font-medium transition-all text-xs sm:text-sm">Histórico</TabsTrigger>
                 <TabsTrigger value="subscription" className="rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-foreground font-medium transition-all text-xs sm:text-sm">Assinatura</TabsTrigger>
                 <TabsTrigger value="assessments" className="rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-foreground font-medium transition-all text-xs sm:text-sm">Avaliações</TabsTrigger>
