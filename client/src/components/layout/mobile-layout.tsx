@@ -3,7 +3,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { MobileHeader } from "@/components/mobile";
 import { BottomNavigation } from "@/components/mobile";
 import { useAuth } from "@/hooks/useAuth";
-import { Home, Users, FileText, User, LogOut, Shield, UserPlus, Settings, ShieldCheck, BookOpen } from "lucide-react";
+import { Home, Users, FileText, User, LogOut, Shield, UserPlus, Settings, ShieldCheck, BookOpen, ClipboardList } from "lucide-react";
 import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import type { LucideIcon } from "lucide-react";
@@ -113,6 +113,7 @@ export function DefaultMobileDrawer({ onProfileClick }: DefaultMobileDrawerProps
           { label: "Início", href: "/dashboard", icon: Home, action: "navigate" },
           { label: "Meu Plano", href: "/my-plan", icon: ShieldCheck, action: "navigate" },
           { label: "Prescrições", href: "/patient/prescriptions", icon: FileText, action: "navigate" },
+          { label: "Avaliações", href: "/assessments", icon: ClipboardList, action: "navigate" },
           { label: "Perfil", href: "/profile", icon: User, action: "navigate" },
         ]
       : []),
