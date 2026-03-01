@@ -39,8 +39,8 @@ const dashboardCards: DashboardCard[] = [
     iconColor: "text-[#3B82F6]",
   },
   {
-    title: "Anamnese",
-    subtitle: "Histórico de avaliações",
+    title: "Avaliações",
+    subtitle: "Suas avaliações e documentos",
     href: "/assessments",
     icon: ClipboardList,
     iconBg: "bg-[#FFF3E7]",

@@ -45,7 +45,7 @@ export default function AssessmentsPage() {
   };
 
   return (
-    <MobileLayout title="Anamnese / Avaliações" showBackButton>
+    <MobileLayout title="Minhas Avaliações" showBackButton>
       <div className="p-4 space-y-4">
         <p className="text-sm text-muted-foreground">
           Arquivos e avaliações enviados pelo seu nutricionista.
