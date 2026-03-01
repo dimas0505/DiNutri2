@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, CheckCircle, Eye, FileText, Plus, Users, XCircle, Link as LinkIcon, Copy, History, User, Calendar, Ruler, Weight, Target, Activity, Heart, Stethoscope, Pill, Camera, Image, Smile, Trash2, FileDown, CreditCard, Upload, Download, ClipboardList } from "lucide-react";
+import { ArrowLeft, CheckCircle, Eye, FileText, Plus, Users, XCircle, Link as LinkIcon, Copy, History, User, Calendar, Ruler, Weight, Target, Activity, Heart, Stethoscope, Pill, Camera, Image, Smile, Trash2, FileDown, CreditCard, Upload, Download, ClipboardList, Pencil } from "lucide-react";
 import { useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -17,7 +17,7 @@ import { Label } from "@/components/ui/label";
 import { DefaultMobileDrawer } from "@/components/layout/mobile-layout";
 import { AnamnesisNutritionistDataForm } from "@/components/nutritionist/anamnesis-nutritionist-data-form";
 import { generatePrescriptionPDF } from "@/utils/pdf-generator";
-import type { Patient, Prescription, AnamnesisRecord, FoodDiaryEntryWithPrescription, MealData, MoodType, Subscription, PatientDocument } from "@shared/schema";
+import type { Patient, Prescription, AnamnesisRecord, FoodDiaryEntryWithPrescription, MealData, MoodType, Subscription, PatientDocument, AnthropometricAssessment } from "@shared/schema";
 
 export default function PatientDetails({ params }: { params: { id: string } }) {
   const [, setLocation] = useLocation();
@@ -34,6 +34,16 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
   const [subscriptionToDelete, setSubscriptionToDelete] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isAnthroDialogOpen, setIsAnthroDialogOpen] = useState(false);
+  const [anthroToEdit, setAnthroToEdit] = useState<AnthropometricAssessment | null>(null);
+  const [anthroToDelete, setAnthroToDelete] = useState<string | null>(null);
+  const [anthroForm, setAnthroForm] = useState({
+    title: "",
+    circumNeck: "", circumShoulders: "", circumChest: "", circumWaist: "",
+    circumAbdomen: "", circumHip: "", circumRightArm: "", circumLeftArm: "",
+    circumRightThigh: "", circumLeftThigh: "", circumRightCalf: "", circumLeftCalf: "",
+    foldBiceps: "", foldTriceps: "", foldSubscapular: "", foldSuprailiac: "",
+  });
 
   const { data: patient, isLoading: patientLoading } = useQuery<Patient>({
     queryKey: ["/api/patients", params.id],
@@ -55,6 +65,15 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
 
   const { data: anamnesisHistory, isLoading: historyLoading } = useQuery<AnamnesisRecord[]>({
     queryKey: ["/api/patients", params.id, "anamnesis-records"],
+    enabled: !!patient,
+  });
+
+  const { data: anthroAssessments, isLoading: anthroLoading } = useQuery<AnthropometricAssessment[]>({
+    queryKey: ["/api/patients", params.id, "anthropometry"],
+    queryFn: async () => {
+      const response = await apiRequest("GET", `/api/patients/${params.id}/anthropometry`);
+      return response.json();
+    },
     enabled: !!patient,
   });
 
@@ -389,6 +408,46 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
     },
   });
 
+  const createAnthroMutation = useMutation({
+    mutationFn: async (data: Omit<AnthropometricAssessment, 'id' | 'nutritionistId' | 'createdAt' | 'updatedAt'>) => {
+      const response = await apiRequest("POST", `/api/patients/${params.id}/anthropometry`, data);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/patients", params.id, "anthropometry"] });
+      setIsAnthroDialogOpen(false);
+      setAnthroToEdit(null);
+      toast({ title: "Sucesso", description: "Avaliação antropométrica salva." });
+    },
+    onError: () => toast({ title: "Erro", description: "Falha ao salvar avaliação.", variant: "destructive" }),
+  });
+
+  const updateAnthroMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: Partial<AnthropometricAssessment> }) => {
+      const response = await apiRequest("PUT", `/api/anthropometry/${id}`, data);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/patients", params.id, "anthropometry"] });
+      setIsAnthroDialogOpen(false);
+      setAnthroToEdit(null);
+      toast({ title: "Sucesso", description: "Avaliação atualizada." });
+    },
+    onError: () => toast({ title: "Erro", description: "Falha ao atualizar avaliação.", variant: "destructive" }),
+  });
+
+  const deleteAnthroMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest("DELETE", `/api/anthropometry/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/patients", params.id, "anthropometry"] });
+      setAnthroToDelete(null);
+      toast({ title: "Sucesso", description: "Avaliação excluída." });
+    },
+    onError: () => toast({ title: "Erro", description: "Falha ao excluir avaliação.", variant: "destructive" }),
+  });
+
   const calculateAge = (birthDate: string) => {
     if (!birthDate) return null;
     const birth = new Date(birthDate);
@@ -558,6 +617,69 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
   
   const hasAccountLinked = !!patient.userId;
 
+  function openAnthroDialog(prefill?: AnthropometricAssessment) {
+    if (prefill) {
+      setAnthroForm({
+        title: prefill.title || "",
+        circumNeck: prefill.circumNeck?.toString() ?? "",
+        circumShoulders: prefill.circumShoulders?.toString() ?? "",
+        circumChest: prefill.circumChest?.toString() ?? "",
+        circumWaist: prefill.circumWaist?.toString() ?? "",
+        circumAbdomen: prefill.circumAbdomen?.toString() ?? "",
+        circumHip: prefill.circumHip?.toString() ?? "",
+        circumRightArm: prefill.circumRightArm?.toString() ?? "",
+        circumLeftArm: prefill.circumLeftArm?.toString() ?? "",
+        circumRightThigh: prefill.circumRightThigh?.toString() ?? "",
+        circumLeftThigh: prefill.circumLeftThigh?.toString() ?? "",
+        circumRightCalf: prefill.circumRightCalf?.toString() ?? "",
+        circumLeftCalf: prefill.circumLeftCalf?.toString() ?? "",
+        foldBiceps: prefill.foldBiceps?.toString() ?? "",
+        foldTriceps: prefill.foldTriceps?.toString() ?? "",
+        foldSubscapular: prefill.foldSubscapular?.toString() ?? "",
+        foldSuprailiac: prefill.foldSuprailiac?.toString() ?? "",
+      });
+      setAnthroToEdit(prefill);
+    } else {
+      setAnthroForm({
+        title: "", circumNeck: "", circumShoulders: "", circumChest: "", circumWaist: "",
+        circumAbdomen: "", circumHip: "", circumRightArm: "", circumLeftArm: "",
+        circumRightThigh: "", circumLeftThigh: "", circumRightCalf: "", circumLeftCalf: "",
+        foldBiceps: "", foldTriceps: "", foldSubscapular: "", foldSuprailiac: "",
+      });
+      setAnthroToEdit(null);
+    }
+    setIsAnthroDialogOpen(true);
+  }
+
+  function submitAnthroForm() {
+    const toNum = (v: string) => v === "" ? null : parseFloat(v);
+    const data = {
+      patientId: params.id,
+      title: anthroForm.title,
+      circumNeck: toNum(anthroForm.circumNeck),
+      circumShoulders: toNum(anthroForm.circumShoulders),
+      circumChest: toNum(anthroForm.circumChest),
+      circumWaist: toNum(anthroForm.circumWaist),
+      circumAbdomen: toNum(anthroForm.circumAbdomen),
+      circumHip: toNum(anthroForm.circumHip),
+      circumRightArm: toNum(anthroForm.circumRightArm),
+      circumLeftArm: toNum(anthroForm.circumLeftArm),
+      circumRightThigh: toNum(anthroForm.circumRightThigh),
+      circumLeftThigh: toNum(anthroForm.circumLeftThigh),
+      circumRightCalf: toNum(anthroForm.circumRightCalf),
+      circumLeftCalf: toNum(anthroForm.circumLeftCalf),
+      foldBiceps: toNum(anthroForm.foldBiceps),
+      foldTriceps: toNum(anthroForm.foldTriceps),
+      foldSubscapular: toNum(anthroForm.foldSubscapular),
+      foldSuprailiac: toNum(anthroForm.foldSuprailiac),
+    };
+    if (anthroToEdit) {
+      updateAnthroMutation.mutate({ id: anthroToEdit.id, data });
+    } else {
+      createAnthroMutation.mutate(data as any);
+    }
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <Header
@@ -680,11 +802,12 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
 
             {/* Anamnese Section with Tabs */}
             <Tabs defaultValue="current" className="w-full">
-              <TabsList className="grid w-full grid-cols-4 bg-muted/70 p-1 rounded-xl border border-border/70">
+              <TabsList className="grid w-full grid-cols-5 bg-muted/70 p-1 rounded-xl border border-border/70">
                 <TabsTrigger value="current" className="rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-foreground font-medium transition-all text-xs sm:text-sm">Anamnese Atual</TabsTrigger>
                 <TabsTrigger value="history" className="rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-foreground font-medium transition-all text-xs sm:text-sm">Histórico</TabsTrigger>
                 <TabsTrigger value="subscription" className="rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-foreground font-medium transition-all text-xs sm:text-sm">Assinatura</TabsTrigger>
                 <TabsTrigger value="assessments" className="rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-foreground font-medium transition-all text-xs sm:text-sm">Avaliações</TabsTrigger>
+                <TabsTrigger value="anthropometry" className="rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-foreground font-medium transition-all text-xs sm:text-sm">Antropometria</TabsTrigger>
               </TabsList>
               <TabsContent value="current">
                 <Card className="border border-border/70 bg-card shadow-sm overflow-hidden">
@@ -1201,6 +1324,86 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                         </div>
                       )}
                     </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="anthropometry">
+                <Card className="border border-border/70 bg-card shadow-sm overflow-hidden">
+                  <CardHeader className="pb-4 border-b bg-muted/30">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
+                          <Ruler className="h-6 w-6" />
+                        </div>
+                        <CardTitle className="text-xl font-bold">Antropometria Geral</CardTitle>
+                      </div>
+                      <Button size="sm" onClick={() => openAnthroDialog()} className="gap-2">
+                        <Plus className="h-4 w-4" />
+                        Nova Avaliação
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="p-6 space-y-4">
+                    {anthroLoading ? (
+                      <p className="text-sm text-muted-foreground">Carregando...</p>
+                    ) : !anthroAssessments || anthroAssessments.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-8 text-center border border-dashed border-border rounded-lg">
+                        <Ruler className="h-10 w-10 text-muted-foreground/40 mb-2" />
+                        <p className="text-sm text-muted-foreground">Nenhuma avaliação antropométrica registrada.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {anthroAssessments.map((assessment) => (
+                          <Card key={assessment.id} className="border border-border/60">
+                            <CardContent className="p-4">
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-semibold text-sm">{assessment.title}</p>
+                                  <p className="text-xs text-muted-foreground mt-0.5">
+                                    {assessment.createdAt ? new Date(assessment.createdAt).toLocaleDateString("pt-BR") : ""}
+                                  </p>
+                                  <div className="mt-2 grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                                    {assessment.circumWaist && <span>Cintura: {assessment.circumWaist} cm</span>}
+                                    {assessment.circumHip && <span>Quadril: {assessment.circumHip} cm</span>}
+                                    {assessment.circumAbdomen && <span>Abdômen: {assessment.circumAbdomen} cm</span>}
+                                  </div>
+                                </div>
+                                <div className="flex gap-1 flex-shrink-0">
+                                  <Button size="sm" variant="outline" title="Editar" onClick={() => { setAnthroToEdit(assessment); openAnthroDialog(assessment); }}>
+                                    <Pencil className="h-3.5 w-3.5" />
+                                  </Button>
+                                  <Button size="sm" variant="outline" title="Duplicar" onClick={() => { openAnthroDialog({ ...assessment, title: `${assessment.title} (cópia)` }); setAnthroToEdit(null); }}>
+                                    <Copy className="h-3.5 w-3.5" />
+                                  </Button>
+                                  <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                      <Button size="sm" variant="outline" className="text-destructive hover:text-destructive" title="Excluir">
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                      </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                      <AlertDialogHeader>
+                                        <AlertDialogTitle>Excluir Avaliação</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                          Tem certeza que deseja excluir "{assessment.title}"? Esta ação não pode ser desfeita.
+                                        </AlertDialogDescription>
+                                      </AlertDialogHeader>
+                                      <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                        <AlertDialogAction onClick={() => deleteAnthroMutation.mutate(assessment.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                          Excluir
+                                        </AlertDialogAction>
+                                      </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                  </AlertDialog>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               </TabsContent>
@@ -1743,6 +1946,68 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
               disabled={editSubscriptionMutation.isPending}
             >
               {editSubscriptionMutation.isPending ? "Salvando..." : "Salvar Alterações"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Anthropometry Dialog */}
+      <Dialog open={isAnthroDialogOpen} onOpenChange={(open) => { setIsAnthroDialogOpen(open); if (!open) { setAnthroToEdit(null); } }}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{anthroToEdit ? "Editar Avaliação Antropométrica" : "Nova Avaliação Antropométrica"}</DialogTitle>
+            <DialogDescription>Preencha os campos de circunferências e dobras cutâneas.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-6 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="anthro-title">Título da Avaliação</Label>
+              <Input id="anthro-title" placeholder="Ex: Avaliação Março/2026" value={anthroForm.title} onChange={(e) => setAnthroForm(f => ({ ...f, title: e.target.value }))} />
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Circunferências Corporais (cm)</h3>
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  { key: "circumNeck", label: "Pescoço" },
+                  { key: "circumShoulders", label: "Ombros" },
+                  { key: "circumChest", label: "Tórax" },
+                  { key: "circumWaist", label: "Cintura" },
+                  { key: "circumAbdomen", label: "Abdômen" },
+                  { key: "circumHip", label: "Quadril" },
+                  { key: "circumRightArm", label: "Braço Direito" },
+                  { key: "circumLeftArm", label: "Braço Esquerdo" },
+                  { key: "circumRightThigh", label: "Coxa Direita" },
+                  { key: "circumLeftThigh", label: "Coxa Esquerda" },
+                  { key: "circumRightCalf", label: "Panturrilha Direita" },
+                  { key: "circumLeftCalf", label: "Panturrilha Esquerda" },
+                ].map(({ key, label }) => (
+                  <div key={key} className="space-y-1">
+                    <Label htmlFor={`anthro-${key}`} className="text-xs">{label}</Label>
+                    <Input id={`anthro-${key}`} type="number" step="0.1" placeholder="0.0" value={(anthroForm as any)[key]} onChange={(e) => setAnthroForm(f => ({ ...f, [key]: e.target.value }))} />
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Dobras Cutâneas - Equação de Durnin (mm)</h3>
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  { key: "foldBiceps", label: "Bicipital" },
+                  { key: "foldTriceps", label: "Tricipital" },
+                  { key: "foldSubscapular", label: "Subescapular" },
+                  { key: "foldSuprailiac", label: "Suprailíaca" },
+                ].map(({ key, label }) => (
+                  <div key={key} className="space-y-1">
+                    <Label htmlFor={`anthro-${key}`} className="text-xs">{label}</Label>
+                    <Input id={`anthro-${key}`} type="number" step="0.1" placeholder="0.0" value={(anthroForm as any)[key]} onChange={(e) => setAnthroForm(f => ({ ...f, [key]: e.target.value }))} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsAnthroDialogOpen(false)}>Cancelar</Button>
+            <Button onClick={submitAnthroForm} disabled={!anthroForm.title || createAnthroMutation.isPending || updateAnthroMutation.isPending}>
+              {createAnthroMutation.isPending || updateAnthroMutation.isPending ? "Salvando..." : "Salvar"}
             </Button>
           </DialogFooter>
         </DialogContent>
