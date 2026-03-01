@@ -39,9 +39,10 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
   const [anthroToDelete, setAnthroToDelete] = useState<string | null>(null);
   const [anthroForm, setAnthroForm] = useState({
     title: "",
-    circumNeck: "", circumShoulders: "", circumChest: "", circumWaist: "",
-    circumAbdomen: "", circumHip: "", circumRightArm: "", circumLeftArm: "",
-    circumRightThigh: "", circumLeftThigh: "", circumRightCalf: "", circumLeftCalf: "",
+    circumNeck: "", circumChest: "", circumWaist: "",
+    circumAbdomen: "", circumHip: "",
+    circumNonDominantArmRelaxed: "", circumNonDominantArmContracted: "",
+    circumNonDominantProximalThigh: "", circumNonDominantCalf: "",
     foldBiceps: "", foldTriceps: "", foldSubscapular: "", foldSuprailiac: "",
   });
 
@@ -622,17 +623,14 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
       setAnthroForm({
         title: prefill.title || "",
         circumNeck: prefill.circumNeck?.toString() ?? "",
-        circumShoulders: prefill.circumShoulders?.toString() ?? "",
         circumChest: prefill.circumChest?.toString() ?? "",
         circumWaist: prefill.circumWaist?.toString() ?? "",
         circumAbdomen: prefill.circumAbdomen?.toString() ?? "",
         circumHip: prefill.circumHip?.toString() ?? "",
-        circumRightArm: prefill.circumRightArm?.toString() ?? "",
-        circumLeftArm: prefill.circumLeftArm?.toString() ?? "",
-        circumRightThigh: prefill.circumRightThigh?.toString() ?? "",
-        circumLeftThigh: prefill.circumLeftThigh?.toString() ?? "",
-        circumRightCalf: prefill.circumRightCalf?.toString() ?? "",
-        circumLeftCalf: prefill.circumLeftCalf?.toString() ?? "",
+        circumNonDominantArmRelaxed: prefill.circumNonDominantArmRelaxed?.toString() ?? "",
+        circumNonDominantArmContracted: prefill.circumNonDominantArmContracted?.toString() ?? "",
+        circumNonDominantProximalThigh: prefill.circumNonDominantProximalThigh?.toString() ?? "",
+        circumNonDominantCalf: prefill.circumNonDominantCalf?.toString() ?? "",
         foldBiceps: prefill.foldBiceps?.toString() ?? "",
         foldTriceps: prefill.foldTriceps?.toString() ?? "",
         foldSubscapular: prefill.foldSubscapular?.toString() ?? "",
@@ -641,9 +639,10 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
       setAnthroToEdit(prefill);
     } else {
       setAnthroForm({
-        title: "", circumNeck: "", circumShoulders: "", circumChest: "", circumWaist: "",
-        circumAbdomen: "", circumHip: "", circumRightArm: "", circumLeftArm: "",
-        circumRightThigh: "", circumLeftThigh: "", circumRightCalf: "", circumLeftCalf: "",
+        title: "", circumNeck: "", circumChest: "", circumWaist: "",
+        circumAbdomen: "", circumHip: "",
+        circumNonDominantArmRelaxed: "", circumNonDominantArmContracted: "",
+        circumNonDominantProximalThigh: "", circumNonDominantCalf: "",
         foldBiceps: "", foldTriceps: "", foldSubscapular: "", foldSuprailiac: "",
       });
       setAnthroToEdit(null);
@@ -657,17 +656,14 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
       patientId: params.id,
       title: anthroForm.title,
       circumNeck: toNum(anthroForm.circumNeck),
-      circumShoulders: toNum(anthroForm.circumShoulders),
       circumChest: toNum(anthroForm.circumChest),
       circumWaist: toNum(anthroForm.circumWaist),
       circumAbdomen: toNum(anthroForm.circumAbdomen),
       circumHip: toNum(anthroForm.circumHip),
-      circumRightArm: toNum(anthroForm.circumRightArm),
-      circumLeftArm: toNum(anthroForm.circumLeftArm),
-      circumRightThigh: toNum(anthroForm.circumRightThigh),
-      circumLeftThigh: toNum(anthroForm.circumLeftThigh),
-      circumRightCalf: toNum(anthroForm.circumRightCalf),
-      circumLeftCalf: toNum(anthroForm.circumLeftCalf),
+      circumNonDominantArmRelaxed: toNum(anthroForm.circumNonDominantArmRelaxed),
+      circumNonDominantArmContracted: toNum(anthroForm.circumNonDominantArmContracted),
+      circumNonDominantProximalThigh: toNum(anthroForm.circumNonDominantProximalThigh),
+      circumNonDominantCalf: toNum(anthroForm.circumNonDominantCalf),
       foldBiceps: toNum(anthroForm.foldBiceps),
       foldTriceps: toNum(anthroForm.foldTriceps),
       foldSubscapular: toNum(anthroForm.foldSubscapular),
@@ -1968,17 +1964,14 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
               <div className="grid grid-cols-2 gap-3">
                 {[
                   { key: "circumNeck", label: "Pescoço" },
-                  { key: "circumShoulders", label: "Ombros" },
                   { key: "circumChest", label: "Tórax" },
                   { key: "circumWaist", label: "Cintura" },
                   { key: "circumAbdomen", label: "Abdômen" },
                   { key: "circumHip", label: "Quadril" },
-                  { key: "circumRightArm", label: "Braço Direito" },
-                  { key: "circumLeftArm", label: "Braço Esquerdo" },
-                  { key: "circumRightThigh", label: "Coxa Direita" },
-                  { key: "circumLeftThigh", label: "Coxa Esquerda" },
-                  { key: "circumRightCalf", label: "Panturrilha Direita" },
-                  { key: "circumLeftCalf", label: "Panturrilha Esquerda" },
+                  { key: "circumNonDominantArmRelaxed", label: "Braço não dominante relaxado" },
+                  { key: "circumNonDominantArmContracted", label: "Braço não dominante contraído" },
+                  { key: "circumNonDominantProximalThigh", label: "Coxa proximal não dominante" },
+                  { key: "circumNonDominantCalf", label: "Panturrilha lado não dominante" },
                 ].map(({ key, label }) => (
                   <div key={key} className="space-y-1">
                     <Label htmlFor={`anthro-${key}`} className="text-xs">{label}</Label>
