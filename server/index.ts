@@ -4,8 +4,6 @@ import { registerRoutes, setupRoutes } from "./routes.js";
 import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
-import { migrate } from "drizzle-orm/neon-serverless/migrator";
-import { db } from "./db.js";
 
 // ESM-safe __dirname (import.meta.dirname only available in Node 21.2+, Vercel uses Node 18)
 const __filename = fileURLToPath(import.meta.url);
@@ -61,17 +59,6 @@ app.use((req, res, next) => {
 let routesRegistered = false;
 async function ensureRoutesRegistered() {
   if (!routesRegistered) {
-    // Apply any pending DB migrations (creates tables if they don't exist)
-    try {
-      const migrationsFolder = path.resolve(__serverDir, "..", "migrations");
-      console.log(`[Migration] migrationsFolder resolved to: ${migrationsFolder}`);
-      console.log(`[Migration] folder exists: ${fs.existsSync(migrationsFolder)}`);
-      await migrate(db, { migrationsFolder });
-      console.log("[Migration] All pending migrations applied successfully.");
-    } catch (err) {
-      console.error("[Migration] Failed to run migrations:", err);
-    }
-
     await setupRoutes(app);
     
     // Middleware de tratamento de erros
