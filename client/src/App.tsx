@@ -22,6 +22,7 @@ import PatientPrescriptionsList from "@/pages/patient/prescriptions-list";
 import PrescriptionPrintPage from "@/pages/patient/prescription-print";
 import PatientRegisterPage from "@/pages/patient/patient-register";
 import MyPlanPage from "@/pages/patient/my-plan";
+import AssessmentsPage from "@/pages/patient/assessments";
 import AnamnesePage from "@/pages/public/anamnese";
 import FollowUpAnamnesePage from "@/pages/public/follow-up-anamnese";
 import AdminDashboard from "@/pages/admin/dashboard";
@@ -100,6 +101,7 @@ function Router() {
         <>
           <Route path="/dashboard" component={PatientDashboard} />
           <Route path="/my-plan" component={MyPlanPage} />
+          <Route path="/assessments" component={AssessmentsPage} />
           <Route path="/patient/prescriptions" component={PatientPrescriptionsList} />
           <Route path="/patient/prescription" component={PatientPrescriptionView} />
           <Route path="/prescriptions/:id/print" component={PrescriptionPrintPage} />
