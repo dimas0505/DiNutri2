@@ -1,15 +1,39 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Download, FileText, ClipboardList } from "lucide-react";
 import { MobileLayout } from "@/components/layout/mobile-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useToast } from "@/hooks/use-toast";
 import type { PatientDocument } from "@shared/schema";
 
 export default function AssessmentsPage() {
   const { data: documents, isLoading } = useQuery<PatientDocument[]>({
     queryKey: ["/api/my-assessments"],
   });
+  const { toast } = useToast();
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+
+  const handleDownload = async (url: string, filename: string, id: string) => {
+    setDownloadingId(id);
+    try {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error("Falha ao baixar o arquivo.");
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = filename;
+      a.click();
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (error) {
+      console.error("[Download] Erro ao baixar arquivo:", error);
+      toast({ variant: "destructive", title: "Erro no download", description: "Não foi possível baixar o arquivo. Tente novamente." });
+    } finally {
+      setDownloadingId(null);
+    }
+  };
 
   const formatDate = (date: Date | string | null) => {
     if (!date) return "";
@@ -64,14 +88,13 @@ export default function AssessmentsPage() {
                 </CardHeader>
                 <CardContent className="px-4 pb-4 pt-1">
                   <Button
-                    asChild
                     size="sm"
                     className="w-full gap-2"
+                    disabled={downloadingId === doc.id}
+                    onClick={() => handleDownload(doc.fileUrl, doc.fileName, doc.id)}
                   >
-                    <a href={doc.fileUrl} download={doc.fileName} target="_blank" rel="noopener noreferrer">
-                      <Download className="h-4 w-4" />
-                      Download
-                    </a>
+                    <Download className="h-4 w-4" />
+                    {downloadingId === doc.id ? "Baixando..." : "Download"}
                   </Button>
                 </CardContent>
               </Card>

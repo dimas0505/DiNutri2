@@ -1404,7 +1404,8 @@ export async function setupRoutes(app: Express): Promise<void> {
         console.error("[Upload] req.file is undefined — multer did not receive a file. Check Content-Type header and FormData key.");
         return res.status(400).json({ message: "Nenhum arquivo enviado." });
       }
-      console.log(`[Upload] File received: name=${req.file.originalname}, size=${req.file.size}, mimetype=${req.file.mimetype}`);
+      const safeFileName = Buffer.from(req.file.originalname, 'latin1').toString('utf8');
+      console.log(`[Upload] File received: name=${safeFileName}, size=${req.file.size}, mimetype=${req.file.mimetype}`);
 
       const patientId = req.params.patientId;
       const patient = await storage.getPatient(patientId);
@@ -1414,7 +1415,7 @@ export async function setupRoutes(app: Express): Promise<void> {
       }
 
       // Upload to Vercel Blob
-      const ext = req.file.originalname.split('.').pop() || 'bin';
+      const ext = safeFileName.split('.').pop() || 'bin';
       const blobPath = `assessments/${patientId}/${nanoid()}.${ext}`;
       console.log(`[Upload] Uploading to Vercel Blob: ${blobPath}`);
       const blob = await put(blobPath, req.file.buffer, {
@@ -1430,7 +1431,7 @@ export async function setupRoutes(app: Express): Promise<void> {
         id: docId,
         patientId,
         nutritionistId: req.user.id,
-        fileName: req.file.originalname,
+        fileName: safeFileName,
         fileUrl: blob.url,
       }).returning();
       console.log(`[Upload] Document saved successfully: ${newDoc.id}`);
