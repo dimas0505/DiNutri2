@@ -12,7 +12,8 @@
       "src": "server/index.ts",
       "use": "@vercel/node",
       "config": {
-        "runtime": "nodejs18.x"
+        "runtime": "nodejs18.x",
+        "includeFiles": ["migrations/**"]
       }
     }
   ],

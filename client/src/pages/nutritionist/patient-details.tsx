@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, CheckCircle, Eye, FileText, Plus, Users, XCircle, Link as LinkIcon, Copy, History, User, Calendar, Ruler, Weight, Target, Activity, Heart, Stethoscope, Pill, Camera, Image, Smile, Trash2, FileDown, CreditCard } from "lucide-react";
+import { ArrowLeft, CheckCircle, Eye, FileText, Plus, Users, XCircle, Link as LinkIcon, Copy, History, User, Calendar, Ruler, Weight, Target, Activity, Heart, Stethoscope, Pill, Camera, Image, Smile, Trash2, FileDown, CreditCard, Upload, Download, ClipboardList } from "lucide-react";
 import { useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -17,7 +17,7 @@ import { Label } from "@/components/ui/label";
 import { DefaultMobileDrawer } from "@/components/layout/mobile-layout";
 import { AnamnesisNutritionistDataForm } from "@/components/nutritionist/anamnesis-nutritionist-data-form";
 import { generatePrescriptionPDF } from "@/utils/pdf-generator";
-import type { Patient, Prescription, AnamnesisRecord, FoodDiaryEntryWithPrescription, MealData, MoodType, Subscription } from "@shared/schema";
+import type { Patient, Prescription, AnamnesisRecord, FoodDiaryEntryWithPrescription, MealData, MoodType, Subscription, PatientDocument } from "@shared/schema";
 
 export default function PatientDetails({ params }: { params: { id: string } }) {
   const [, setLocation] = useLocation();
@@ -32,6 +32,8 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
   const [newSubscriptionStatus, setNewSubscriptionStatus] = useState<Subscription['status']>('active');
   const [newSubscriptionExpiresAt, setNewSubscriptionExpiresAt] = useState<string>('');
   const [subscriptionToDelete, setSubscriptionToDelete] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: patient, isLoading: patientLoading } = useQuery<Patient>({
     queryKey: ["/api/patients", params.id],
@@ -106,6 +108,53 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
   const { data: foodDiaryEntries, isLoading: foodDiaryLoading } = useQuery<FoodDiaryEntryWithPrescription[]>({
     queryKey: ["/api/patients", params.id, "food-diary", "entries"],
     enabled: !!patient,
+  });
+
+  const { data: patientDocuments, isLoading: documentsLoading } = useQuery<PatientDocument[]>({
+    queryKey: ["/api/patients", params.id, "assessments"],
+    enabled: !!patient,
+  });
+
+  const uploadDocumentMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData();
+      formData.append("file", file);
+      const response = await fetch(`/api/patients/${params.id}/assessments`, {
+        method: "POST",
+        body: formData,
+      });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({ message: "Falha ao enviar." }));
+        throw new Error(err.message || "Falha ao enviar.");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Avaliação enviada com sucesso!" });
+      setSelectedFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      queryClient.invalidateQueries({ queryKey: ["/api/patients", params.id, "assessments"] });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Erro ao enviar avaliação", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const deleteDocumentMutation = useMutation({
+    mutationFn: async (documentId: string) => {
+      const response = await apiRequest("DELETE", `/api/assessments/${documentId}`);
+      if (response.status !== 204) {
+        const err = await response.json().catch(() => ({ message: "Falha ao excluir." }));
+        throw new Error(err.message || "Falha ao excluir.");
+      }
+    },
+    onSuccess: () => {
+      toast({ title: "Avaliação excluída com sucesso!" });
+      queryClient.invalidateQueries({ queryKey: ["/api/patients", params.id, "assessments"] });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Erro ao excluir avaliação", description: error.message, variant: "destructive" });
+    },
   });
 
   const createPrescriptionMutation = useMutation({
@@ -631,10 +680,11 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
 
             {/* Anamnese Section with Tabs */}
             <Tabs defaultValue="current" className="w-full">
-              <TabsList className="grid w-full grid-cols-3 bg-muted/70 p-1 rounded-xl border border-border/70">
-                <TabsTrigger value="current" className="rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-foreground font-medium transition-all">Anamnese Atual</TabsTrigger>
-                <TabsTrigger value="history" className="rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-foreground font-medium transition-all">Histórico</TabsTrigger>
-                <TabsTrigger value="subscription" className="rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-foreground font-medium transition-all">Assinatura</TabsTrigger>
+              <TabsList className="grid w-full grid-cols-4 bg-muted/70 p-1 rounded-xl border border-border/70">
+                <TabsTrigger value="current" className="rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-foreground font-medium transition-all text-xs sm:text-sm">Anamnese Atual</TabsTrigger>
+                <TabsTrigger value="history" className="rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-foreground font-medium transition-all text-xs sm:text-sm">Histórico</TabsTrigger>
+                <TabsTrigger value="subscription" className="rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-foreground font-medium transition-all text-xs sm:text-sm">Assinatura</TabsTrigger>
+                <TabsTrigger value="assessments" className="rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-foreground font-medium transition-all text-xs sm:text-sm">Avaliações</TabsTrigger>
               </TabsList>
               <TabsContent value="current">
                 <Card className="border border-border/70 bg-card shadow-sm overflow-hidden">
@@ -1050,6 +1100,107 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                         </Button>
                       </div>
                     )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Assessments Tab */}
+              <TabsContent value="assessments">
+                <Card className="border border-border/70 bg-card shadow-sm overflow-hidden">
+                  <CardHeader className="pb-4 border-b bg-muted/30">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
+                        <ClipboardList className="h-6 w-6" />
+                      </div>
+                      <CardTitle className="text-xl font-bold">Anexar Avaliação</CardTitle>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="p-6 space-y-6">
+                    {/* Upload Section */}
+                    <div className="space-y-3">
+                      <Label htmlFor="assessment-file">Selecionar arquivo (PDF ou imagem)</Label>
+                      <Input
+                        id="assessment-file"
+                        type="file"
+                        ref={fileInputRef}
+                        accept=".pdf,image/*"
+                        onChange={(e) => setSelectedFile(e.target.files?.[0] ?? null)}
+                        className="cursor-pointer"
+                      />
+                      {selectedFile && (
+                        <p className="text-sm text-muted-foreground">
+                          Arquivo selecionado: <span className="font-medium">{selectedFile.name}</span>
+                        </p>
+                      )}
+                      <Button
+                        onClick={() => selectedFile && uploadDocumentMutation.mutate(selectedFile)}
+                        disabled={!selectedFile || uploadDocumentMutation.isPending}
+                        className="w-full gap-2"
+                      >
+                        <Upload className="h-4 w-4" />
+                        {uploadDocumentMutation.isPending ? "Enviando..." : "Enviar Avaliação"}
+                      </Button>
+                    </div>
+
+                    {/* Documents List */}
+                    <div className="space-y-3">
+                      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                        Avaliações Enviadas
+                      </h3>
+                      {documentsLoading ? (
+                        <p className="text-sm text-muted-foreground">Carregando...</p>
+                      ) : !patientDocuments || patientDocuments.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-8 text-center border border-dashed border-border rounded-lg">
+                          <FileText className="h-10 w-10 text-muted-foreground/40 mb-2" />
+                          <p className="text-sm text-muted-foreground">Nenhuma avaliação enviada ainda.</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          {patientDocuments.map((doc) => (
+                            <div key={doc.id} className="flex items-center gap-3 p-3 rounded-lg border border-border/70 bg-muted/20">
+                              <FileText className="h-5 w-5 text-primary flex-shrink-0" />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium truncate">{doc.fileName}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {doc.createdAt ? new Date(doc.createdAt).toLocaleDateString("pt-BR") : ""}
+                                </p>
+                              </div>
+                              <div className="flex gap-2 flex-shrink-0">
+                                <Button asChild size="sm" variant="outline" className="gap-1">
+                                  <a href={doc.fileUrl} download={doc.fileName} target="_blank" rel="noopener noreferrer">
+                                    <Download className="h-3 w-3" />
+                                  </a>
+                                </Button>
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button size="sm" variant="outline" className="text-destructive hover:text-destructive gap-1">
+                                      <Trash2 className="h-3 w-3" />
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Excluir Avaliação</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        Tem certeza que deseja excluir "{doc.fileName}"? Esta ação não pode ser desfeita.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                      <AlertDialogAction
+                                        onClick={() => deleteDocumentMutation.mutate(doc.id)}
+                                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                      >
+                                        Excluir
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </CardContent>
                 </Card>
               </TabsContent>

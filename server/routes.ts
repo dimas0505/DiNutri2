@@ -11,7 +11,7 @@ import { handleUpload, type HandleUploadBody } from '@vercel/blob/client';
 import { put } from '@vercel/blob';
 import multer from 'multer';
 import { eq, and, desc, or, sql } from 'drizzle-orm';
-import { anamnesisRecords, foodDiaryEntries, prescriptions, users, patients, subscriptions, activityLog } from '../shared/schema.js';
+import { anamnesisRecords, foodDiaryEntries, prescriptions, users, patients, subscriptions, activityLog, patientDocuments } from '../shared/schema.js';
 import { db } from './db.js';
 import sharp from 'sharp';
 import { nanoid } from 'nanoid';
@@ -32,6 +32,22 @@ const upload = multer({
       cb(null, true);
     } else {
       cb(new Error('Apenas arquivos de imagem são permitidos'));
+    }
+  },
+});
+
+// Configure multer for document uploads (PDF + images)
+const uploadDocument = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 20 * 1024 * 1024, // 20MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    const allowed = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    if (allowed.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Apenas PDF e imagens são permitidos'));
     }
   },
 });
@@ -1372,6 +1388,124 @@ export async function setupRoutes(app: Express): Promise<void> {
     } catch (error) {
       console.error("Erro ao gerar relatório de acesso:", error);
       res.status(500).json({ message: "Falha ao gerar relatório." });
+    }
+  });
+
+  // --- PATIENT DOCUMENT (ASSESSMENT) ROUTES ---
+
+  // POST: Nutritionist uploads an assessment document for a patient
+  app.post('/api/patients/:patientId/assessments', isAuthenticated, uploadDocument.single('file'), async (req: any, res) => {
+    try {
+      console.log(`[Upload] POST /api/patients/${req.params.patientId}/assessments - user: ${req.user?.id}, role: ${req.user?.role}`);
+      if (req.user.role !== 'nutritionist') {
+        return res.status(403).json({ message: "Acesso negado. Apenas nutricionistas." });
+      }
+      if (!req.file) {
+        console.error("[Upload] req.file is undefined — multer did not receive a file. Check Content-Type header and FormData key.");
+        return res.status(400).json({ message: "Nenhum arquivo enviado." });
+      }
+      console.log(`[Upload] File received: name=${req.file.originalname}, size=${req.file.size}, mimetype=${req.file.mimetype}`);
+
+      const patientId = req.params.patientId;
+      const patient = await storage.getPatient(patientId);
+      if (!patient || patient.ownerId !== req.user.id) {
+        console.error(`[Upload] Patient not found or access denied: patientId=${patientId}, ownerId=${patient?.ownerId}, userId=${req.user.id}`);
+        return res.status(404).json({ message: "Paciente não encontrado ou acesso não autorizado." });
+      }
+
+      // Upload to Vercel Blob
+      const ext = req.file.originalname.split('.').pop() || 'bin';
+      const blobPath = `assessments/${patientId}/${nanoid()}.${ext}`;
+      console.log(`[Upload] Uploading to Vercel Blob: ${blobPath}`);
+      const blob = await put(blobPath, req.file.buffer, {
+        access: 'public',
+        contentType: req.file.mimetype,
+      });
+      console.log(`[Upload] Blob upload successful: ${blob.url}`);
+
+      // Save record to database
+      const docId = nanoid();
+      console.log(`[Upload] Inserting into patient_documents: id=${docId}`);
+      const [newDoc] = await db.insert(patientDocuments).values({
+        id: docId,
+        patientId,
+        nutritionistId: req.user.id,
+        fileName: req.file.originalname,
+        fileUrl: blob.url,
+      }).returning();
+      console.log(`[Upload] Document saved successfully: ${newDoc.id}`);
+
+      return res.status(201).json(newDoc);
+    } catch (error) {
+      console.error("[Upload] Erro ao enviar avaliação:", error);
+      res.status(500).json({ message: "Falha ao enviar avaliação." });
+    }
+  });
+
+  // GET: Nutritionist lists assessments for a specific patient
+  app.get('/api/patients/:patientId/assessments', isAuthenticated, async (req: any, res) => {
+    try {
+      const patientId = req.params.patientId;
+      const patient = await storage.getPatient(patientId);
+      if (!patient || patient.ownerId !== req.user.id) {
+        return res.status(404).json({ message: "Paciente não encontrado ou acesso não autorizado." });
+      }
+
+      const docs = await db
+        .select()
+        .from(patientDocuments)
+        .where(eq(patientDocuments.patientId, patientId))
+        .orderBy(desc(patientDocuments.createdAt));
+
+      return res.json(docs);
+    } catch (error) {
+      console.error("Erro ao buscar avaliações:", error);
+      res.status(500).json({ message: "Falha ao buscar avaliações." });
+    }
+  });
+
+  // GET: Patient lists their own assessments
+  app.get('/api/my-assessments', isAuthenticated, async (req: any, res) => {
+    try {
+      const patientProfile = await storage.getPatientByUserId(req.user.id);
+      if (!patientProfile) {
+        return res.status(404).json({ message: "Perfil de paciente não encontrado." });
+      }
+
+      const docs = await db
+        .select()
+        .from(patientDocuments)
+        .where(eq(patientDocuments.patientId, patientProfile.id))
+        .orderBy(desc(patientDocuments.createdAt));
+
+      return res.json(docs);
+    } catch (error) {
+      console.error("Erro ao buscar avaliações do paciente:", error);
+      res.status(500).json({ message: "Falha ao buscar avaliações." });
+    }
+  });
+
+  // DELETE: Nutritionist deletes an assessment document
+  app.delete('/api/assessments/:documentId', isAuthenticated, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'nutritionist') {
+        return res.status(403).json({ message: "Acesso negado. Apenas nutricionistas." });
+      }
+
+      const [doc] = await db
+        .select()
+        .from(patientDocuments)
+        .where(and(eq(patientDocuments.id, req.params.documentId), eq(patientDocuments.nutritionistId, req.user.id)));
+
+      if (!doc) {
+        return res.status(404).json({ message: "Documento não encontrado ou acesso não autorizado." });
+      }
+
+      await db.delete(patientDocuments).where(eq(patientDocuments.id, req.params.documentId));
+      return res.status(204).send();
+    } catch (error) {
+      console.error("Erro ao excluir avaliação:", error);
+      res.status(500).json({ message: "Falha ao excluir avaliação." });
     }
   });
 }

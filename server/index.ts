@@ -3,6 +3,13 @@ import express, { type Request, Response, NextFunction, type Express } from "exp
 import { registerRoutes, setupRoutes } from "./routes.js";
 import path from "path";
 import fs from "fs";
+import { fileURLToPath } from "url";
+import { sql } from "drizzle-orm";
+import { db } from "./db.js";
+
+// ESM-safe __dirname (import.meta.dirname only available in Node 21.2+, Vercel uses Node 18)
+const __filename = fileURLToPath(import.meta.url);
+const __serverDir = path.dirname(__filename);
 
 // --- Funções movidas de vite.ts para cá ---
 export function log(message: string, source = "express") {
@@ -16,8 +23,7 @@ export function log(message: string, source = "express") {
 }
 
 export function serveStatic(app: Express) {
-  // @ts-ignore
-  const distPath = path.resolve(import.meta.dirname, "..", "dist", "public");
+  const distPath = path.resolve(__serverDir, "..", "dist", "public");
 
   if (!fs.existsSync(distPath)) {
     log(`A pasta de build não foi encontrada em: ${distPath}. Servindo placeholder.`);
@@ -55,6 +61,26 @@ app.use((req, res, next) => {
 let routesRegistered = false;
 async function ensureRoutesRegistered() {
   if (!routesRegistered) {
+    // Ensure patient_documents table exists on every cold start.
+    // Using raw SQL (CREATE TABLE IF NOT EXISTS) instead of drizzle migrate() because
+    // the production migration journal is out of sync and migrate() throws 42P07.
+    // This is fully idempotent and requires no local terminal commands after deploy.
+    try {
+      await db.execute(sql`
+        CREATE TABLE IF NOT EXISTS patient_documents (
+          id              VARCHAR PRIMARY KEY,
+          patient_id      VARCHAR NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
+          nutritionist_id VARCHAR NOT NULL REFERENCES users(id),
+          file_name       VARCHAR NOT NULL,
+          file_url        TEXT NOT NULL,
+          created_at      TIMESTAMP DEFAULT NOW()
+        )
+      `);
+      console.log("[DB] patient_documents table ensured.");
+    } catch (err) {
+      console.error("[DB] Failed to ensure patient_documents table:", err);
+    }
+
     await setupRoutes(app);
     
     // Middleware de tratamento de erros
