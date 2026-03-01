@@ -3,8 +3,13 @@ import express, { type Request, Response, NextFunction, type Express } from "exp
 import { registerRoutes, setupRoutes } from "./routes.js";
 import path from "path";
 import fs from "fs";
+import { fileURLToPath } from "url";
 import { migrate } from "drizzle-orm/neon-serverless/migrator";
 import { db } from "./db.js";
+
+// ESM-safe __dirname (import.meta.dirname only available in Node 21.2+, Vercel uses Node 18)
+const __filename = fileURLToPath(import.meta.url);
+const __serverDir = path.dirname(__filename);
 
 // --- Funções movidas de vite.ts para cá ---
 export function log(message: string, source = "express") {
@@ -18,8 +23,7 @@ export function log(message: string, source = "express") {
 }
 
 export function serveStatic(app: Express) {
-  // @ts-ignore
-  const distPath = path.resolve(import.meta.dirname, "..", "dist", "public");
+  const distPath = path.resolve(__serverDir, "..", "dist", "public");
 
   if (!fs.existsSync(distPath)) {
     log(`A pasta de build não foi encontrada em: ${distPath}. Servindo placeholder.`);
@@ -59,9 +63,13 @@ async function ensureRoutesRegistered() {
   if (!routesRegistered) {
     // Apply any pending DB migrations (creates tables if they don't exist)
     try {
-      await migrate(db, { migrationsFolder: path.resolve(import.meta.dirname, "..", "migrations") });
+      const migrationsFolder = path.resolve(__serverDir, "..", "migrations");
+      console.log(`[Migration] migrationsFolder resolved to: ${migrationsFolder}`);
+      console.log(`[Migration] folder exists: ${fs.existsSync(migrationsFolder)}`);
+      await migrate(db, { migrationsFolder });
+      console.log("[Migration] All pending migrations applied successfully.");
     } catch (err) {
-      console.error("Migration error (non-fatal):", err);
+      console.error("[Migration] Failed to run migrations:", err);
     }
 
     await setupRoutes(app);

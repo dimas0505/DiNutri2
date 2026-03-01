@@ -1396,29 +1396,36 @@ export async function setupRoutes(app: Express): Promise<void> {
   // POST: Nutritionist uploads an assessment document for a patient
   app.post('/api/patients/:patientId/assessments', isAuthenticated, uploadDocument.single('file'), async (req: any, res) => {
     try {
+      console.log(`[Upload] POST /api/patients/${req.params.patientId}/assessments - user: ${req.user?.id}, role: ${req.user?.role}`);
       if (req.user.role !== 'nutritionist') {
         return res.status(403).json({ message: "Acesso negado. Apenas nutricionistas." });
       }
       if (!req.file) {
+        console.error("[Upload] req.file is undefined — multer did not receive a file. Check Content-Type header and FormData key.");
         return res.status(400).json({ message: "Nenhum arquivo enviado." });
       }
+      console.log(`[Upload] File received: name=${req.file.originalname}, size=${req.file.size}, mimetype=${req.file.mimetype}`);
 
       const patientId = req.params.patientId;
       const patient = await storage.getPatient(patientId);
       if (!patient || patient.ownerId !== req.user.id) {
+        console.error(`[Upload] Patient not found or access denied: patientId=${patientId}, ownerId=${patient?.ownerId}, userId=${req.user.id}`);
         return res.status(404).json({ message: "Paciente não encontrado ou acesso não autorizado." });
       }
 
       // Upload to Vercel Blob
       const ext = req.file.originalname.split('.').pop() || 'bin';
       const blobPath = `assessments/${patientId}/${nanoid()}.${ext}`;
+      console.log(`[Upload] Uploading to Vercel Blob: ${blobPath}`);
       const blob = await put(blobPath, req.file.buffer, {
         access: 'public',
         contentType: req.file.mimetype,
       });
+      console.log(`[Upload] Blob upload successful: ${blob.url}`);
 
       // Save record to database
       const docId = nanoid();
+      console.log(`[Upload] Inserting into patient_documents: id=${docId}`);
       const [newDoc] = await db.insert(patientDocuments).values({
         id: docId,
         patientId,
@@ -1426,10 +1433,11 @@ export async function setupRoutes(app: Express): Promise<void> {
         fileName: req.file.originalname,
         fileUrl: blob.url,
       }).returning();
+      console.log(`[Upload] Document saved successfully: ${newDoc.id}`);
 
       return res.status(201).json(newDoc);
     } catch (error) {
-      console.error("Erro ao enviar avaliação:", error);
+      console.error("[Upload] Erro ao enviar avaliação:", error);
       res.status(500).json({ message: "Falha ao enviar avaliação." });
     }
   });
