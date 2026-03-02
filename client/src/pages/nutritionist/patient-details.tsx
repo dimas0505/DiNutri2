@@ -5,7 +5,7 @@ import {
   Copy, History, User, Calendar, Ruler, Weight, Target, Activity,
   Heart, Stethoscope, Pill, Camera, Image, Smile, Trash2, FileDown,
   CreditCard, Upload, Download, ClipboardList, Pencil,
-  Dumbbell, BookOpen, ChevronRight,
+  Dumbbell, BookOpen, ChevronRight, Percent,
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
@@ -21,6 +21,7 @@ import { Label } from "@/components/ui/label";
 import { DefaultMobileDrawer } from "@/components/layout/mobile-layout";
 import { AnamnesisNutritionistDataForm } from "@/components/nutritionist/anamnesis-nutritionist-data-form";
 import { generatePrescriptionPDF } from "@/utils/pdf-generator";
+import { calculateDurninBodyFat, calculateAgeFromBirthDate } from "@/utils/durnin-body-fat";
 import { cn } from "@/lib/utils";
 import type {
   Patient, Prescription, AnamnesisRecord, FoodDiaryEntryWithPrescription,
@@ -137,6 +138,14 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
   const { data: patientDocuments, isLoading: documentsLoading } = useQuery<PatientDocument[]>({
     queryKey: ["/api/patients", params.id, "assessments"],
     enabled: !!patient,
+  });
+
+  const { data: nutritionistSettings } = useQuery({
+    queryKey: ["/api/nutritionist/settings"],
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/nutritionist/settings");
+      return response.json();
+    },
   });
 
   // ─── Derived State ────────────────────────────────────────────────────────
@@ -821,6 +830,20 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                         {assessment.circumWaist && <span>Cintura: <strong>{assessment.circumWaist} cm</strong></span>}
                         {assessment.circumHip && <span>Quadril: <strong>{assessment.circumHip} cm</strong></span>}
                         {assessment.circumAbdomen && <span>Abdômen: <strong>{assessment.circumAbdomen} cm</strong></span>}
+                        {(() => {
+                          const age = calculateAgeFromBirthDate(patient?.birthDate);
+                          const sex = patient?.sex as "M" | "F" | "Outro" | null | undefined;
+                          const equation = (nutritionistSettings?.bodyFatEquation || "siri") as "siri" | "brozek";
+                          const r = calculateDurninBodyFat(assessment.foldTriceps, assessment.foldBiceps, assessment.foldSubscapular, assessment.foldSuprailiac, sex, age, equation);
+                          if (!r) return null;
+                          return (
+                            <span className="inline-flex items-center gap-1 text-orange-600 font-semibold">
+                              <Percent className="h-3 w-3" />
+                              %GC: <strong>{r.bodyFatPercent}%</strong>
+                              <span className={`font-normal ${r.classificationColor}`}>({r.classification})</span>
+                            </span>
+                          );
+                        })()}
                       </div>
                     </div>
                     <div className="flex gap-1 flex-shrink-0">
@@ -1448,8 +1471,8 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
 
       {/* Anthropometry View Modal */}
       <Dialog open={isAnthroViewOpen} onOpenChange={(open) => { setIsAnthroViewOpen(open); if (!open) setAnthroToView(null); }}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
+        <DialogContent className="max-w-2xl w-[95vw] h-[85vh] flex flex-col p-0 overflow-hidden">
+          <DialogHeader className="p-6 pb-2 flex-shrink-0">
             <DialogTitle className="flex items-center gap-2">
               <Eye className="h-5 w-5 text-muted-foreground" />
               {anthroToView?.title ?? "Avaliação Antropométrica"}
@@ -1459,7 +1482,7 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
             </DialogDescription>
           </DialogHeader>
           {anthroToView && (
-            <div className="space-y-6 py-2">
+            <div className="flex-1 overflow-y-auto px-6 py-2 space-y-6">
               {anthroToView.weightKg != null && (
                 <div className="flex items-center gap-4 p-4 rounded-xl border-2 border-violet-200 bg-violet-50/50">
                   <div className="p-3 bg-violet-100 rounded-full">
@@ -1507,12 +1530,54 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                     </div>
                   ))}
                 </div>
+
+                {/* Resultado do %GC - Durnin & Womersley (1974) */}
+                {(() => {
+                  const age = calculateAgeFromBirthDate(patient?.birthDate);
+                  const sex = patient?.sex as "M" | "F" | "Outro" | null | undefined;
+                  const equation = (nutritionistSettings?.bodyFatEquation || "siri") as "siri" | "brozek";
+                  const result = calculateDurninBodyFat(
+                    anthroToView.foldTriceps,
+                    anthroToView.foldBiceps,
+                    anthroToView.foldSubscapular,
+                    anthroToView.foldSuprailiac,
+                    sex,
+                    age,
+                    equation
+                  );
+                  if (!result) return null;
+                  return (
+                    <div className="mt-4 p-4 rounded-xl border-2 border-orange-200 bg-gradient-to-br from-orange-50 to-amber-50">
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className="p-1.5 bg-orange-100 rounded-lg">
+                          <Percent className="h-4 w-4 text-orange-600" />
+                        </div>
+                        <p className="text-xs font-bold text-orange-800 uppercase tracking-wide">Percentual de Gordura — Durnin &amp; Womersley (1974)</p>
+                      </div>
+                      <div className="grid grid-cols-3 gap-4">
+                        <div className="text-center p-2 bg-white/60 rounded-lg">
+                          <p className="text-[10px] text-orange-600 font-medium uppercase mb-1">Soma das dobras</p>
+                          <p className="text-xl font-bold text-orange-900">{result.sumFolds}<span className="text-xs font-normal ml-0.5">mm</span></p>
+                        </div>
+                        <div className="text-center p-2 bg-white/60 rounded-lg">
+                          <p className="text-[10px] text-orange-600 font-medium uppercase mb-1">% Gordura Corporal</p>
+                          <p className="text-3xl font-bold text-orange-900">{result.bodyFatPercent}<span className="text-base font-normal ml-0.5">%</span></p>
+                        </div>
+                        <div className="text-center p-2 bg-white/60 rounded-lg">
+                          <p className="text-[10px] text-orange-600 font-medium uppercase mb-1">Classificação</p>
+                          <p className={`text-sm font-bold ${result.classificationColor}`}>{result.classification}</p>
+                        </div>
+                      </div>
+                      <p className="text-[10px] text-orange-500 mt-2 text-center">Densidade corporal: {result.density} Kg/L · Equação de Brozek (1963)</p>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           )}
-          <DialogFooter className="gap-2">
+          <DialogFooter className="p-6 pt-2 border-t flex-shrink-0 gap-2">
             <Button variant="outline" onClick={() => setIsAnthroViewOpen(false)}>Fechar</Button>
-            <Button onClick={() => { setIsAnthroViewOpen(false); if (anthroToView) { setAnthroToEdit(anthroToView); openAnthroDialog(anthroToView); } }}>
+            <Button onClick={() => { if (anthroToView) { setIsAnthroViewOpen(false); openAnthroDialog(anthroToView); } }}>
               <Pencil className="h-4 w-4 mr-2" />Editar Avaliação
             </Button>
           </DialogFooter>
@@ -1591,6 +1656,56 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                   </div>
                 ))}
               </div>
+
+              {/* Resultado automático do %GC - Durnin & Womersley (1974) */}
+              {(() => {
+                const age = calculateAgeFromBirthDate(patient?.birthDate);
+                const sex = patient?.sex as "M" | "F" | "Outro" | null | undefined;
+                const equation = (nutritionistSettings?.bodyFatEquation || "siri") as "siri" | "brozek";
+                const result = calculateDurninBodyFat(
+                  anthroForm.foldTriceps ? parseFloat(anthroForm.foldTriceps) : null,
+                  anthroForm.foldBiceps ? parseFloat(anthroForm.foldBiceps) : null,
+                  anthroForm.foldSubscapular ? parseFloat(anthroForm.foldSubscapular) : null,
+                  anthroForm.foldSuprailiac ? parseFloat(anthroForm.foldSuprailiac) : null,
+                  sex,
+                  age,
+                  equation
+                );
+                if (!result) {
+                  const hasAnyFold = anthroForm.foldTriceps || anthroForm.foldBiceps || anthroForm.foldSubscapular || anthroForm.foldSuprailiac;
+                  if (!hasAnyFold) return null;
+                  return (
+                    <div className="mt-3 p-3 rounded-lg border border-amber-200 bg-amber-50 text-xs text-amber-700">
+                      <p className="font-medium">Preencha as 4 dobras e verifique se o paciente possui sexo e data de nascimento cadastrados para calcular o %GC automaticamente.</p>
+                    </div>
+                  );
+                }
+                return (
+                  <div className="mt-3 p-4 rounded-xl border-2 border-orange-200 bg-gradient-to-br from-orange-50 to-amber-50">
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="p-1.5 bg-orange-100 rounded-lg">
+                        <Percent className="h-4 w-4 text-orange-600" />
+                      </div>
+                      <p className="text-xs font-bold text-orange-800 uppercase tracking-wide">Resultado Durnin &amp; Womersley (1974)</p>
+                    </div>
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="text-center">
+                        <p className="text-[10px] text-orange-600 font-medium uppercase">Soma dobras</p>
+                        <p className="text-lg font-bold text-orange-900">{result.sumFolds}<span className="text-xs font-normal ml-0.5">mm</span></p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-[10px] text-orange-600 font-medium uppercase">% Gordura</p>
+                        <p className="text-2xl font-bold text-orange-900">{result.bodyFatPercent}<span className="text-sm font-normal ml-0.5">%</span></p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-[10px] text-orange-600 font-medium uppercase">Classificação</p>
+                        <p className={`text-sm font-bold ${result.classificationColor}`}>{result.classification}</p>
+                      </div>
+                    </div>
+                      <p className="text-[10px] text-orange-500 mt-2 text-center">Densidade corporal: {result.density} Kg/L · Equação de Brozek (1963)</p>
+                  </div>
+                );
+              })()}
             </div>
           </div>
           <DialogFooter className="flex-shrink-0 pt-2 border-t border-border/40">

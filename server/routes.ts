@@ -132,6 +132,53 @@ export async function setupRoutes(app: Express): Promise<void> {
       }
   });
 
+  app.put('/api/nutritionist/settings', isAuthenticated, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'nutritionist' && req.user.role !== 'admin') {
+        return res.status(403).json({ message: "Acesso negado. Apenas nutricionistas." });
+      }
+      
+      const { bodyFatEquation } = req.body;
+      
+      if (bodyFatEquation && !['siri', 'brozek'].includes(bodyFatEquation)) {
+        return res.status(400).json({ message: "Equacao invalida. Use siri ou brozek." });
+      }
+      
+      const updatedUser = await db.update(users)
+        .set({ bodyFatEquation: bodyFatEquation || 'siri' })
+        .where(eq(users.id, req.user.id))
+        .returning();
+      
+      if (updatedUser.length === 0) {
+        return res.status(404).json({ message: "Usuario nao encontrado." });
+      }
+      
+      logActivity({ userId: req.user.id, activityType: 'update_settings', details: `Equacao de conversao alterada para: ${bodyFatEquation}` });
+      res.json({ success: true, bodyFatEquation: updatedUser[0].bodyFatEquation });
+    } catch (error: any) {
+      console.error("Erro ao atualizar configuracoes:", error);
+      res.status(500).json({ message: "Falha ao atualizar configuracoes." });
+    }
+  });
+
+  app.get('/api/nutritionist/settings', isAuthenticated, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'nutritionist' && req.user.role !== 'admin') {
+        return res.status(403).json({ message: "Acesso negado. Apenas nutricionistas." });
+      }
+      
+      const user = await storage.getUser(req.user.id);
+      if (!user) {
+        return res.status(404).json({ message: "Usuario nao encontrado." });
+      }
+      
+      res.json({ bodyFatEquation: user.bodyFatEquation || 'siri' });
+    } catch (error: any) {
+      console.error("Erro ao buscar configuracoes:", error);
+      res.status(500).json({ message: "Falha ao buscar configuracoes." });
+    }
+  });
+
   // --- USER ROUTES ---
   app.get('/api/users/:id', isAuthenticated, async (req: any, res) => {
     try {
