@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { User, Mail, Calendar, Ruler, Weight, FileText, Activity, Target, Clipboard } from "lucide-react";
+import { User, Mail, Calendar, Ruler, Weight, Activity, Target, Clipboard } from "lucide-react";
 import type { Patient, AnthropometricAssessment } from "@shared/schema";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -116,15 +116,7 @@ export function ProfileModal({ open, onOpenChange, patient }: ProfileModalProps)
                   </div>
                 );
               })}
-              {patient.notes && (
-                <div className="flex items-start gap-3 px-3 py-2.5 rounded-lg bg-muted/40">
-                  <FileText className="h-4 w-4 text-purple-600 flex-shrink-0 mt-0.5" />
-                  <div className="flex-1 min-w-0">
-                    <span className="text-xs text-muted-foreground block mb-1">Observações</span>
-                    <span className="text-sm whitespace-pre-wrap">{patient.notes}</span>
-                  </div>
-                </div>
-              )}
+
             </div>
           </TabsContent>
 
