@@ -30,6 +30,7 @@ import CreateUserPage from "@/pages/admin/create-user";
 import AdminProfilePage from "@/pages/admin/profile";
 import EditUserPage from "@/pages/admin/edit-user";
 import PatientDashboard from "@/pages/patient/dashboard";
+import PatientProfilePage from "@/pages/patient/profile";
 import { MobileLayout } from "@/components/layout/mobile-layout";
 import { Wrench } from "lucide-react";
 
@@ -110,7 +111,7 @@ function Router() {
           <Route path="/goals" component={() => <ComingSoonPage title="Metas" />} />
           <Route path="/exams" component={() => <ComingSoonPage title="Exames" />} />
           <Route path="/guidelines" component={() => <ComingSoonPage title="Orientações" />} />
-          <Route path="/profile" component={() => <ComingSoonPage title="Perfil" />} />
+          <Route path="/profile" component={PatientProfilePage} />
         </>
       )}
 
