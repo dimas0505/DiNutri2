@@ -450,8 +450,9 @@ export async function setupRoutes(app: Express): Promise<void> {
   // --- PRESCRIPTION ROUTES ---
   app.post('/api/prescriptions', isAuthenticated, async (req: any, res) => {
     try {
-      // Normaliza campos de data: o drizzle-zod espera objetos Date,
-      // mas o frontend envia strings ISO (ex: "2026-05-31T00:00:00.000Z")
+      // Normaliza campos de data: o drizzle-zod v0.7.x espera objetos Date para campos
+      // timestamp, mas o frontend envia strings ISO via JSON (ex: "2026-05-31T00:00:00.000Z").
+      // Sem essa conversão, o Zod rejeita com erro 400 "expected date, received string".
       const body = { ...req.body };
       if (body.expiresAt && typeof body.expiresAt === 'string') {
         body.expiresAt = new Date(body.expiresAt);
