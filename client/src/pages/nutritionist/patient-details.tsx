@@ -22,6 +22,7 @@ import { DefaultMobileDrawer } from "@/components/layout/mobile-layout";
 import { AnamnesisNutritionistDataForm } from "@/components/nutritionist/anamnesis-nutritionist-data-form";
 import { generatePrescriptionPDF } from "@/utils/pdf-generator";
 import { calculateDurninBodyFat, calculateAgeFromBirthDate } from "@/utils/durnin-body-fat";
+import { calculateIMC, calculateIdealWeightRange, calculateRCQ, calculateCMB, calculateAbdominalRisk } from "@/utils/nutritional-assessment";
 import { cn } from "@/lib/utils";
 import type {
   Patient, Prescription, AnamnesisRecord, FoodDiaryEntryWithPrescription,
@@ -1633,6 +1634,73 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                   );
                 })()}
               </div>
+
+              {/* Nova Seção: Análise do Estado Nutricional e Riscos */}
+              {anthroToView && (() => {
+                const age = calculateAgeFromBirthDate(patient?.birthDate);
+                const sex = patient?.sex as "M" | "F" | "Outro" | null | undefined;
+                const weight = anthroToView.weightKg ? parseFloat(anthroToView.weightKg.toString()) : null;
+                const height = patient?.heightCm ? parseFloat(patient.heightCm.toString()) : null;
+                const circumWaist = anthroToView.circumWaist ? parseFloat(anthroToView.circumWaist.toString()) : null;
+                const circumHip = anthroToView.circumHip ? parseFloat(anthroToView.circumHip.toString()) : null;
+                const circumArm = anthroToView.circumNonDominantArmRelaxed ? parseFloat(anthroToView.circumNonDominantArmRelaxed.toString()) : null;
+                const circumAbdomen = anthroToView.circumAbdomen ? parseFloat(anthroToView.circumAbdomen.toString()) : null;
+
+                const imcResult = calculateIMC(weight, height);
+                const idealWeightRange = calculateIdealWeightRange(height);
+                const rcqResult = calculateRCQ(circumWaist, circumHip, sex);
+                const cmbResult = calculateCMB(circumArm, anthroToView.foldTriceps, sex, age);
+                const abdominalRisk = calculateAbdominalRisk(circumAbdomen, sex);
+
+                if (!imcResult && !rcqResult && !cmbResult) return null;
+
+                return (
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Análise do Estado Nutricional e Riscos</h3>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {imcResult && (
+                        <div className="p-4 rounded-lg border border-border/60 bg-muted/30">
+                          <p className="text-[10px] text-muted-foreground mb-2 uppercase font-semibold">Índice de Massa Corporal</p>
+                          <p className="text-2xl font-bold">{imcResult.imc} <span className="text-sm font-normal text-muted-foreground">Kg/m²</span></p>
+                          <p className={`text-xs font-semibold mt-1 ${imcResult.classificationColor}`}>{imcResult.classification}</p>
+                        </div>
+                      )}
+
+                      {idealWeightRange && (
+                        <div className="p-4 rounded-lg border border-border/60 bg-muted/30">
+                          <p className="text-[10px] text-muted-foreground mb-2 uppercase font-semibold">Faixa de Peso Ideal</p>
+                          <p className="text-lg font-bold">{idealWeightRange.min} a {idealWeightRange.max} <span className="text-sm font-normal text-muted-foreground">Kg</span></p>
+                        </div>
+                      )}
+
+                      {rcqResult && (
+                        <div className="p-4 rounded-lg border border-border/60 bg-muted/30">
+                          <p className="text-[10px] text-muted-foreground mb-2 uppercase font-semibold">Relação Cintura/Quadril</p>
+                          <p className="text-2xl font-bold">{rcqResult.rcq}</p>
+                          <p className={`text-xs font-semibold mt-1 ${rcqResult.riskColor}`}>{rcqResult.riskClassification}</p>
+                        </div>
+                      )}
+
+                      {cmbResult && (
+                        <div className="p-4 rounded-lg border border-border/60 bg-muted/30">
+                          <p className="text-[10px] text-muted-foreground mb-2 uppercase font-semibold">Circunferência Muscular do Braço</p>
+                          <p className="text-2xl font-bold">{cmbResult.cmb} <span className="text-sm font-normal text-muted-foreground">cm</span></p>
+                          <p className={`text-xs font-semibold mt-1 ${cmbResult.classificationColor}`}>{cmbResult.classification} ({cmbResult.percentile}%)</p>
+                        </div>
+                      )}
+
+                      {abdominalRisk && (
+                        <div className="p-4 rounded-lg border border-border/60 bg-muted/30">
+                          <p className="text-[10px] text-muted-foreground mb-2 uppercase font-semibold">Circunferência Abdominal</p>
+                          <p className="text-2xl font-bold">{abdominalRisk.circumAbdomen} <span className="text-sm font-normal text-muted-foreground">cm</span></p>
+                          <p className={`text-xs font-semibold mt-1 ${abdominalRisk.riskColor}`}>{abdominalRisk.riskClassification}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           )}
           <DialogFooter className="p-6 pt-2 border-t flex-shrink-0 gap-2">
