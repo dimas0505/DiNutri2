@@ -19,37 +19,14 @@ const sizeClasses = {
 export function DiNutriLogo({ 
   className, 
   size = "md", 
-  variant = "full" 
+  variant: _variant = "full" 
 }: DiNutriLogoProps) {
-  // Define a URL base para as imagens na pasta /public
-  const baseUrl = "/";
-  
-  // Define qual imagem usar com base na variante.
-  // Se a variante for 'icon', ele tentará carregar 'logo_dinutri_icon.png'.
-  // Se a variante for 'full', ele carregará 'logo_dinutri.png'.
-  const imageUrl = variant === 'icon' 
-    ? `${baseUrl}logo_dinutri_icon.png` 
-    : `${baseUrl}logo_dinutri.png`;
-
-  // Imagem de fallback caso a imagem do ícone não exista.
-  const fallbackUrl = `${baseUrl}logo_dinutri.png`;
-
   return (
     <img
-      src={imageUrl}
+      src="/nova_logo_dinutri.png"
       alt="DiNutri Logo"
-      // Este evento é acionado se a imagem do ícone não for encontrada,
-      // carregando a imagem completa como uma alternativa.
-      onError={(e) => {
-        const target = e.target as HTMLImageElement;
-        // Evita um loop infinito se o fallback também falhar
-        if (target.src !== window.location.origin + fallbackUrl) {
-          target.onerror = null; // Limpa o handler para evitar loops
-          target.src = fallbackUrl;
-        }
-      }}
       className={cn(
-        "w-auto object-contain", // Mantém a proporção da imagem
+        "w-auto object-contain",
         sizeClasses[size],
         className
       )}

@@ -7,6 +7,8 @@ import { useAuth } from "@/hooks/useAuth";
 import InstallPWA from "@/components/InstallPWA";
 import IosInstallToast from "@/components/IosInstallToast";
 import { UpdateNotifier } from "@/components/update-notifier";
+import { SplashScreen } from "@/components/ui/splash-screen";
+import { useState } from "react";
 import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
 import Home from "@/pages/home";
@@ -127,8 +129,16 @@ function Router() {
 }
 
 function App() {
+  const [showSplash, setShowSplash] = useState(() => {
+    // Show splash only on the first load within a browser session
+    if (sessionStorage.getItem("splashShown")) return false;
+    sessionStorage.setItem("splashShown", "1");
+    return true;
+  });
+
   return (
     <QueryClientProvider client={queryClient}>
+      {showSplash && <SplashScreen onFinished={() => setShowSplash(false)} />}
       <UpdateNotifier />
       <TooltipProvider>
         <Toaster />

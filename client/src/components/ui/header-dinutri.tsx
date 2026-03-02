@@ -44,11 +44,13 @@ export function HeaderDNutri({
           </MobileDrawer>
           
           {/* Logo */}
-          <DiNutriLogo 
-            size="sm" 
-            variant="full" 
-            className="h-8 brightness-0 invert" // Make logo white
-          />
+          <div className="bg-white/20 backdrop-blur-sm rounded-lg px-2 py-1">
+            <DiNutriLogo 
+              size="sm" 
+              variant="full" 
+              className="h-8" 
+            />
+          </div>
         </div>
         
         {/* Right side: User chip (display only) */}
