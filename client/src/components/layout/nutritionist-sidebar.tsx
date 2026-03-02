@@ -1,4 +1,5 @@
-import { LogOut, Home, Settings, Package2, Users2, Calendar, FileText, CreditCard, LineChart } from "lucide-react";
+import { LogOut, Home, Settings, Users2, Calendar, FileText, CreditCard, LineChart } from "lucide-react";
+import { DiNutriLogo } from "@/components/ui/dinutri-logo";
 import { Link, useLocation } from "wouter";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
@@ -14,7 +15,7 @@ export function NutritionistSidebar() {
           href="/patients"
           className="group flex h-9 w-9 shrink-0 items-center justify-center gap-2 rounded-full bg-primary text-lg font-semibold text-primary-foreground md:h-8 md:w-8 md:text-base"
         >
-          <Package2 className="h-4 w-4 transition-all group-hover:scale-110" />
+          <DiNutriLogo size="sm" className="h-6 w-6" />
           <span className="sr-only">DiNutri</span>
         </Link>
 
