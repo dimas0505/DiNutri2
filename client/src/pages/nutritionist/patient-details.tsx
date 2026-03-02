@@ -1,15 +1,19 @@
 import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, CheckCircle, Eye, FileText, Plus, Users, XCircle, Link as LinkIcon, Copy, History, User, Calendar, Ruler, Weight, Target, Activity, Heart, Stethoscope, Pill, Camera, Image, Smile, Trash2, FileDown, CreditCard, Upload, Download, ClipboardList, Pencil } from "lucide-react";
+import {
+  CheckCircle, Eye, FileText, Plus, Users, XCircle,
+  Copy, History, User, Calendar, Ruler, Weight, Target, Activity,
+  Heart, Stethoscope, Pill, Camera, Image, Smile, Trash2, FileDown,
+  CreditCard, Upload, Download, ClipboardList, Pencil,
+  Dumbbell, BookOpen, ChevronRight,
+} from "lucide-react";
 import { useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -17,20 +21,62 @@ import { Label } from "@/components/ui/label";
 import { DefaultMobileDrawer } from "@/components/layout/mobile-layout";
 import { AnamnesisNutritionistDataForm } from "@/components/nutritionist/anamnesis-nutritionist-data-form";
 import { generatePrescriptionPDF } from "@/utils/pdf-generator";
-import type { Patient, Prescription, AnamnesisRecord, FoodDiaryEntryWithPrescription, MealData, MoodType, Subscription, PatientDocument, AnthropometricAssessment } from "@shared/schema";
+import { cn } from "@/lib/utils";
+import type {
+  Patient, Prescription, AnamnesisRecord, FoodDiaryEntryWithPrescription,
+  MealData, MoodType, Subscription, PatientDocument, AnthropometricAssessment,
+} from "@shared/schema";
+
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+type SidebarSection =
+  | "perfil"
+  | "anamnese"
+  | "historico"
+  | "antropometria"
+  | "prescricoes"
+  | "assinatura"
+  | "avaliacoes"
+  | "diario";
+
+interface NavItem {
+  id: SidebarSection;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  description: string;
+}
+
+const NAV_ITEMS: NavItem[] = [
+  { id: "perfil",        label: "Perfil do Paciente",      icon: User,          description: "Dados pessoais e acesso" },
+  { id: "anamnese",      label: "Anamnese Nutricional",    icon: Stethoscope,   description: "Dados clínicos atuais" },
+  { id: "historico",     label: "Histórico de Anamnese",   icon: History,       description: "Registros anteriores" },
+  { id: "antropometria", label: "Antropometria",           icon: Dumbbell,      description: "Medidas e avaliações" },
+  { id: "prescricoes",   label: "Prescrições",             icon: FileText,      description: "Planos alimentares" },
+  { id: "assinatura",    label: "Assinatura / Plano",      icon: CreditCard,    description: "Gerenciar plano" },
+  { id: "avaliacoes",    label: "Avaliações",              icon: ClipboardList, description: "Documentos anexados" },
+  { id: "diario",        label: "Diário Alimentar",        icon: BookOpen,      description: "Fotos e registros" },
+];
+
+// ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function PatientDetails({ params }: { params: { id: string } }) {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // ── UI State ──
+  const [activeSection, setActiveSection] = useState<SidebarSection>("perfil");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // ── Feature State ──
   const [prescriptionToDelete, setPrescriptionToDelete] = useState<string | null>(null);
   const [followUpLink, setFollowUpLink] = useState<string | null>(null);
   const [entryToDelete, setEntryToDelete] = useState<string | null>(null);
   const [isCreateSubscriptionDialogOpen, setIsCreateSubscriptionDialogOpen] = useState(false);
   const [isEditSubscriptionDialogOpen, setIsEditSubscriptionDialogOpen] = useState(false);
-  const [newSubscriptionPlanType, setNewSubscriptionPlanType] = useState<Subscription['planType']>('monthly');
-  const [newSubscriptionStatus, setNewSubscriptionStatus] = useState<Subscription['status']>('active');
-  const [newSubscriptionExpiresAt, setNewSubscriptionExpiresAt] = useState<string>('');
+  const [newSubscriptionPlanType, setNewSubscriptionPlanType] = useState<Subscription["planType"]>("monthly");
+  const [newSubscriptionStatus, setNewSubscriptionStatus] = useState<Subscription["status"]>("active");
+  const [newSubscriptionExpiresAt, setNewSubscriptionExpiresAt] = useState<string>("");
   const [subscriptionToDelete, setSubscriptionToDelete] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -47,6 +93,8 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
     circumNonDominantProximalThigh: "", circumNonDominantCalf: "",
     foldBiceps: "", foldTriceps: "", foldSubscapular: "", foldSuprailiac: "",
   });
+
+  // ─── Queries ─────────────────────────────────────────────────────────────
 
   const { data: patient, isLoading: patientLoading } = useQuery<Patient>({
     queryKey: ["/api/patients", params.id],
@@ -80,11 +128,29 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
     enabled: !!patient,
   });
 
-  // Function to create initial anamnesis record from current patient data
+  const { data: foodDiaryEntries, isLoading: foodDiaryLoading } = useQuery<FoodDiaryEntryWithPrescription[]>({
+    queryKey: ["/api/patients", params.id, "food-diary", "entries"],
+    enabled: !!patient,
+  });
+
+  const { data: patientDocuments, isLoading: documentsLoading } = useQuery<PatientDocument[]>({
+    queryKey: ["/api/patients", params.id, "assessments"],
+    enabled: !!patient,
+  });
+
+  // ─── Derived State ────────────────────────────────────────────────────────
+
+  const currentAnamnesisRecord = anamnesisHistory && anamnesisHistory.length > 0
+    ? anamnesisHistory[anamnesisHistory.length - 1]
+    : null;
+
+  const hasAccountLinked = !!patient?.userId;
+
+  // ─── Mutations ────────────────────────────────────────────────────────────
+
   const createInitialAnamnesisRecord = useMutation({
     mutationFn: async () => {
       if (!patient) throw new Error("Patient not found");
-      
       const initialRecord = {
         patientId: patient.id,
         weightKg: patient.weightKg,
@@ -104,47 +170,22 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
         medications: patient.medications,
         biotype: patient.biotype,
       };
-
       const response = await apiRequest("POST", `/api/patients/${patient.id}/anamnesis-records`, initialRecord);
       return await response.json();
     },
     onSuccess: () => {
-      // Refresh anamnesis records after creating initial record
       queryClient.invalidateQueries({ queryKey: ["/api/patients", params.id, "anamnesis-records"] });
     },
-    onError: (error) => {
-      console.error("Error creating initial anamnesis record:", error);
-      toast({
-        title: "Erro",
-        description: "Falha ao criar registro inicial de anamnese.",
-        variant: "destructive",
-      });
+    onError: () => {
+      toast({ title: "Erro", description: "Falha ao criar registro inicial de anamnese.", variant: "destructive" });
     },
-  });
-
-  // Get the most recent (current) anamnesis record or create one if none exists
-  const currentAnamnesisRecord = anamnesisHistory && anamnesisHistory.length > 0 
-    ? anamnesisHistory[anamnesisHistory.length - 1] // Most recent record
-    : null;
-
-  const { data: foodDiaryEntries, isLoading: foodDiaryLoading } = useQuery<FoodDiaryEntryWithPrescription[]>({
-    queryKey: ["/api/patients", params.id, "food-diary", "entries"],
-    enabled: !!patient,
-  });
-
-  const { data: patientDocuments, isLoading: documentsLoading } = useQuery<PatientDocument[]>({
-    queryKey: ["/api/patients", params.id, "assessments"],
-    enabled: !!patient,
   });
 
   const uploadDocumentMutation = useMutation({
     mutationFn: async (file: File) => {
       const formData = new FormData();
       formData.append("file", file);
-      const response = await fetch(`/api/patients/${params.id}/assessments`, {
-        method: "POST",
-        body: formData,
-      });
+      const response = await fetch(`/api/patients/${params.id}/assessments`, { method: "POST", body: formData });
       if (!response.ok) {
         const err = await response.json().catch(() => ({ message: "Falha ao enviar." }));
         throw new Error(err.message || "Falha ao enviar.");
@@ -181,66 +222,35 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
 
   const createPrescriptionMutation = useMutation({
     mutationFn: () => {
-      // Define uma data de expiração padrão para 90 dias no futuro
       const expiresAt = new Date();
       expiresAt.setDate(expiresAt.getDate() + 90);
-
       return fetch(`/api/prescriptions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          patientId: params.id,
-          title: 'Nova Prescrição', // Adiciona um título padrão
-          expiresAt: expiresAt.toISOString(), // Adiciona a data de expiração padrão
-        }),
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ patientId: params.id, title: "Nova Prescrição", expiresAt: expiresAt.toISOString() }),
       }).then((res) => {
-        if (!res.ok) {
-          // Em caso de erro, jogue o objeto de resposta completo
-          // para que possa ser capturado pelo `onError`.
-          throw res;
-        }
+        if (!res.ok) throw res;
         return res.json();
       });
     },
     onSuccess: (data) => {
-      toast({
-        title: 'Prescrição criada com sucesso!',
-        variant: 'default',
-      });
+      toast({ title: "Prescrição criada com sucesso!" });
       queryClient.invalidateQueries({ queryKey: ["/api/patients", params.id, "prescriptions"] });
       setLocation(`/prescriptions/${data.id}/edit`);
     },
     onError: async (error: unknown) => {
-      let errorDetails = 'Não foi possível obter os detalhes do erro.';
-      
-      // Verifica se o erro é um objeto de resposta HTTP
+      let errorDetails = "Não foi possível obter os detalhes do erro.";
       if (error instanceof Response) {
-        try {
-          // Tenta ler o corpo da resposta como JSON
-          const errorJson = await error.json();
-          // Formata o JSON para ser facilmente legível no console
-          errorDetails = JSON.stringify(errorJson, null, 2);
-        } catch (e) {
-          errorDetails = 'A resposta do servidor não continha um JSON válido.';
-        }
+        try { errorDetails = JSON.stringify(await error.json(), null, 2); } catch { errorDetails = "Resposta inválida."; }
       }
-
-      // Exibe o erro detalhado no console do navegador
       console.error("DETALHES DO ERRO DE VALIDAÇÃO:", errorDetails);
-
-      toast({
-        title: 'Erro ao criar prescrição',
-        description: 'O servidor rejeitou os dados. Verifique o console para detalhes técnicos.',
-        variant: 'destructive',
-      });
+      toast({ title: "Erro ao criar prescrição", description: "O servidor rejeitou os dados. Verifique o console.", variant: "destructive" });
     },
   });
 
   const duplicatePrescriptionMutation = useMutation({
     mutationFn: async (prescriptionId: string) => {
-      const title = `Cópia - ${new Date().toLocaleDateString('pt-BR')}`;
+      const title = `Cópia - ${new Date().toLocaleDateString("pt-BR")}`;
       const response = await apiRequest("POST", `/api/prescriptions/${prescriptionId}/duplicate`, { title });
       return await response.json();
     },
@@ -248,41 +258,25 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
       queryClient.invalidateQueries({ queryKey: ["/api/patients", params.id, "prescriptions"] });
       setLocation(`/prescriptions/${prescription.id}/edit`);
     },
-    onError: () => {
-      toast({
-        title: "Erro",
-        description: "Falha ao duplicar prescrição.",
-        variant: "destructive",
-      });
-    },
+    onError: () => toast({ title: "Erro", description: "Falha ao duplicar prescrição.", variant: "destructive" }),
   });
 
   const deletePrescriptionMutation = useMutation({
     mutationFn: async (prescriptionId: string) => {
       const response = await apiRequest("DELETE", `/api/prescriptions/${prescriptionId}`);
-      if (response.status === 204) {
-        return null;
-      }
+      if (response.status === 204) return null;
       return await response.json();
     },
     onSuccess: () => {
-      toast({
-        title: "Prescrição excluída",
-        description: "A prescrição foi excluída com sucesso.",
-      });
+      toast({ title: "Prescrição excluída", description: "A prescrição foi excluída com sucesso." });
       queryClient.invalidateQueries({ queryKey: ["/api/patients", params.id, "prescriptions"] });
       setPrescriptionToDelete(null);
     },
     onError: (error: any) => {
-      console.error("Erro ao excluir prescrição:", error);
-      const errorMessage = error.message.includes("403")
+      const msg = error.message?.includes("403")
         ? "Não é possível excluir prescrições publicadas."
         : "Não foi possível excluir a prescrição. Tente novamente.";
-      toast({
-        title: "Erro",
-        description: errorMessage,
-        variant: "destructive",
-      });
+      toast({ title: "Erro", description: msg, variant: "destructive" });
       setPrescriptionToDelete(null);
     },
   });
@@ -293,126 +287,66 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
       const { followUpUrl } = await res.json();
       setFollowUpLink(followUpUrl);
     },
-    onError: () => {
-      toast({
-        title: "Erro",
-        description: "Falha ao gerar link de anamnese de retorno.",
-        variant: "destructive",
-      });
-    }
+    onError: () => toast({ title: "Erro", description: "Falha ao gerar link de anamnese de retorno.", variant: "destructive" }),
   });
 
   const deletePhotoMutation = useMutation({
-    mutationFn: (entryId: string) =>
-      fetch(`/api/food-diary/entries/${entryId}/photo`, {
-        method: 'DELETE',
-      }),
+    mutationFn: (entryId: string) => fetch(`/api/food-diary/entries/${entryId}/photo`, { method: "DELETE" }),
     onSuccess: () => {
-      toast({ title: 'Entrada do diário excluída com sucesso!', variant: 'default' });
-      // Invalidate the query to reload the updated data
+      toast({ title: "Entrada do diário excluída com sucesso!" });
       queryClient.invalidateQueries({ queryKey: ["/api/patients", params.id, "food-diary", "entries"] });
     },
-    onError: () => {
-      toast({ title: 'Erro ao excluir a entrada do diário', variant: 'destructive' });
-    },
-    onSettled: () => {
-      setEntryToDelete(null); // Close the dialog
-    },
+    onError: () => toast({ title: "Erro ao excluir a entrada do diário", variant: "destructive" }),
+    onSettled: () => setEntryToDelete(null),
   });
 
   const createSubscriptionMutation = useMutation({
-    mutationFn: async ({ planType, status, expiresAt }: { 
-      planType: Subscription['planType'], 
-      status: Subscription['status'],
-      expiresAt?: string
-    }) => {
-      const response = await apiRequest("POST", `/api/nutritionist/patients/${params.id}/subscription`, {
-        planType,
-        status,
-        expiresAt
-      });
+    mutationFn: async ({ planType, status, expiresAt }: { planType: Subscription["planType"]; status: Subscription["status"]; expiresAt?: string }) => {
+      const response = await apiRequest("POST", `/api/nutritionist/patients/${params.id}/subscription`, { planType, status, expiresAt });
       return await response.json();
     },
     onSuccess: () => {
-      toast({
-        title: "Sucesso",
-        description: "Assinatura criada com sucesso!",
-        variant: "default",
-      });
+      toast({ title: "Sucesso", description: "Assinatura criada com sucesso!" });
       queryClient.invalidateQueries({ queryKey: ["/api/patients", params.id, "subscription"] });
       setIsCreateSubscriptionDialogOpen(false);
-      setNewSubscriptionExpiresAt('');
+      setNewSubscriptionExpiresAt("");
     },
-    onError: () => {
-      toast({
-        title: "Erro",
-        description: "Falha ao criar assinatura.",
-        variant: "destructive",
-      });
-    },
+    onError: () => toast({ title: "Erro", description: "Falha ao criar assinatura.", variant: "destructive" }),
   });
 
   const editSubscriptionMutation = useMutation({
-    mutationFn: async ({ subscriptionId, planType, status, expiresAt }: { 
-      subscriptionId: string,
-      planType: Subscription['planType'], 
-      status: Subscription['status'],
-      expiresAt?: string
-    }) => {
-      const response = await apiRequest("PATCH", `/api/subscriptions/${subscriptionId}/manage`, {
-        planType,
-        status,
-        expiresAt
-      });
+    mutationFn: async ({ subscriptionId, planType, status, expiresAt }: { subscriptionId: string; planType: Subscription["planType"]; status: Subscription["status"]; expiresAt?: string }) => {
+      const response = await apiRequest("PATCH", `/api/subscriptions/${subscriptionId}/manage`, { planType, status, expiresAt });
       return await response.json();
     },
     onSuccess: () => {
-      toast({
-        title: "Sucesso",
-        description: "Assinatura editada com sucesso!",
-        variant: "default",
-      });
+      toast({ title: "Sucesso", description: "Assinatura editada com sucesso!" });
       queryClient.invalidateQueries({ queryKey: ["/api/patients", params.id, "subscription"] });
       setIsEditSubscriptionDialogOpen(false);
-      setNewSubscriptionExpiresAt('');
+      setNewSubscriptionExpiresAt("");
     },
-    onError: () => {
-      toast({
-        title: "Erro",
-        description: "Falha ao editar assinatura.",
-        variant: "destructive",
-      });
-    },
+    onError: () => toast({ title: "Erro", description: "Falha ao editar assinatura.", variant: "destructive" }),
   });
 
   const deleteSubscriptionMutation = useMutation({
     mutationFn: async (subscriptionId: string) => {
       const response = await apiRequest("DELETE", `/api/subscriptions/${subscriptionId}`);
-      if (response.status === 204) {
-        return null;
-      }
+      if (response.status === 204) return null;
       return await response.json();
     },
     onSuccess: () => {
-      toast({
-        title: "Assinatura excluída",
-        description: "A assinatura foi excluída com sucesso.",
-      });
+      toast({ title: "Assinatura excluída", description: "A assinatura foi excluída com sucesso." });
       queryClient.invalidateQueries({ queryKey: ["/api/patients", params.id, "subscription"] });
       setSubscriptionToDelete(null);
     },
     onError: () => {
-      toast({
-        title: "Erro",
-        description: "Não foi possível excluir a assinatura. Tente novamente.",
-        variant: "destructive",
-      });
+      toast({ title: "Erro", description: "Não foi possível excluir a assinatura.", variant: "destructive" });
       setSubscriptionToDelete(null);
     },
   });
 
   const createAnthroMutation = useMutation({
-    mutationFn: async (data: Omit<AnthropometricAssessment, 'id' | 'nutritionistId' | 'createdAt' | 'updatedAt'>) => {
+    mutationFn: async (data: Omit<AnthropometricAssessment, "id" | "nutritionistId" | "createdAt" | "updatedAt">) => {
       const response = await apiRequest("POST", `/api/patients/${params.id}/anthropometry`, data);
       return response.json();
     },
@@ -440,9 +374,7 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
   });
 
   const deleteAnthroMutation = useMutation({
-    mutationFn: async (id: string) => {
-      await apiRequest("DELETE", `/api/anthropometry/${id}`);
-    },
+    mutationFn: async (id: string) => { await apiRequest("DELETE", `/api/anthropometry/${id}`); },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/patients", params.id, "anthropometry"] });
       setAnthroToDelete(null);
@@ -451,174 +383,45 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
     onError: () => toast({ title: "Erro", description: "Falha ao excluir avaliação.", variant: "destructive" }),
   });
 
+  // ─── Helpers ──────────────────────────────────────────────────────────────
+
   const calculateAge = (birthDate: string) => {
     if (!birthDate) return null;
     const birth = new Date(birthDate);
     const today = new Date();
-    const age = today.getFullYear() - birth.getFullYear();
-    const monthDiff = today.getMonth() - birth.getMonth();
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
-      return age - 1;
-    }
+    let age = today.getFullYear() - birth.getFullYear();
+    const m = today.getMonth() - birth.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
     return age;
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    // Format date consistently, avoiding timezone shifts for display
-    return date.toLocaleDateString('pt-BR', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit'
-    });
+  const formatDate = (dateString: string) =>
+    new Date(dateString).toLocaleDateString("pt-BR", { year: "numeric", month: "2-digit", day: "2-digit" });
+
+  const renderStatusBadge = (status: Subscription["status"]) => {
+    const map: Record<string, { label: string; className: string }> = {
+      active: { label: "Ativo", className: "bg-green-100 text-green-800" },
+      pending_payment: { label: "Aguardando Pagamento", className: "bg-yellow-100 text-yellow-800" },
+      pending_approval: { label: "Aguardando Aprovação", className: "bg-blue-100 text-blue-800" },
+      expired: { label: "Expirado", className: "bg-red-100 text-red-800" },
+      canceled: { label: "Cancelado", className: "bg-gray-100 text-gray-800" },
+    };
+    const cfg = map[status] || { label: status, className: "bg-gray-100 text-gray-800" };
+    return <Badge className={cfg.className}>{cfg.label}</Badge>;
   };
 
-  const renderStatusBadge = (status: Subscription['status']) => {
-    const statusMap = {
-      active: { label: "Ativo", className: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" },
-      pending_payment: { label: "Aguardando Pagamento", className: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200" },
-      pending_approval: { label: "Aguardando Aprovação", className: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200" },
-      expired: { label: "Expirado", className: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200" },
-      canceled: { label: "Cancelado", className: "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200" },
-    };
-    const config = statusMap[status] || { label: status, className: "bg-gray-100 text-gray-800" };
-    return <Badge className={config.className}>{config.label}</Badge>;
-  };
-
-  const getPlanTypeLabel = (planType: Subscription['planType']) => {
-    const planMap = {
-      free: "Gratuito",
-      monthly: "Mensal",
-      quarterly: "Trimestral",
-    };
-    return planMap[planType] || planType;
-  };
+  const getPlanTypeLabel = (planType: Subscription["planType"]) =>
+    ({ free: "Gratuito", monthly: "Mensal", quarterly: "Trimestral" }[planType] ?? planType);
 
   const getMoodEmoji = (mood: MoodType | null | undefined) => {
     if (!mood) return null;
-    switch (mood) {
-      case 'very_sad': return '😢';
-      case 'sad': return '😟';
-      case 'neutral': return '😐';
-      case 'happy': return '😊';
-      case 'very_happy': return '😄';
-      default: return null;
-    }
+    return { very_sad: "😢", sad: "😟", neutral: "😐", happy: "😊", very_happy: "😄" }[mood] ?? null;
   };
 
   const getMoodLabel = (mood: MoodType | null | undefined) => {
     if (!mood) return null;
-    switch (mood) {
-      case 'very_sad': return 'Muito triste';
-      case 'sad': return 'Triste';
-      case 'neutral': return 'Neutro';
-      case 'happy': return 'Feliz';
-      case 'very_happy': return 'Muito feliz';
-      default: return null;
-    }
+    return { very_sad: "Muito triste", sad: "Triste", neutral: "Neutro", happy: "Feliz", very_happy: "Muito feliz" }[mood] ?? null;
   };
-
-  const handleDeleteSubscription = (subscriptionId: string) => {
-    deleteSubscriptionMutation.mutate(subscriptionId);
-  };
-
-  const handleEditSubscription = () => {
-    if (currentSubscription) {
-      setNewSubscriptionPlanType(currentSubscription.planType);
-      setNewSubscriptionStatus(currentSubscription.status);
-      // Handle date initialization to avoid timezone issues
-      if (currentSubscription.expiresAt) {
-        const date = new Date(currentSubscription.expiresAt);
-        // Format date to YYYY-MM-DD for the input, avoiding timezone shifts
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        setNewSubscriptionExpiresAt(`${year}-${month}-${day}`);
-      } else {
-        setNewSubscriptionExpiresAt('');
-      }
-      setIsEditSubscriptionDialogOpen(true);
-    }
-  };
-
-  const handleDeletePrescription = (prescriptionId: string) => {
-    deletePrescriptionMutation.mutate(prescriptionId);
-  };
-
-  const handleDownloadPrescription = async (prescriptionId: string) => {
-    // Find the full prescription by ID to ensure all data (meals, items) is present
-    const fullPrescription = prescriptions?.find((p: Prescription) => p.id === prescriptionId);
-    
-    if (patient && fullPrescription) {
-      toast({
-        title: "Preparando o PDF...",
-        description: "Seu download começará em breve.",
-      });
-      
-      try {
-        // Call the utility function to generate the PDF
-        await generatePrescriptionPDF({
-          prescription: fullPrescription,
-          patient: patient,
-          onSuccess: () => {
-            toast({
-              title: "PDF gerado com sucesso!",
-              description: "O arquivo foi baixado para seu dispositivo.",
-            });
-          },
-          onError: (error) => {
-            console.error('Error generating PDF:', error);
-            toast({
-              title: "Erro ao gerar PDF",
-              description: "Não foi possível gerar o PDF. Tente novamente.",
-              variant: "destructive",
-            });
-          }
-        });
-      } catch (error) {
-        console.error('Error generating PDF:', error);
-        toast({
-          title: "Erro ao gerar PDF",
-          description: "Não foi possível gerar o PDF. Tente novamente.",
-          variant: "destructive",
-        });
-      }
-    } else {
-      toast({
-        title: "Erro",
-        description: "Não foi possível encontrar os dados da prescrição para gerar o PDF.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  if (patientLoading) {
-    return (
-      <div className="min-h-screen bg-background">
-        <Header title="Carregando..." />
-        <main className="max-w-7xl mx-auto p-4 lg:p-6 text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-        </main>
-      </div>
-    );
-  }
-
-  if (!patient) {
-    return (
-      <div className="min-h-screen bg-background">
-        <Header 
-          title="Paciente não encontrado" 
-          showBack={true} 
-          onBack={() => setLocation("/patients")} 
-        />
-        <main className="max-w-7xl mx-auto p-4 lg:p-6">
-          <p className="text-center text-muted-foreground">Paciente não encontrado.</p>
-        </main>
-      </div>
-    );
-  }
-  
-  const hasAccountLinked = !!patient.userId;
 
   function openAnthroDialog(prefill?: AnthropometricAssessment) {
     if (prefill) {
@@ -640,20 +443,14 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
       });
       setAnthroToEdit(prefill);
     } else {
-      setAnthroForm({
-        title: "", circumNeck: "", circumChest: "", circumWaist: "",
-        circumAbdomen: "", circumHip: "",
-        circumNonDominantArmRelaxed: "", circumNonDominantArmContracted: "",
-        circumNonDominantProximalThigh: "", circumNonDominantCalf: "",
-        foldBiceps: "", foldTriceps: "", foldSubscapular: "", foldSuprailiac: "",
-      });
+      setAnthroForm({ title: "", circumNeck: "", circumChest: "", circumWaist: "", circumAbdomen: "", circumHip: "", circumNonDominantArmRelaxed: "", circumNonDominantArmContracted: "", circumNonDominantProximalThigh: "", circumNonDominantCalf: "", foldBiceps: "", foldTriceps: "", foldSubscapular: "", foldSuprailiac: "" });
       setAnthroToEdit(null);
     }
     setIsAnthroDialogOpen(true);
   }
 
   function submitAnthroForm() {
-    const toNum = (v: string) => v === "" ? null : parseFloat(v);
+    const toNum = (v: string) => (v === "" ? null : parseFloat(v));
     const data = {
       patientId: params.id,
       title: anthroForm.title,
@@ -678,1108 +475,827 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
     }
   }
 
+  const handleEditSubscription = () => {
+    if (currentSubscription) {
+      setNewSubscriptionPlanType(currentSubscription.planType);
+      setNewSubscriptionStatus(currentSubscription.status);
+      if (currentSubscription.expiresAt) {
+        const date = new Date(currentSubscription.expiresAt);
+        const y = date.getFullYear();
+        const m = String(date.getMonth() + 1).padStart(2, "0");
+        const d = String(date.getDate()).padStart(2, "0");
+        setNewSubscriptionExpiresAt(`${y}-${m}-${d}`);
+      } else {
+        setNewSubscriptionExpiresAt("");
+      }
+      setIsEditSubscriptionDialogOpen(true);
+    }
+  };
+
+  const handleDownloadPrescription = async (prescriptionId: string) => {
+    const fullPrescription = prescriptions?.find((p: Prescription) => p.id === prescriptionId);
+    if (patient && fullPrescription) {
+      toast({ title: "Preparando o PDF...", description: "Seu download começará em breve." });
+      try {
+        await generatePrescriptionPDF({
+          prescription: fullPrescription,
+          patient,
+          onSuccess: () => toast({ title: "PDF gerado com sucesso!", description: "O arquivo foi baixado." }),
+          onError: (error) => {
+            console.error("Error generating PDF:", error);
+            toast({ title: "Erro ao gerar PDF", description: "Não foi possível gerar o PDF.", variant: "destructive" });
+          },
+        });
+      } catch (error) {
+        console.error("Error generating PDF:", error);
+        toast({ title: "Erro ao gerar PDF", description: "Não foi possível gerar o PDF.", variant: "destructive" });
+      }
+    } else {
+      toast({ title: "Erro", description: "Não foi possível encontrar os dados da prescrição.", variant: "destructive" });
+    }
+  };
+
+  // ─── Loading / Not Found ──────────────────────────────────────────────────
+
+  if (patientLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header title="Carregando..." />
+        <main className="max-w-7xl mx-auto p-4 lg:p-6 text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto" />
+        </main>
+      </div>
+    );
+  }
+
+  if (!patient) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header title="Paciente não encontrado" showBack onBack={() => setLocation("/patients")} />
+        <main className="max-w-7xl mx-auto p-4 lg:p-6">
+          <p className="text-center text-muted-foreground">Paciente não encontrado.</p>
+        </main>
+      </div>
+    );
+  }
+
+  // ─── Section Renderers ────────────────────────────────────────────────────
+
+  function renderPerfil() {
+    return (
+      <div className="space-y-6">
+        {/* Patient card */}
+        <div className="rounded-2xl border border-border/60 bg-card shadow-sm overflow-hidden">
+          <div className="bg-gradient-to-r from-violet-600 to-purple-700 px-6 py-5 flex items-center gap-4">
+            <div className="w-14 h-14 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
+              <User className="h-7 w-7 text-white" />
+            </div>
+            <div className="min-w-0">
+              <h2 className="text-xl font-bold text-white leading-tight">{patient.name}</h2>
+              {patient.email && <p className="text-violet-200 text-sm mt-0.5 break-all">{patient.email}</p>}
+            </div>
+          </div>
+          <div className="p-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {patient.birthDate && (
+                <InfoRow icon={<Calendar className="h-4 w-4 text-violet-500" />} label="Idade" value={`${calculateAge(patient.birthDate)} anos`} testId="text-patient-age" />
+              )}
+              {patient.sex && (
+                <InfoRow icon={<User className="h-4 w-4 text-blue-500" />} label="Sexo" value={patient.sex === "F" ? "Feminino" : patient.sex === "M" ? "Masculino" : "Outro"} testId="text-patient-sex" />
+              )}
+              {patient.heightCm && (
+                <InfoRow icon={<Ruler className="h-4 w-4 text-indigo-500" />} label="Altura" value={`${patient.heightCm} cm`} testId="text-patient-height" />
+              )}
+              {patient.weightKg && (
+                <InfoRow icon={<Weight className="h-4 w-4 text-blue-500" />} label="Peso" value={`${patient.weightKg} kg`} testId="text-patient-weight" />
+              )}
+            </div>
+            {patient.notes && (
+              <div className="mt-4 p-4 rounded-xl bg-muted/40 border border-border/50">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Observações</p>
+                <p className="text-sm text-foreground" data-testid="text-patient-notes">{patient.notes}</p>
+              </div>
+            )}
+            <div className="mt-5 flex flex-wrap gap-3">
+              <Button className="bg-violet-600 hover:bg-violet-700 text-white" onClick={() => setLocation(`/patients/${patient.id}/edit`)}>
+                <Pencil className="h-4 w-4 mr-2" /> Editar Dados
+              </Button>
+              <Button variant="outline" onClick={() => requestFollowUpMutation.mutate()} disabled={requestFollowUpMutation.isPending}>
+                <FileText className="h-4 w-4 mr-2" />
+                {requestFollowUpMutation.isPending ? "Gerando link..." : "Solicitar Anamnese de Retorno"}
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Acesso do Paciente */}
+        <div className="rounded-2xl border border-border/60 bg-card shadow-sm overflow-hidden">
+          <SectionHeader icon={<Users className="h-5 w-5" />} title="Acesso do Paciente" />
+          <div className="p-6">
+            {hasAccountLinked ? (
+              <div className="flex items-center gap-4 p-4 rounded-xl bg-green-50 border border-green-200">
+                <div className="p-2 bg-green-100 rounded-full">
+                  <CheckCircle className="h-5 w-5 text-green-600" />
+                </div>
+                <div>
+                  <p className="font-semibold text-green-800">Paciente tem acesso ao sistema</p>
+                  <p className="text-sm text-green-600">Prescrições podem ser criadas</p>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex items-center gap-4 p-4 rounded-xl bg-amber-50 border border-amber-200">
+                  <div className="p-2 bg-amber-100 rounded-full">
+                    <XCircle className="h-5 w-5 text-amber-600" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-amber-800">Paciente ainda não possui acesso</p>
+                    <p className="text-sm text-amber-600">Cadastro pendente no sistema</p>
+                  </div>
+                </div>
+                <div className="p-4 bg-blue-50 rounded-xl border border-blue-200">
+                  <p className="text-sm text-blue-700">Para criar prescrições, o paciente precisa primeiro fazer o cadastro no sistema usando o link de cadastro fornecido.</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  function renderAnamnese() {
+    return (
+      <div className="rounded-2xl border border-border/60 bg-card shadow-sm overflow-hidden">
+        <SectionHeader icon={<Stethoscope className="h-5 w-5" />} title="Anamnese Nutricional" subtitle="Dados clínicos e hábitos alimentares do paciente" />
+        <div className="p-6 space-y-4">
+          {patient.goal && (
+            <InfoRow icon={<Target className="h-4 w-4 text-violet-500" />} label="Objetivo" value={
+              patient.goal === "lose_weight" ? "Perder peso" :
+              patient.goal === "maintain_weight" ? "Manter peso" :
+              patient.goal === "gain_weight" ? "Ganhar peso" : patient.goal
+            } />
+          )}
+          {patient.activityLevel && (
+            <InfoRow icon={<Activity className="h-4 w-4 text-green-500" />} label="Nível de Atividade" value={
+              patient.activityLevel === "sedentary" ? "Sedentário" :
+              patient.activityLevel === "light" ? "Levemente ativo" :
+              patient.activityLevel === "moderate" ? "Moderadamente ativo" :
+              patient.activityLevel === "active" ? "Ativo" :
+              patient.activityLevel === "very_active" ? "Muito ativo" : patient.activityLevel
+            } />
+          )}
+          {patient.biotype && (
+            <InfoRow icon={<User className="h-4 w-4 text-indigo-500" />} label="Biotipo" value={
+              patient.biotype === "gain_weight_easily" ? "Ganho peso facilmente" :
+              patient.biotype === "hard_to_gain" ? "Dificuldade para ganhar peso" :
+              patient.biotype === "gain_muscle_easily" ? "Ganho músculo facilmente" : patient.biotype
+            } />
+          )}
+          {(patient.mealsPerDayCurrent || patient.mealsPerDayWilling) && (
+            <InfoRow icon={<FileText className="h-4 w-4 text-blue-500" />} label="Refeições por dia" value={
+              [patient.mealsPerDayCurrent && `Atual: ${patient.mealsPerDayCurrent}`, patient.mealsPerDayWilling && `Disposto: ${patient.mealsPerDayWilling}`].filter(Boolean).join(" | ")
+            } />
+          )}
+          {patient.alcoholConsumption && (
+            <InfoRow icon={<Heart className="h-4 w-4 text-slate-500" />} label="Consumo de Álcool" value={
+              patient.alcoholConsumption === "no" ? "Não bebe" :
+              patient.alcoholConsumption === "moderate" ? "Moderadamente" :
+              patient.alcoholConsumption === "yes" ? "Sim, frequentemente" : patient.alcoholConsumption
+            } />
+          )}
+          {patient.canEatMorningSolids !== undefined && (
+            <InfoRow icon={<FileText className="h-4 w-4 text-indigo-500" />} label="Come sólidos pela manhã" value={patient.canEatMorningSolids ? "Sim" : "Não"} />
+          )}
+          {patient.likedHealthyFoods && Array.isArray(patient.likedHealthyFoods) && patient.likedHealthyFoods.length > 0 && (
+            <TagsRow label="Alimentos saudáveis que gosta" tags={patient.likedHealthyFoods} color="emerald" />
+          )}
+          {patient.dislikedFoods && Array.isArray(patient.dislikedFoods) && patient.dislikedFoods.length > 0 && (
+            <TagsRow label="Alimentos que não gosta" tags={patient.dislikedFoods} color="red" />
+          )}
+          {patient.hasIntolerance && patient.intolerances && Array.isArray(patient.intolerances) && patient.intolerances.length > 0 && (
+            <TagsRow label="Intolerâncias" tags={patient.intolerances} color="orange" />
+          )}
+          {patient.diseases && (
+            <InfoRow icon={<Stethoscope className="h-4 w-4 text-slate-500" />} label="Doenças/Condições" value={patient.diseases} />
+          )}
+          {patient.medications && (
+            <InfoRow icon={<Pill className="h-4 w-4 text-blue-500" />} label="Medicamentos" value={patient.medications} />
+          )}
+          {patient.supplements && (
+            <InfoRow icon={<Plus className="h-4 w-4 text-indigo-500" />} label="Suplementos" value={patient.supplements} />
+          )}
+
+          {/* Nutritionist calculation fields */}
+          {!historyLoading && (
+            <div className="mt-4 pt-4 border-t border-border/50">
+              {currentAnamnesisRecord ? (
+                <AnamnesisNutritionistDataForm anamnesis={currentAnamnesisRecord} patient={patient} />
+              ) : (
+                <div className="p-4 rounded-xl bg-amber-50 border border-amber-200">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="p-2 bg-amber-100 rounded-lg">
+                      <FileText className="h-5 w-5 text-amber-600" />
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-amber-800">Dados Nutricionais</h4>
+                      <p className="text-sm text-amber-600">Crie um registro de anamnese para adicionar cálculos nutricionais (TMB, GET, VET)</p>
+                    </div>
+                  </div>
+                  <Button onClick={() => createInitialAnamnesisRecord.mutate()} disabled={createInitialAnamnesisRecord.isPending} className="bg-amber-600 hover:bg-amber-700 text-white">
+                    {createInitialAnamnesisRecord.isPending ? "Criando..." : "Criar Registro de Anamnese"}
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  function renderHistorico() {
+    return (
+      <div className="rounded-2xl border border-border/60 bg-card shadow-sm overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border/50 bg-muted/20">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-violet-100 rounded-lg">
+              <History className="h-5 w-5 text-violet-600" />
+            </div>
+            <div>
+              <h3 className="font-bold text-foreground">Histórico de Anamnese</h3>
+              <p className="text-xs text-muted-foreground">Registros anteriores de anamnese</p>
+            </div>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => requestFollowUpMutation.mutate()} disabled={requestFollowUpMutation.isPending}>
+            <Plus className="h-4 w-4 mr-1" />
+            {requestFollowUpMutation.isPending ? "Gerando..." : "Nova Anamnese"}
+          </Button>
+        </div>
+        <div className="p-6">
+          {historyLoading ? (
+            <div className="text-center py-8"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-violet-600 mx-auto" /></div>
+          ) : !anamnesisHistory || anamnesisHistory.length === 0 ? (
+            <EmptyState icon={<History className="h-10 w-10" />} title="Nenhum histórico" description="Ainda não há registros de anamnese para este paciente." />
+          ) : (
+            <div className="space-y-4">
+              {anamnesisHistory.map((record, index) => (
+                <div key={record.id} className="rounded-xl border border-border/60 bg-muted/20 overflow-hidden">
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-border/40 bg-muted/30">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-semibold text-violet-600 bg-violet-100 px-2 py-0.5 rounded-full">#{anamnesisHistory.length - index}</span>
+                      <span className="text-sm font-medium">{record.createdAt ? formatDate(record.createdAt.toString()) : "Data desconhecida"}</span>
+                    </div>
+                    {index === anamnesisHistory.length - 1 && (
+                      <Badge className="bg-green-100 text-green-700 text-xs">Atual</Badge>
+                    )}
+                  </div>
+                  <div className="p-4">
+                    <AnamnesisNutritionistDataForm anamnesis={record} patient={patient} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  function renderAntropometria() {
+    return (
+      <div className="rounded-2xl border border-border/60 bg-card shadow-sm overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border/50 bg-muted/20">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-indigo-100 rounded-lg">
+              <Dumbbell className="h-5 w-5 text-indigo-600" />
+            </div>
+            <div>
+              <h3 className="font-bold text-foreground">Antropometria</h3>
+              <p className="text-xs text-muted-foreground">Circunferências e dobras cutâneas</p>
+            </div>
+          </div>
+          <Button onClick={() => openAnthroDialog()} className="bg-indigo-600 hover:bg-indigo-700 text-white" size="sm">
+            <Plus className="h-4 w-4 mr-1" /> Nova Avaliação
+          </Button>
+        </div>
+        <div className="p-6">
+          {anthroLoading ? (
+            <div className="text-center py-8"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600 mx-auto" /></div>
+          ) : !anthroAssessments || anthroAssessments.length === 0 ? (
+            <EmptyState icon={<Ruler className="h-10 w-10" />} title="Nenhuma avaliação antropométrica" description="Registre a primeira avaliação antropométrica deste paciente." action={<Button onClick={() => openAnthroDialog()} className="bg-indigo-600 hover:bg-indigo-700 text-white"><Plus className="h-4 w-4 mr-2" />Nova Avaliação</Button>} />
+          ) : (
+            <div className="space-y-3">
+              {anthroAssessments.map((assessment) => (
+                <div key={assessment.id} className="rounded-xl border border-border/60 bg-muted/20 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm">{assessment.title}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {assessment.createdAt ? formatDate(assessment.createdAt.toString()) : ""}
+                      </p>
+                      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                        {assessment.circumWaist && <span>Cintura: <strong>{assessment.circumWaist} cm</strong></span>}
+                        {assessment.circumHip && <span>Quadril: <strong>{assessment.circumHip} cm</strong></span>}
+                        {assessment.circumAbdomen && <span>Abdômen: <strong>{assessment.circumAbdomen} cm</strong></span>}
+                      </div>
+                    </div>
+                    <div className="flex gap-1 flex-shrink-0">
+                      <Button size="sm" variant="outline" title="Visualizar" onClick={() => { setAnthroToView(assessment); setIsAnthroViewOpen(true); }}>
+                        <Eye className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button size="sm" variant="outline" title="Editar" onClick={() => { setAnthroToEdit(assessment); openAnthroDialog(assessment); }}>
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button size="sm" variant="outline" title="Duplicar" onClick={() => { openAnthroDialog({ ...assessment, title: `${assessment.title} (cópia)` }); setAnthroToEdit(null); }}>
+                        <Copy className="h-3.5 w-3.5" />
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button size="sm" variant="outline" className="text-destructive hover:text-destructive" title="Excluir">
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Excluir Avaliação</AlertDialogTitle>
+                            <AlertDialogDescription>Tem certeza que deseja excluir "{assessment.title}"? Esta ação não pode ser desfeita.</AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => deleteAnthroMutation.mutate(assessment.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Excluir</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  function renderPrescricoes() {
+    return (
+      <div className="rounded-2xl border border-border/60 bg-card shadow-sm overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border/50 bg-muted/20">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-blue-100 rounded-lg">
+              <FileText className="h-5 w-5 text-blue-600" />
+            </div>
+            <div>
+              <h3 className="font-bold text-foreground">Prescrições Nutricionais</h3>
+              <p className="text-xs text-muted-foreground">Planos alimentares criados para o paciente</p>
+            </div>
+          </div>
+          <Button
+            onClick={() => createPrescriptionMutation.mutate()}
+            disabled={patientLoading || createPrescriptionMutation.isPending || !hasAccountLinked}
+            title={!hasAccountLinked ? "Paciente precisa ter um login para criar prescrições" : "Nova Prescrição"}
+            data-testid="button-new-prescription"
+            className="bg-blue-600 hover:bg-blue-700 text-white"
+            size="sm"
+          >
+            <Plus className="h-4 w-4 mr-1" />
+            {createPrescriptionMutation.isPending ? "Criando..." : "Nova Prescrição"}
+          </Button>
+        </div>
+        <div className="p-6">
+          {prescriptionsLoading ? (
+            <div className="text-center py-8"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto" /></div>
+          ) : prescriptions && prescriptions.length > 0 ? (
+            <div className="space-y-4">
+              {prescriptions.map((prescription) => (
+                <div key={prescription.id} className="rounded-xl border border-blue-100 bg-gradient-to-r from-blue-50 to-indigo-50 p-4 hover:shadow-md transition-shadow">
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-3">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <div className="p-2 bg-blue-100 rounded-lg flex-shrink-0">
+                        <FileText className="h-5 w-5 text-blue-600" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <h3 className="font-semibold text-gray-900 text-base" data-testid={`text-prescription-title-${prescription.id}`}>{prescription.title}</h3>
+                        <p className="text-xs text-gray-500">Criada em {new Date(prescription.createdAt!).toLocaleDateString("pt-BR")}</p>
+                      </div>
+                    </div>
+                    <Badge
+                      variant={prescription.status === "published" ? "default" : "secondary"}
+                      className={prescription.status === "published" ? "bg-green-100 text-green-800 border-green-200" : "bg-gray-100 text-gray-700 border-gray-200"}
+                      data-testid={`badge-prescription-status-${prescription.id}`}
+                    >
+                      {prescription.status === "published" ? "Publicado" : "Rascunho"}
+                    </Badge>
+                  </div>
+                  {prescription.generalNotes && (
+                    <div className="mt-2 p-3 bg-white/70 rounded-lg">
+                      <p className="text-sm text-gray-700">{prescription.generalNotes}</p>
+                    </div>
+                  )}
+                  <div className="flex flex-wrap items-center gap-2 mt-4">
+                    <Button variant="ghost" size="sm" onClick={() => setLocation(`/prescriptions/${prescription.id}/edit`)} data-testid={`button-edit-prescription-${prescription.id}`} className="bg-blue-100 hover:bg-blue-200 text-blue-700 border border-blue-200 rounded-lg">
+                      <Eye className="h-4 w-4 mr-1" />{prescription.status === "published" ? "Visualizar" : "Editar"}
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => duplicatePrescriptionMutation.mutate(prescription.id)} disabled={duplicatePrescriptionMutation.isPending} data-testid={`button-duplicate-prescription-${prescription.id}`} className="bg-purple-100 hover:bg-purple-200 text-purple-700 border border-purple-200 rounded-lg">
+                      <FileText className="h-4 w-4 mr-1" />{duplicatePrescriptionMutation.isPending ? "Duplicando..." : "Duplicar"}
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => handleDownloadPrescription(prescription.id)} data-testid={`button-download-prescription-${prescription.id}`} className="bg-green-100 hover:bg-green-200 text-green-700 border border-green-200 rounded-lg">
+                      <FileDown className="h-4 w-4 mr-1" />Baixar
+                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="sm" className="bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-lg" data-testid={`button-delete-prescription-${prescription.id}`}>
+                          <Trash2 className="h-4 w-4 mr-1" />Excluir
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+                          <AlertDialogDescription>Tem certeza de que deseja excluir a prescrição "{prescription.title}"? <span className="text-red-600 block mt-2">Esta ação não pode ser desfeita.</span></AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => deletePrescriptionMutation.mutate(prescription.id)} disabled={deletePrescriptionMutation.isPending} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                            {deletePrescriptionMutation.isPending ? "Excluindo..." : "Excluir"}
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <EmptyState icon={<FileText className="h-10 w-10" />} title="Nenhuma prescrição criada" description="Comece criando a primeira prescrição nutricional para este paciente." action={
+              hasAccountLinked ? (
+                <Button onClick={() => createPrescriptionMutation.mutate()} disabled={createPrescriptionMutation.isPending} className="bg-blue-600 hover:bg-blue-700 text-white">
+                  <Plus className="h-4 w-4 mr-2" />{createPrescriptionMutation.isPending ? "Criando..." : "Criar Primeira Prescrição"}
+                </Button>
+              ) : (
+                <p className="text-sm text-muted-foreground">O paciente precisa ter um login no sistema para receber prescrições.</p>
+              )
+            } />
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  function renderAssinatura() {
+    return (
+      <div className="rounded-2xl border border-border/60 bg-card shadow-sm overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border/50 bg-muted/20">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-green-100 rounded-lg">
+              <CreditCard className="h-5 w-5 text-green-600" />
+            </div>
+            <div>
+              <h3 className="font-bold text-foreground">Assinatura / Plano</h3>
+              <p className="text-xs text-muted-foreground">Gerenciar plano do paciente</p>
+            </div>
+          </div>
+          <Button onClick={() => setIsCreateSubscriptionDialogOpen(true)} disabled={currentSubscription?.status === "active"} className="bg-green-600 hover:bg-green-700 text-white" size="sm">
+            <Plus className="h-4 w-4 mr-1" />Criar Plano
+          </Button>
+        </div>
+        <div className="p-6">
+          {currentSubscription ? (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="p-4 rounded-xl bg-gradient-to-br from-blue-50 to-purple-50 border border-blue-100">
+                  <div className="flex items-center gap-2 mb-2">
+                    <CreditCard className="h-4 w-4 text-blue-600" />
+                    <span className="text-sm font-semibold text-blue-700">Plano Atual</span>
+                  </div>
+                  <p className="text-lg font-bold text-gray-900">{getPlanTypeLabel(currentSubscription.planType)}</p>
+                  <div className="mt-2">{renderStatusBadge(currentSubscription.status)}</div>
+                </div>
+                <div className="p-4 rounded-xl bg-gradient-to-br from-green-50 to-emerald-50 border border-green-100">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Calendar className="h-4 w-4 text-green-600" />
+                    <span className="text-sm font-semibold text-green-700">Validade</span>
+                  </div>
+                  <p className="text-lg font-bold text-gray-900">
+                    {currentSubscription.expiresAt ? formatDate(currentSubscription.expiresAt.toString()) : "Sem expiração"}
+                  </p>
+                </div>
+              </div>
+              {currentSubscription.startDate && (
+                <p className="text-sm text-muted-foreground">Iniciado em: {formatDate(currentSubscription.startDate.toString())}</p>
+              )}
+              <div className="flex flex-wrap gap-3 pt-4 border-t border-border/50">
+                <Button onClick={handleEditSubscription} className="bg-blue-600 hover:bg-blue-700 text-white">
+                  <Pencil className="h-4 w-4 mr-2" />Editar Plano
+                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive"><Trash2 className="h-4 w-4 mr-2" />Excluir Plano</Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+                      <AlertDialogDescription>Tem certeza de que deseja excluir a assinatura {getPlanTypeLabel(currentSubscription.planType)} deste paciente? <span className="text-red-600 block mt-2">Esta ação não pode ser desfeita.</span></AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => deleteSubscriptionMutation.mutate(currentSubscription.id)} disabled={deleteSubscriptionMutation.isPending} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                        {deleteSubscriptionMutation.isPending ? "Excluindo..." : "Excluir"}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            </div>
+          ) : (
+            <EmptyState icon={<CreditCard className="h-10 w-10" />} title="Sem assinatura ativa" description="Este paciente ainda não possui uma assinatura ativa." action={
+              <Button onClick={() => setIsCreateSubscriptionDialogOpen(true)} className="bg-green-600 hover:bg-green-700 text-white">
+                <Plus className="h-4 w-4 mr-2" />Criar Primeiro Plano
+              </Button>
+            } />
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  function renderAvaliacoes() {
+    return (
+      <div className="rounded-2xl border border-border/60 bg-card shadow-sm overflow-hidden">
+        <SectionHeader icon={<ClipboardList className="h-5 w-5" />} title="Avaliações" subtitle="Documentos e arquivos de avaliação do paciente" />
+        <div className="p-6 space-y-6">
+          <div className="p-4 rounded-xl bg-muted/30 border border-border/50 space-y-3">
+            <Label htmlFor="assessment-file" className="font-semibold">Enviar nova avaliação (PDF ou imagem)</Label>
+            <Input id="assessment-file" type="file" ref={fileInputRef} accept=".pdf,image/*" onChange={(e) => setSelectedFile(e.target.files?.[0] ?? null)} className="cursor-pointer" />
+            {selectedFile && <p className="text-sm text-muted-foreground">Arquivo selecionado: <span className="font-medium">{selectedFile.name}</span></p>}
+            <Button onClick={() => selectedFile && uploadDocumentMutation.mutate(selectedFile)} disabled={!selectedFile || uploadDocumentMutation.isPending} className="w-full gap-2">
+              <Upload className="h-4 w-4" />{uploadDocumentMutation.isPending ? "Enviando..." : "Enviar Avaliação"}
+            </Button>
+          </div>
+          <div className="space-y-3">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Avaliações Enviadas</p>
+            {documentsLoading ? (
+              <div className="text-center py-4"><div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary mx-auto" /></div>
+            ) : !patientDocuments || patientDocuments.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 text-center border border-dashed border-border rounded-xl">
+                <FileText className="h-10 w-10 text-muted-foreground/40 mb-2" />
+                <p className="text-sm text-muted-foreground">Nenhuma avaliação enviada ainda.</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {patientDocuments.map((doc) => (
+                  <div key={doc.id} className="flex items-center gap-3 p-3 rounded-xl border border-border/60 bg-muted/20">
+                    <FileText className="h-5 w-5 text-primary flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium">{doc.fileName}</p>
+                      <p className="text-xs text-muted-foreground">{doc.createdAt ? new Date(doc.createdAt).toLocaleDateString("pt-BR") : ""}</p>
+                    </div>
+                    <div className="flex gap-2 flex-shrink-0">
+                      <Button asChild size="sm" variant="outline" className="gap-1">
+                        <a href={doc.fileUrl} download={doc.fileName} target="_blank" rel="noopener noreferrer">
+                          <Download className="h-3 w-3" />
+                        </a>
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button size="sm" variant="outline" className="text-destructive hover:text-destructive gap-1">
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Excluir Avaliação</AlertDialogTitle>
+                            <AlertDialogDescription>Tem certeza que deseja excluir "{doc.fileName}"? Esta ação não pode ser desfeita.</AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => deleteDocumentMutation.mutate(doc.id)} disabled={deleteDocumentMutation.isPending} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                              {deleteDocumentMutation.isPending ? "Excluindo..." : "Excluir"}
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  function renderDiario() {
+    return (
+      <div className="rounded-2xl border border-border/60 bg-card shadow-sm overflow-hidden">
+        <SectionHeader icon={<BookOpen className="h-5 w-5" />} title="Diário Alimentar" subtitle="Fotos e registros de humor enviados pelo paciente" />
+        <div className="p-6">
+          {foodDiaryLoading ? (
+            <div className="text-center py-8"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-orange-600 mx-auto" /></div>
+          ) : foodDiaryEntries && foodDiaryEntries.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {foodDiaryEntries.map((entry) => {
+                const mealName = (entry.mealData as MealData)?.name ?? "Refeição";
+                return (
+                  <div key={entry.id} className="rounded-xl border border-orange-100 bg-gradient-to-br from-white to-orange-50 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                    {entry.imageUrl && (
+                      <div className="aspect-square relative group">
+                        <img src={entry.imageUrl} alt="Foto da refeição" className="w-full h-full object-cover"
+                          onError={(e) => { (e.target as HTMLImageElement).src = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2Y5ZmFmYiIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IiM2YjcyODAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5JbWFnZW0gbsOjbyBlbmNvbnRyYWRhPC90ZXh0Pjwvc3ZnPg=="; }}
+                        />
+                        <Button variant="destructive" size="icon" className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => setEntryToDelete(entry.id)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                        <div className="absolute top-2 left-2 bg-black/50 text-white text-xs px-2 py-1 rounded backdrop-blur-sm">{formatDate(entry.date)}</div>
+                      </div>
+                    )}
+                    {!entry.imageUrl && (entry.moodBefore || entry.moodAfter) && (
+                      <div className="bg-gradient-to-r from-purple-100 to-blue-100 p-4 border-b border-purple-100">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Smile className="h-5 w-5 text-purple-600" />
+                            <span className="text-sm font-medium text-purple-800">Registro de Humor</span>
+                          </div>
+                          <span className="text-xs text-purple-600">{formatDate(entry.date)}</span>
+                        </div>
+                      </div>
+                    )}
+                    <div className="p-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Image className="h-4 w-4 text-orange-600" />
+                        <span className="font-semibold text-gray-900">{mealName}</span>
+                      </div>
+                      {entry.prescriptionTitle && <p className="text-xs text-gray-500 mb-2">Prescrição: {entry.prescriptionTitle}</p>}
+                      {(entry.moodBefore || entry.moodAfter) && (
+                        <div className="mb-3 p-3 rounded-lg bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-100">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Smile className="h-4 w-4 text-purple-600" />
+                            <span className="text-sm font-medium text-gray-700">Humor</span>
+                          </div>
+                          <div className="space-y-1 text-sm">
+                            {entry.moodBefore && <div className="flex items-center gap-2"><span className="text-xs text-gray-500">Antes:</span><span className="text-lg">{getMoodEmoji(entry.moodBefore)}</span><span className="text-gray-700">{getMoodLabel(entry.moodBefore)}</span></div>}
+                            {entry.moodAfter && <div className="flex items-center gap-2"><span className="text-xs text-gray-500">Depois:</span><span className="text-lg">{getMoodEmoji(entry.moodAfter)}</span><span className="text-gray-700">{getMoodLabel(entry.moodAfter)}</span></div>}
+                          </div>
+                          {entry.moodNotes && <p className="mt-2 text-xs text-gray-600"><span className="font-medium">Obs:</span> {entry.moodNotes}</p>}
+                        </div>
+                      )}
+                      {entry.notes && <p className="text-sm text-gray-600"><span className="font-medium">Observações:</span> {entry.notes}</p>}
+                      <p className="mt-3 text-xs text-gray-400">Enviado em {new Date(entry.createdAt!).toLocaleDateString("pt-BR")} às {new Date(entry.createdAt!).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <EmptyState icon={<Camera className="h-10 w-10" />} title="Nenhum registro no diário" description="O paciente ainda não enviou fotos ou registros de humor para as refeições." />
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  const sectionMap: Record<SidebarSection, () => React.ReactNode> = {
+    perfil: renderPerfil,
+    anamnese: renderAnamnese,
+    historico: renderHistorico,
+    antropometria: renderAntropometria,
+    prescricoes: renderPrescricoes,
+    assinatura: renderAssinatura,
+    avaliacoes: renderAvaliacoes,
+    diario: renderDiario,
+  };
+
+  // ─── Render ───────────────────────────────────────────────────────────────
+
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-[#F4F5F9]">
       <Header
         title={patient.name}
         subtitle={patient.email || undefined}
-        showBack={true}
+        showBack
         onBack={() => setLocation("/patients")}
         drawerContent={<DefaultMobileDrawer />}
       />
-      
-      <main className="max-w-7xl mx-auto p-4 lg:p-6">
-        <div className="mb-8 p-6 rounded-2xl border border-border/70 bg-card shadow-sm">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-bold mb-2 text-foreground">Detalhes do Paciente</h1>
-              <p className="text-muted-foreground">Visualize e gerencie as informações completas do paciente</p>
+
+      {/* Patient Banner */}
+      <div className="bg-gradient-to-r from-violet-700 to-purple-600 text-white px-4 lg:px-8 py-4">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
+              <User className="h-6 w-6 text-white" />
             </div>
+            <div className="min-w-0">
+              <h1 className="text-lg font-bold leading-tight">{patient.name}</h1>
+              <div className="flex flex-wrap items-center gap-2 mt-1">
+                {patient.birthDate && (
+                  <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full">{calculateAge(patient.birthDate)} anos</span>
+                )}
+                {patient.sex && (
+                  <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full">{patient.sex === "F" ? "Feminino" : patient.sex === "M" ? "Masculino" : "Outro"}</span>
+                )}
+                {currentSubscription?.status === "active" ? (
+                  <span className="text-xs bg-green-400/30 text-green-100 px-2 py-0.5 rounded-full">Plano ativo</span>
+                ) : (
+                  <span className="text-xs bg-white/10 text-white/70 px-2 py-0.5 rounded-full">Sem plano ativo</span>
+                )}
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="secondary" className="bg-white/20 hover:bg-white/30 text-white border-0" onClick={() => setLocation(`/patients/${patient.id}/edit`)}>
+              <Pencil className="h-4 w-4 mr-1" />Editar
+            </Button>
             <Button
+              size="sm"
               onClick={() => createPrescriptionMutation.mutate()}
-              disabled={patientLoading || createPrescriptionMutation.isPending || !hasAccountLinked}
-              title={!hasAccountLinked ? "Paciente precisa ter um login para criar prescrições" : "Nova Prescrição"}
-              data-testid="button-new-prescription"
-              className="font-medium px-6 py-3 rounded-lg"
+              disabled={createPrescriptionMutation.isPending || !hasAccountLinked}
+              title={!hasAccountLinked ? "Paciente precisa ter um login" : "Nova Prescrição"}
+              data-testid="button-new-prescription-banner"
+              className="bg-white text-violet-700 hover:bg-violet-50"
             >
-              <Plus className="h-5 w-5 mr-2" />
+              <Plus className="h-4 w-4 mr-1" />
               {createPrescriptionMutation.isPending ? "Criando..." : "Nova Prescrição"}
             </Button>
           </div>
         </div>
+      </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Patient Info */}
-          <div className="lg:col-span-1 space-y-6">
-            <Card className="border border-border/70 bg-card shadow-sm overflow-hidden">
-              <CardHeader className="pb-4 border-b bg-muted/30">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
-                    <User className="h-6 w-6" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-xl font-bold text-foreground">Informações do Paciente</CardTitle>
-                    <p className="text-muted-foreground text-sm">{patient.name}</p>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="p-6">
-                <div className="space-y-4">
-                  {patient.birthDate && (
-                    <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/40 border border-border/60">
-                      <div className="p-2 bg-slate-100 dark:bg-slate-800 rounded-lg">
-                        <Calendar className="h-4 w-4 text-slate-600 dark:text-slate-300" />
-                      </div>
-                      <div className="flex-1">
-                        <span className="text-sm font-medium text-gray-600 dark:text-gray-300">Idade</span>
-                        <p className="font-semibold text-gray-900 dark:text-white" data-testid="text-patient-age">{calculateAge(patient.birthDate)} anos</p>
-                      </div>
-                    </div>
-                  )}
-                  {patient.sex && (
-                    <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/40 border border-border/60">
-                      <div className="p-2 bg-blue-100 dark:bg-blue-800 rounded-lg">
-                        <User className="h-4 w-4 text-blue-600 dark:text-blue-300" />
-                      </div>
-                      <div className="flex-1">
-                        <span className="text-sm font-medium text-gray-600 dark:text-gray-300">Sexo</span>
-                        <p className="font-semibold text-gray-900 dark:text-white" data-testid="text-patient-sex">{patient.sex === 'F' ? 'Feminino' : patient.sex === 'M' ? 'Masculino' : 'Outro'}</p>
-                      </div>
-                    </div>
-                  )}
-                  {patient.heightCm && (
-                    <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/40 border border-border/60">
-                      <div className="p-2 bg-indigo-100 dark:bg-indigo-800 rounded-lg">
-                        <Ruler className="h-4 w-4 text-indigo-600 dark:text-indigo-300" />
-                      </div>
-                      <div className="flex-1">
-                        <span className="text-sm font-medium text-gray-600 dark:text-gray-300">Altura</span>
-                        <p className="font-semibold text-gray-900 dark:text-white" data-testid="text-patient-height">{patient.heightCm} cm</p>
-                      </div>
-                    </div>
-                  )}
-                  {patient.weightKg && (
-                    <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/40 border border-border/60">
-                      <div className="p-2 bg-blue-100 dark:bg-blue-800 rounded-lg">
-                        <Weight className="h-4 w-4 text-blue-600 dark:text-blue-300" />
-                      </div>
-                      <div className="flex-1">
-                        <span className="text-sm font-medium text-gray-600 dark:text-gray-300">Peso</span>
-                        <p className="font-semibold text-gray-900 dark:text-white" data-testid="text-patient-weight">{patient.weightKg} kg</p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-                {patient.notes && (
-                  <div className="mt-6 p-4 rounded-lg bg-gradient-to-r from-gray-50 to-slate-50 dark:from-gray-800/50 dark:to-slate-800/50 border border-gray-200/50 dark:border-gray-700/50">
-                    <h4 className="text-sm font-medium text-gray-600 dark:text-gray-300 mb-2">Observações</h4>
-                    <p className="text-sm text-gray-700 dark:text-gray-300" data-testid="text-patient-notes">{patient.notes}</p>
-                  </div>
-                )}
-                <div className="mt-6 space-y-3">
-                  <Button 
-                    variant="default" 
-                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium py-2.5 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-[1.02]"
-                    onClick={() => setLocation(`/patients/${patient.id}/edit`)}
-                  >
-                    <User className="h-4 w-4 mr-2" />
-                    Editar Dados
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    className="w-full border-2 border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 font-medium py-2.5 rounded-lg transition-all duration-200 transform hover:scale-[1.02]"
-                    onClick={() => requestFollowUpMutation.mutate()}
-                    disabled={requestFollowUpMutation.isPending}
-                  >
-                    <FileText className="h-4 w-4 mr-2" />
-                    {requestFollowUpMutation.isPending ? "Gerando link..." : "Solicitar Anamnese de Retorno"}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+      {/* Layout: Sidebar + Content */}
+      <div className="max-w-7xl mx-auto px-4 lg:px-8 py-6">
+        <div className="flex gap-6">
 
-            {/* Anamnese Section with Tabs */}
-            <Tabs defaultValue="current" className="w-full">
-              <TabsList className="grid w-full grid-cols-5 bg-muted/70 p-1 rounded-xl border border-border/70">
-                <TabsTrigger value="current" className="rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-foreground font-medium transition-all text-xs sm:text-sm">Anamnese Atual</TabsTrigger>
-                <TabsTrigger value="history" className="rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-foreground font-medium transition-all text-xs sm:text-sm">Histórico</TabsTrigger>
-                <TabsTrigger value="subscription" className="rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-foreground font-medium transition-all text-xs sm:text-sm">Assinatura</TabsTrigger>
-                <TabsTrigger value="assessments" className="rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-foreground font-medium transition-all text-xs sm:text-sm">Avaliações</TabsTrigger>
-                <TabsTrigger value="anthropometry" className="rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-foreground font-medium transition-all text-xs sm:text-sm">Antropometria</TabsTrigger>
-              </TabsList>
-              <TabsContent value="current">
-                <Card className="border border-border/70 bg-card shadow-sm overflow-hidden">
-                  <CardHeader className="pb-4 border-b bg-muted/30">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
-                        <Stethoscope className="h-6 w-6" />
-                      </div>
-                      <CardTitle className="text-xl font-bold">Anamnese Nutricional</CardTitle>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="p-6">
-                    <div className="space-y-4">
-                      {patient.goal && (
-                        <div className="flex items-center gap-3 p-4 rounded-lg bg-gradient-to-r from-slate-50 to-blue-50 dark:from-slate-900/20 dark:to-blue-900/20 border border-slate-200/50 dark:border-slate-700/50">
-                          <div className="p-2 bg-slate-100 dark:bg-slate-800 rounded-lg">
-                            <Target className="h-5 w-5 text-slate-600 dark:text-slate-300" />
-                          </div>
-                          <div>
-                            <span className="text-sm font-medium text-gray-600 dark:text-gray-300">Objetivo</span>
-                            <p className="font-semibold text-gray-900 dark:text-white">
-                              {patient.goal === 'lose_weight' ? 'Perder peso' : 
-                               patient.goal === 'maintain_weight' ? 'Manter peso' : 
-                               patient.goal === 'gain_weight' ? 'Ganhar peso' : patient.goal}
-                            </p>
-                          </div>
-                        </div>
-                      )}
-                      
-                      {patient.activityLevel && (
-                        <div className="flex items-center gap-3 p-4 rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200/50 dark:border-blue-700/50">
-                          <div className="p-2 bg-blue-100 dark:bg-blue-800 rounded-lg">
-                            <Activity className="h-5 w-5 text-blue-600 dark:text-blue-300" />
-                          </div>
-                          <div>
-                            <span className="text-sm font-medium text-gray-600 dark:text-gray-300">Nível de Atividade</span>
-                            <p className="font-semibold text-gray-900 dark:text-white">
-                              {patient.activityLevel === '1' ? '1 - Sedentário' :
-                               patient.activityLevel === '2' ? '2 - Levemente ativo' :
-                               patient.activityLevel === '3' ? '3 - Moderadamente ativo' :
-                               patient.activityLevel === '4' ? '4 - Muito ativo' :
-                               patient.activityLevel === '5' ? '5 - Extremamente ativo' : patient.activityLevel}
-                            </p>
-                          </div>
-                        </div>
-                      )}
-
-                      {patient.biotype && (
-                        <div className="flex items-center gap-3 p-4 rounded-lg bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-900/20 dark:to-blue-900/20 border border-indigo-200/50 dark:border-indigo-700/50">
-                          <div className="p-2 bg-indigo-100 dark:bg-indigo-800 rounded-lg">
-                            <User className="h-5 w-5 text-indigo-600 dark:text-indigo-300" />
-                          </div>
-                          <div>
-                            <span className="text-sm font-medium text-gray-600 dark:text-gray-300">Biotipo</span>
-                            <p className="font-semibold text-gray-900 dark:text-white">
-                              {patient.biotype === 'gain_weight_easily' ? 'Ganho peso facilmente' :
-                               patient.biotype === 'hard_to_gain' ? 'Dificuldade para ganhar peso' :
-                               patient.biotype === 'gain_muscle_easily' ? 'Ganho músculo facilmente' : patient.biotype}
-                            </p>
-                          </div>
-                        </div>
-                      )}
-
-                      {(patient.mealsPerDayCurrent || patient.mealsPerDayWilling) && (
-                        <div className="flex items-center gap-3 p-4 rounded-lg bg-gradient-to-r from-blue-50 to-slate-50 dark:from-blue-900/20 dark:to-slate-900/20 border border-blue-200/50 dark:border-blue-700/50">
-                          <div className="p-2 bg-blue-100 dark:bg-blue-800 rounded-lg">
-                            <FileText className="h-5 w-5 text-blue-600 dark:text-blue-300" />
-                          </div>
-                          <div>
-                            <span className="text-sm font-medium text-gray-600 dark:text-gray-300">Refeições por dia</span>
-                            <p className="font-semibold text-gray-900 dark:text-white">
-                              {patient.mealsPerDayCurrent && `Atual: ${patient.mealsPerDayCurrent}`}
-                              {patient.mealsPerDayCurrent && patient.mealsPerDayWilling && ' | '}
-                              {patient.mealsPerDayWilling && `Disposto: ${patient.mealsPerDayWilling}`}
-                            </p>
-                          </div>
-                        </div>
-                      )}
-
-                      {patient.alcoholConsumption && (
-                        <div className="flex items-center gap-3 p-4 rounded-lg bg-gradient-to-r from-slate-50 to-indigo-50 dark:from-slate-900/20 dark:to-indigo-900/20 border border-slate-200/50 dark:border-slate-700/50">
-                          <div className="p-2 bg-slate-100 dark:bg-slate-800 rounded-lg">
-                            <Heart className="h-5 w-5 text-slate-600 dark:text-slate-300" />
-                          </div>
-                          <div>
-                            <span className="text-sm font-medium text-gray-600 dark:text-gray-300">Consumo de Álcool</span>
-                            <p className="font-semibold text-gray-900 dark:text-white">
-                              {patient.alcoholConsumption === 'no' ? 'Não bebe' :
-                               patient.alcoholConsumption === 'moderate' ? 'Moderadamente' :
-                               patient.alcoholConsumption === 'yes' ? 'Sim, frequentemente' : patient.alcoholConsumption}
-                            </p>
-                          </div>
-                        </div>
-                      )}
-
-                      {patient.canEatMorningSolids !== undefined && (
-                        <div className="flex items-center gap-3 p-4 rounded-lg bg-gradient-to-r from-indigo-50 to-slate-50 dark:from-indigo-900/20 dark:to-slate-900/20 border border-indigo-200/50 dark:border-indigo-700/50">
-                          <div className="p-2 bg-indigo-100 dark:bg-indigo-800 rounded-lg">
-                            <FileText className="h-5 w-5 text-indigo-600 dark:text-indigo-300" />
-                          </div>
-                          <div>
-                            <span className="text-sm font-medium text-gray-600 dark:text-gray-300">Come sólidos pela manhã</span>
-                            <p className="font-semibold text-gray-900 dark:text-white">{patient.canEatMorningSolids ? 'Sim' : 'Não'}</p>
-                          </div>
-                        </div>
-                      )}
-
-                      {patient.likedHealthyFoods && Array.isArray(patient.likedHealthyFoods) && patient.likedHealthyFoods.length > 0 && (
-                        <div className="p-4 rounded-lg bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 border border-emerald-200/50 dark:border-emerald-700/50">
-                          <div className="flex items-center gap-2 mb-2">
-                            <Heart className="h-4 w-4 text-emerald-600 dark:text-emerald-300" />
-                            <span className="text-sm font-medium text-gray-600 dark:text-gray-300">Alimentos saudáveis que gosta</span>
-                          </div>
-                          <div className="flex flex-wrap gap-2">
-                            {patient.likedHealthyFoods.map((food, index) => (
-                              <span key={index} className="px-2 py-1 text-xs bg-emerald-100 dark:bg-emerald-800 text-emerald-700 dark:text-emerald-200 rounded-full">
-                                {food}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {patient.dislikedFoods && Array.isArray(patient.dislikedFoods) && patient.dislikedFoods.length > 0 && (
-                        <div className="p-4 rounded-lg bg-gradient-to-r from-red-50 to-rose-50 dark:from-red-900/20 dark:to-rose-900/20 border border-red-200/50 dark:border-red-700/50">
-                          <div className="flex items-center gap-2 mb-2">
-                            <XCircle className="h-4 w-4 text-red-600 dark:text-red-300" />
-                            <span className="text-sm font-medium text-gray-600 dark:text-gray-300">Alimentos que não gosta</span>
-                          </div>
-                          <div className="flex flex-wrap gap-2">
-                            {patient.dislikedFoods.map((food, index) => (
-                              <span key={index} className="px-2 py-1 text-xs bg-red-100 dark:bg-red-800 text-red-700 dark:text-red-200 rounded-full">
-                                {food}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {patient.hasIntolerance && patient.intolerances && Array.isArray(patient.intolerances) && patient.intolerances.length > 0 && (
-                        <div className="p-4 rounded-lg bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-900/20 dark:to-amber-900/20 border border-orange-200/50 dark:border-orange-700/50">
-                          <div className="flex items-center gap-2 mb-2">
-                            <XCircle className="h-4 w-4 text-orange-600 dark:text-orange-300" />
-                            <span className="text-sm font-medium text-gray-600 dark:text-gray-300">Intolerâncias</span>
-                          </div>
-                          <div className="flex flex-wrap gap-2">
-                            {patient.intolerances.map((intolerance, index) => (
-                              <span key={index} className="px-2 py-1 text-xs bg-orange-100 dark:bg-orange-800 text-orange-700 dark:text-orange-200 rounded-full">
-                                {intolerance}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {patient.diseases && (
-                        <div className="flex items-center gap-3 p-4 rounded-lg bg-gradient-to-r from-slate-50 to-blue-50 dark:from-slate-900/20 dark:to-blue-900/20 border border-slate-200/50 dark:border-slate-700/50">
-                          <div className="p-2 bg-slate-100 dark:bg-slate-800 rounded-lg">
-                            <Stethoscope className="h-5 w-5 text-slate-600 dark:text-slate-300" />
-                          </div>
-                          <div>
-                            <span className="text-sm font-medium text-gray-600 dark:text-gray-300">Doenças/Condições</span>
-                            <p className="font-semibold text-gray-900 dark:text-white">{patient.diseases}</p>
-                          </div>
-                        </div>
-                      )}
-
-                      {patient.medications && (
-                        <div className="flex items-center gap-3 p-4 rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200/50 dark:border-blue-700/50">
-                          <div className="p-2 bg-blue-100 dark:bg-blue-800 rounded-lg">
-                            <Pill className="h-5 w-5 text-blue-600 dark:text-blue-300" />
-                          </div>
-                          <div>
-                            <span className="text-sm font-medium text-gray-600 dark:text-gray-300">Medicamentos</span>
-                            <p className="font-semibold text-gray-900 dark:text-white">{patient.medications}</p>
-                          </div>
-                        </div>
-                      )}
-
-                      {patient.supplements && (
-                        <div className="flex items-center gap-3 p-4 rounded-lg bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-900/20 dark:to-blue-900/20 border border-indigo-200/50 dark:border-indigo-700/50">
-                          <div className="p-2 bg-indigo-100 dark:bg-indigo-800 rounded-lg">
-                            <Plus className="h-5 w-5 text-indigo-600 dark:text-indigo-300" />
-                          </div>
-                          <div>
-                            <span className="text-sm font-medium text-gray-600 dark:text-gray-300">Suplementos</span>
-                            <p className="font-semibold text-gray-900 dark:text-white">{patient.supplements}</p>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Nutritionist calculation fields */}
-                    {!historyLoading && (
-                      <div className="mt-6">
-                        {currentAnamnesisRecord ? (
-                          <AnamnesisNutritionistDataForm
-                            anamnesis={currentAnamnesisRecord}
-                            patient={patient}
-                          />
-                        ) : (
-                          <div className="p-4 rounded-lg bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 border border-yellow-200/50 dark:border-yellow-700/50">
-                            <div className="flex items-center gap-3 mb-3">
-                              <div className="p-2 bg-yellow-100 dark:bg-yellow-800 rounded-lg">
-                                <FileText className="h-5 w-5 text-yellow-600 dark:text-yellow-300" />
-                              </div>
-                              <div>
-                                <h4 className="font-semibold text-yellow-800 dark:text-yellow-200">Dados Nutricionais</h4>
-                                <p className="text-sm text-yellow-600 dark:text-yellow-300">
-                                  Crie um registro de anamnese para adicionar cálculos nutricionais (TMB, GET, VET)
-                                </p>
-                              </div>
-                            </div>
-                            <Button
-                              onClick={() => createInitialAnamnesisRecord.mutate()}
-                              disabled={createInitialAnamnesisRecord.isPending}
-                              className="bg-yellow-600 hover:bg-yellow-700 text-white"
-                            >
-                              {createInitialAnamnesisRecord.isPending ? "Criando..." : "Criar Registro de Anamnese"}
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </TabsContent>
-              <TabsContent value="history">
-                <Card className="border border-border/70 bg-card shadow-sm overflow-hidden">
-                  <CardHeader className="pb-4 border-b bg-muted/30">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
-                        <History className="h-6 w-6" />
-                      </div>
-                      <CardTitle className="text-xl font-bold">Histórico de Anamneses</CardTitle>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="p-6">
-                    {historyLoading ? (
-                      <div className="text-center py-8">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-3"></div>
-                        <p className="text-gray-600 dark:text-gray-300">Carregando histórico...</p>
-                      </div>
-                    ) : !anamnesisHistory || anamnesisHistory.length === 0 ? (
-                      <div className="text-center py-8">
-                        <History className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-                        <p className="text-gray-600 dark:text-gray-300">Nenhum registro encontrado.</p>
-                      </div>
-                    ) : (
-                      <div className="space-y-4">
-                        {anamnesisHistory.map(record => (
-                          <div key={record.id} className="p-4 rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200/50 dark:border-blue-700/50 hover:shadow-md transition-all duration-200">
-                            <div className="flex items-center gap-2 mb-3">
-                              <Calendar className="h-4 w-4 text-blue-600 dark:text-blue-300" />
-                              <p className="font-semibold text-gray-900 dark:text-white">Data: {new Date(record.createdAt!).toLocaleDateString('pt-BR')}</p>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                              <div className="flex items-center gap-2">
-                                <Weight className="h-3 w-3 text-orange-600 dark:text-orange-300" />
-                                <span className="text-gray-600 dark:text-gray-300">Peso: <span className="font-medium text-gray-900 dark:text-white">{record.weightKg || 'N/A'} kg</span></span>
-                              </div>
-                              {record.goal && (
-                                <div className="flex items-center gap-2">
-                                  <Target className="h-3 w-3 text-emerald-600 dark:text-emerald-300" />
-                                  <span className="text-gray-600 dark:text-gray-300">Objetivo: <span className="font-medium text-gray-900 dark:text-white">{
-                                    record.goal === 'lose_weight' ? 'Perder peso' : 
-                                    record.goal === 'maintain_weight' ? 'Manter peso' : 
-                                    record.goal === 'gain_weight' ? 'Ganhar peso' : record.goal
-                                  }</span></span>
-                                </div>
-                              )}
-                              {record.protocolAdherence && (
-                                <div className="flex items-center gap-2">
-                                  <CheckCircle className="h-3 w-3 text-purple-600 dark:text-purple-300" />
-                                  <span className="text-gray-600 dark:text-gray-300">Adesão: <span className="font-medium text-gray-900 dark:text-white">{
-                                    record.protocolAdherence === 'total' ? 'Total' :
-                                    record.protocolAdherence === 'partial' ? 'Parcial' :
-                                    record.protocolAdherence === 'low' ? 'Baixa' : record.protocolAdherence
-                                  }</span></span>
-                                </div>
-                              )}
-                            </div>
-                            {record.nextProtocolRequests && (
-                              <div className="mt-3 p-3 bg-white/60 dark:bg-gray-800/60 rounded-md">
-                                <p className="text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Solicitações para próximo plano:</p>
-                                <p className="text-sm text-gray-700 dark:text-gray-300">{record.nextProtocolRequests}</p>
-                              </div>
-                            )}
-                            
-                            {/* Renderiza o novo formulário para dados do nutricionista */}
-                            <AnamnesisNutritionistDataForm
-                              anamnesis={record}
-                              patient={patient}
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </TabsContent>
-              
-              <TabsContent value="subscription">
-                <Card className="border border-border/70 bg-card shadow-sm overflow-hidden">
-                  <CardHeader className="pb-4 border-b bg-muted/30">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
-                          <CreditCard className="h-6 w-6" />
-                        </div>
-                        <CardTitle className="text-xl font-bold">Gerenciar Assinatura</CardTitle>
-                      </div>
-                      <Button
-                        onClick={() => setIsCreateSubscriptionDialogOpen(true)}
-                        className="bg-white/20 hover:bg-white/30 border-white/30 text-white text-sm px-4 py-2"
-                        disabled={!!currentSubscription?.status && currentSubscription.status === 'active'}
-                      >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Criar Plano
-                      </Button>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="p-6">
-                    {currentSubscription ? (
-                      <div className="space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div className="p-4 rounded-lg bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 border">
-                            <div className="flex items-center gap-2 mb-2">
-                              <CreditCard className="h-5 w-5 text-blue-600" />
-                              <span className="font-semibold text-blue-600">Plano Atual</span>
-                            </div>
-                            <p className="text-lg font-bold">{getPlanTypeLabel(currentSubscription.planType)}</p>
-                            <div className="mt-2">
-                              {renderStatusBadge(currentSubscription.status)}
-                            </div>
-                          </div>
-                          
-                          <div className="p-4 rounded-lg bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border">
-                            <div className="flex items-center gap-2 mb-2">
-                              <Calendar className="h-5 w-5 text-green-600" />
-                              <span className="font-semibold text-green-600">Validade</span>
-                            </div>
-                            <p className="text-lg font-bold">
-                              {currentSubscription.expiresAt 
-                                ? formatDate(currentSubscription.expiresAt.toString()) 
-                                : "Sem expiração"
-                              }
-                            </p>
-                          </div>
-                        </div>
-                        
-                        {currentSubscription.startDate && (
-                          <div className="text-sm text-gray-600 dark:text-gray-300">
-                            <span>Iniciado em: {formatDate(currentSubscription.startDate.toString())}</span>
-                          </div>
-                        )}
-
-                        {/* Action buttons for editing and deleting subscription */}
-                        <div className="flex flex-wrap gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
-                          <Button
-                            onClick={handleEditSubscription}
-                            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2"
-                          >
-                            <User className="h-4 w-4 mr-2" />
-                            Editar Plano
-                          </Button>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button
-                                variant="destructive"
-                                className="px-4 py-2"
-                              >
-                                <Trash2 className="h-4 w-4 mr-2" />
-                                Excluir Plano
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Tem certeza de que deseja excluir a assinatura {getPlanTypeLabel(currentSubscription.planType)} deste paciente?
-                                  <div className="mt-2 text-red-600">
-                                    Esta ação não pode ser desfeita.
-                                  </div>
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={() => handleDeleteSubscription(currentSubscription.id)}
-                                  disabled={deleteSubscriptionMutation.isPending}
-                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                >
-                                  {deleteSubscriptionMutation.isPending ? "Excluindo..." : "Excluir"}
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="text-center py-8">
-                        <CreditCard className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-                        <p className="text-gray-600 dark:text-gray-300 mb-4">
-                          Este paciente ainda não possui uma assinatura ativa.
-                        </p>
-                        <Button
-                          onClick={() => setIsCreateSubscriptionDialogOpen(true)}
-                          className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2"
-                        >
-                          <Plus className="h-4 w-4 mr-2" />
-                          Criar Primeiro Plano
-                        </Button>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              {/* Assessments Tab */}
-              <TabsContent value="assessments">
-                <Card className="border border-border/70 bg-card shadow-sm overflow-hidden">
-                  <CardHeader className="pb-4 border-b bg-muted/30">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
-                        <ClipboardList className="h-6 w-6" />
-                      </div>
-                      <CardTitle className="text-xl font-bold">Anexar Avaliação</CardTitle>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="p-6 space-y-6">
-                    {/* Upload Section */}
-                    <div className="space-y-3">
-                      <Label htmlFor="assessment-file">Selecionar arquivo (PDF ou imagem)</Label>
-                      <Input
-                        id="assessment-file"
-                        type="file"
-                        ref={fileInputRef}
-                        accept=".pdf,image/*"
-                        onChange={(e) => setSelectedFile(e.target.files?.[0] ?? null)}
-                        className="cursor-pointer"
-                      />
-                      {selectedFile && (
-                        <p className="text-sm text-muted-foreground">
-                          Arquivo selecionado: <span className="font-medium">{selectedFile.name}</span>
-                        </p>
-                      )}
-                      <Button
-                        onClick={() => selectedFile && uploadDocumentMutation.mutate(selectedFile)}
-                        disabled={!selectedFile || uploadDocumentMutation.isPending}
-                        className="w-full gap-2"
-                      >
-                        <Upload className="h-4 w-4" />
-                        {uploadDocumentMutation.isPending ? "Enviando..." : "Enviar Avaliação"}
-                      </Button>
-                    </div>
-
-                    {/* Documents List */}
-                    <div className="space-y-3">
-                      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                        Avaliações Enviadas
-                      </h3>
-                      {documentsLoading ? (
-                        <p className="text-sm text-muted-foreground">Carregando...</p>
-                      ) : !patientDocuments || patientDocuments.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-8 text-center border border-dashed border-border rounded-lg">
-                          <FileText className="h-10 w-10 text-muted-foreground/40 mb-2" />
-                          <p className="text-sm text-muted-foreground">Nenhuma avaliação enviada ainda.</p>
-                        </div>
-                      ) : (
-                        <div className="space-y-2">
-                          {patientDocuments.map((doc) => (
-                            <div key={doc.id} className="flex items-center gap-3 p-3 rounded-lg border border-border/70 bg-muted/20">
-                              <FileText className="h-5 w-5 text-primary flex-shrink-0" />
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium truncate">{doc.fileName}</p>
-                                <p className="text-xs text-muted-foreground">
-                                  {doc.createdAt ? new Date(doc.createdAt).toLocaleDateString("pt-BR") : ""}
-                                </p>
-                              </div>
-                              <div className="flex gap-2 flex-shrink-0">
-                                <Button asChild size="sm" variant="outline" className="gap-1">
-                                  <a href={doc.fileUrl} download={doc.fileName} target="_blank" rel="noopener noreferrer">
-                                    <Download className="h-3 w-3" />
-                                  </a>
-                                </Button>
-                                <AlertDialog>
-                                  <AlertDialogTrigger asChild>
-                                    <Button size="sm" variant="outline" className="text-destructive hover:text-destructive gap-1">
-                                      <Trash2 className="h-3 w-3" />
-                                    </Button>
-                                  </AlertDialogTrigger>
-                                  <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                      <AlertDialogTitle>Excluir Avaliação</AlertDialogTitle>
-                                      <AlertDialogDescription>
-                                        Tem certeza que deseja excluir "{doc.fileName}"? Esta ação não pode ser desfeita.
-                                      </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                      <AlertDialogAction
-                                        onClick={() => deleteDocumentMutation.mutate(doc.id)}
-                                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                      >
-                                        Excluir
-                                      </AlertDialogAction>
-                                    </AlertDialogFooter>
-                                  </AlertDialogContent>
-                                </AlertDialog>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              <TabsContent value="anthropometry">
-                <Card className="border border-border/70 bg-card shadow-sm overflow-hidden">
-                  <CardHeader className="pb-4 border-b bg-muted/30">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
-                          <Ruler className="h-6 w-6" />
-                        </div>
-                        <CardTitle className="text-xl font-bold">Antropometria Geral</CardTitle>
-                      </div>
-                      <Button size="sm" onClick={() => openAnthroDialog()} className="gap-2">
-                        <Plus className="h-4 w-4" />
-                        Nova Avaliação
-                      </Button>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="p-6 space-y-4">
-                    {anthroLoading ? (
-                      <p className="text-sm text-muted-foreground">Carregando...</p>
-                    ) : !anthroAssessments || anthroAssessments.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center py-8 text-center border border-dashed border-border rounded-lg">
-                        <Ruler className="h-10 w-10 text-muted-foreground/40 mb-2" />
-                        <p className="text-sm text-muted-foreground">Nenhuma avaliação antropométrica registrada.</p>
-                      </div>
-                    ) : (
-                      <div className="space-y-3">
-                        {anthroAssessments.map((assessment) => (
-                          <Card key={assessment.id} className="border border-border/60">
-                            <CardContent className="p-4">
-                              <div className="flex items-start justify-between gap-3">
-                                <div className="flex-1 min-w-0">
-                                  <p className="font-semibold text-sm">{assessment.title}</p>
-                                  <p className="text-xs text-muted-foreground mt-0.5">
-                                    {assessment.createdAt ? new Date(assessment.createdAt).toLocaleDateString("pt-BR") : ""}
-                                  </p>
-                                  <div className="mt-2 grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                                    {assessment.circumWaist && <span>Cintura: {assessment.circumWaist} cm</span>}
-                                    {assessment.circumHip && <span>Quadril: {assessment.circumHip} cm</span>}
-                                    {assessment.circumAbdomen && <span>Abdômen: {assessment.circumAbdomen} cm</span>}
-                                  </div>
-                                </div>
-                                <div className="flex gap-1 flex-shrink-0">
-                                  <Button size="sm" variant="outline" title="Visualizar" onClick={() => { setAnthroToView(assessment); setIsAnthroViewOpen(true); }}>
-                                    <Eye className="h-3.5 w-3.5" />
-                                  </Button>
-                                  <Button size="sm" variant="outline" title="Editar" onClick={() => { setAnthroToEdit(assessment); openAnthroDialog(assessment); }}>
-                                    <Pencil className="h-3.5 w-3.5" />
-                                  </Button>
-                                  <Button size="sm" variant="outline" title="Duplicar" onClick={() => { openAnthroDialog({ ...assessment, title: `${assessment.title} (cópia)` }); setAnthroToEdit(null); }}>
-                                    <Copy className="h-3.5 w-3.5" />
-                                  </Button>
-                                  <AlertDialog>
-                                    <AlertDialogTrigger asChild>
-                                      <Button size="sm" variant="outline" className="text-destructive hover:text-destructive" title="Excluir">
-                                        <Trash2 className="h-3.5 w-3.5" />
-                                      </Button>
-                                    </AlertDialogTrigger>
-                                    <AlertDialogContent>
-                                      <AlertDialogHeader>
-                                        <AlertDialogTitle>Excluir Avaliação</AlertDialogTitle>
-                                        <AlertDialogDescription>
-                                          Tem certeza que deseja excluir "{assessment.title}"? Esta ação não pode ser desfeita.
-                                        </AlertDialogDescription>
-                                      </AlertDialogHeader>
-                                      <AlertDialogFooter>
-                                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                        <AlertDialogAction onClick={() => deleteAnthroMutation.mutate(assessment.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                                          Excluir
-                                        </AlertDialogAction>
-                                      </AlertDialogFooter>
-                                    </AlertDialogContent>
-                                  </AlertDialog>
-                                </div>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        ))}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </TabsContent>
-            </Tabs>
-
-            <Card className="border border-border/70 bg-card shadow-sm overflow-hidden">
-              <CardHeader className="pb-4 border-b bg-muted/30">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
-                    <Users className="h-6 w-6" />
-                  </div>
-                  <CardTitle className="text-xl font-bold">Acesso do Paciente</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent className="p-6">
-                {hasAccountLinked ? (
-                  <div className="flex items-center gap-4 p-4 rounded-lg bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border border-green-200/50 dark:border-green-700/50">
-                    <div className="p-3 bg-green-100 dark:bg-green-800 rounded-full">
-                      <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-300" />
-                    </div>
-                    <div>
-                      <p className="font-semibold text-green-800 dark:text-green-200">Paciente tem acesso ao sistema</p>
-                      <p className="text-sm text-green-600 dark:text-green-300">Prescrições podem ser criadas</p>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-4 p-4 rounded-lg bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-900/20 dark:to-yellow-900/20 border border-amber-200/50 dark:border-amber-700/50">
-                      <div className="p-3 bg-amber-100 dark:bg-amber-800 rounded-full">
-                        <XCircle className="h-6 w-6 text-amber-600 dark:text-amber-300" />
-                      </div>
-                      <div>
-                        <p className="font-semibold text-amber-800 dark:text-amber-200">Paciente ainda não possui acesso</p>
-                        <p className="text-sm text-amber-600 dark:text-amber-300">Cadastro pendente no sistema</p>
-                      </div>
-                    </div>
-                    <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200/50 dark:border-blue-700/50">
-                      <div className="flex items-start gap-2">
-                        <FileText className="h-4 w-4 text-blue-600 dark:text-blue-300 mt-0.5" />
-                        <p className="text-sm text-blue-700 dark:text-blue-300">
-                          Para criar prescrições, o paciente precisa primeiro fazer o cadastro no sistema usando o link de cadastro fornecido.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Prescriptions */}
-          <div className="lg:col-span-2">
-            <Card className="border border-border/70 bg-card shadow-sm overflow-hidden">
-              <CardHeader className="pb-4 border-b bg-muted/30">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
-                      <FileText className="h-6 w-6" />
-                    </div>
-                    <CardTitle className="text-xl font-bold">Prescrições Nutricionais</CardTitle>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="p-6">
-                {prescriptionsLoading ? (
-                  <div className="text-center py-12">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-4"></div>
-                    <p className="text-gray-600 dark:text-gray-300 font-medium">Carregando prescrições...</p>
-                  </div>
-                ) : prescriptions && prescriptions.length > 0 ? (
-                  <div className="space-y-4">
-                    {prescriptions.map((prescription) => (
-                      <div key={prescription.id} className="p-4 sm:p-5 rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200/50 dark:border-blue-700/50 hover:shadow-md transition-all duration-200 transform hover:scale-[1.01] overflow-hidden">
-                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-3">
-                          <div className="flex items-center gap-3 min-w-0 flex-1">
-                            <div className="p-2 bg-blue-100 dark:bg-blue-800 rounded-lg flex-shrink-0">
-                              <FileText className="h-5 w-5 text-blue-600 dark:text-blue-300" />
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <h3 className="font-semibold text-gray-900 dark:text-white text-lg truncate" data-testid={`text-prescription-title-${prescription.id}`}>
-                                {prescription.title}
-                              </h3>
-                              <p className="text-sm text-gray-600 dark:text-gray-300">
-                                Criada em {new Date(prescription.createdAt!).toLocaleDateString('pt-BR')}
-                              </p>
-                            </div>
-                          </div>
-                          <Badge 
-                            variant={prescription.status === 'published' ? 'default' : 'secondary'}
-                            className={`${prescription.status === 'published' 
-                              ? 'bg-green-100 text-green-800 border-green-200 dark:bg-green-800 dark:text-green-100 dark:border-green-700' 
-                              : 'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600'
-                            } px-3 py-1 font-medium flex-shrink-0 self-start`}
-                            data-testid={`badge-prescription-status-${prescription.id}`}
-                          >
-                            {prescription.status === 'published' ? 'Publicado' : 'Rascunho'}
-                          </Badge>
-                        </div>
-                        {prescription.generalNotes && (
-                          <div className="mt-3 p-3 bg-white/60 dark:bg-gray-800/60 rounded-md">
-                            <p className="text-sm text-gray-700 dark:text-gray-300">{prescription.generalNotes}</p>
-                          </div>
-                        )}
-                        <div className="flex flex-wrap items-center gap-2 mt-4">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setLocation(`/prescriptions/${prescription.id}/edit`)}
-                            data-testid={`button-edit-prescription-${prescription.id}`}
-                            className="bg-blue-100 hover:bg-blue-200 text-blue-700 border border-blue-200 dark:bg-blue-800 dark:hover:bg-blue-700 dark:text-blue-200 dark:border-blue-700 transition-all duration-200 rounded-lg"
-                          >
-                            <Eye className="h-4 w-4 mr-1" />
-                            {prescription.status === 'published' ? 'Visualizar' : 'Editar'}
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => duplicatePrescriptionMutation.mutate(prescription.id)}
-                            disabled={duplicatePrescriptionMutation.isPending}
-                            data-testid={`button-duplicate-prescription-${prescription.id}`}
-                            className="bg-purple-100 hover:bg-purple-200 text-purple-700 border border-purple-200 dark:bg-purple-800 dark:hover:bg-purple-700 dark:text-purple-200 dark:border-purple-700 transition-all duration-200 rounded-lg"
-                          >
-                            <FileText className="h-4 w-4 mr-1" />
-                            {duplicatePrescriptionMutation.isPending ? 'Duplicando...' : 'Duplicar'}
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDownloadPrescription(prescription.id)}
-                            data-testid={`button-download-prescription-${prescription.id}`}
-                            className="bg-green-100 hover:bg-green-200 text-green-700 border border-green-200 dark:bg-green-800 dark:hover:bg-green-700 dark:text-green-200 dark:border-green-700 transition-all duration-200 rounded-lg"
-                          >
-                            <FileDown className="h-4 w-4 mr-1" />
-                            Baixar
-                          </Button>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 dark:bg-red-900/30 dark:hover:bg-red-900/50 dark:text-red-300 dark:border-red-700/50 transition-all duration-200 rounded-lg"
-                                data-testid={`button-delete-prescription-${prescription.id}`}
-                              >
-                                <Trash2 className="h-4 w-4 mr-1" />
-                                Excluir
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Tem certeza de que deseja excluir a prescrição "{prescription.title}"?
-                                  <div className="mt-2 text-red-600">
-                                    Esta ação não pode ser desfeita.
-                                  </div>
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={() => handleDeletePrescription(prescription.id)}
-                                  disabled={deletePrescriptionMutation.isPending}
-                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                >
-                                  {deletePrescriptionMutation.isPending ? "Excluindo..." : "Excluir"}
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-12">
-                    <div className="p-4 bg-gray-100 dark:bg-gray-800 rounded-full w-20 h-20 mx-auto mb-4 flex items-center justify-center">
-                      <FileText className="h-10 w-10 text-gray-400 dark:text-gray-500" />
-                    </div>
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Nenhuma prescrição criada</h3>
-                    <p className="text-gray-600 dark:text-gray-300 mb-6 max-w-md mx-auto">
-                      Comece criando a primeira prescrição nutricional para este paciente.
-                    </p>
-                    {hasAccountLinked ? (
-                      <Button
-                        onClick={() => createPrescriptionMutation.mutate()}
-                        disabled={patientLoading || createPrescriptionMutation.isPending}
-                        data-testid="button-create-first-prescription"
-                        className="font-medium px-6 py-3 rounded-lg"
-                      >
-                        <Plus className="h-5 w-5 mr-2" />
-                        {createPrescriptionMutation.isPending ? "Criando..." : "Criar Primeira Prescrição"}
-                      </Button>
-                    ) : (
-                      <div className="p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200/50 dark:border-amber-700/50 max-w-md mx-auto">
-                        <div className="flex items-center gap-2 text-amber-700 dark:text-amber-300">
-                          <XCircle className="h-5 w-5" />
-                          <p className="font-medium">O paciente precisa ter um login para criar prescrições.</p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-
-        {/* Food Diary Section */}
-        <div className="mt-8">
-          <Card className="border border-border/70 bg-card shadow-sm overflow-hidden">
-            <CardHeader className="pb-4 border-b bg-muted/30">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
-                  <Camera className="h-6 w-6" />
-                </div>
-                <CardTitle className="text-xl font-bold">Diário Alimentar</CardTitle>
+          {/* ── Sidebar (desktop) ── */}
+          <aside className="hidden lg:flex flex-col w-64 flex-shrink-0">
+            <nav className="bg-card rounded-2xl border border-border/60 shadow-sm overflow-hidden sticky top-6">
+              <div className="px-4 py-3 border-b border-border/50 bg-muted/30">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Seções</p>
               </div>
-            </CardHeader>
-            <CardContent className="p-6">
-              {foodDiaryLoading ? (
-                <div className="text-center py-12">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600 mx-auto mb-4"></div>
-                  <p className="text-gray-600 dark:text-gray-300 font-medium">Carregando diário alimentar...</p>
-                </div>
-              ) : foodDiaryEntries && foodDiaryEntries.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {foodDiaryEntries.map((entry) => {
-                    // Find the meal name from the prescription meals
-                    const mealName = entry.prescriptionMeals?.find((meal: MealData) => meal.id === entry.mealId)?.name || `Refeição ${entry.mealId}`;
-                    
-                    return (
-                      <div key={entry.id} className="bg-gradient-to-br from-white to-orange-50 dark:from-gray-800 dark:to-orange-900/10 rounded-lg border border-orange-200/50 dark:border-orange-700/50 overflow-hidden shadow-md hover:shadow-lg transition-all duration-200">
-                        {entry.imageUrl && (
-                          <div className="aspect-square relative group">
-                            <img 
-                              src={entry.imageUrl} 
-                              alt="Foto da refeição" 
-                              className="w-full h-full object-cover"
-                              onError={(e) => {
-                                const img = e.target as HTMLImageElement;
-                                img.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2Y5ZmFmYiIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IiM2YjcyODAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5JbWFnZW0gbsOjbyBlbmNvbnRyYWRhPC90ZXh0Pjwvc3ZnPg==';
-                              }}
-                            />
-                            <Button
-                              variant="destructive"
-                              size="icon"
-                              className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                              onClick={() => setEntryToDelete(entry.id)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                            <div className="absolute top-2 left-2 bg-black/50 text-white text-xs px-2 py-1 rounded backdrop-blur-sm">
-                              {formatDate(entry.date)}
-                            </div>
-                          </div>
-                        )}
-                        
-                        {/* Visual header for mood-only entries */}
-                        {!entry.imageUrl && (entry.moodBefore || entry.moodAfter) && (
-                          <div className="bg-gradient-to-r from-purple-100 to-blue-100 dark:from-purple-900/30 dark:to-blue-900/30 p-4 border-b border-purple-200/50 dark:border-purple-700/50">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <Smile className="h-5 w-5 text-purple-600 dark:text-purple-300" />
-                                <span className="text-sm font-medium text-purple-800 dark:text-purple-200">Registro de Humor</span>
-                              </div>
-                              <div className="text-xs text-purple-600 dark:text-purple-400">
-                                {formatDate(entry.date)}
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                        <div className="p-4">
-                          <div className="flex items-center gap-2 mb-2">
-                            <Image className="h-4 w-4 text-orange-600 dark:text-orange-300" />
-                            <span className="font-semibold text-gray-900 dark:text-white">{mealName}</span>
-                          </div>
-                          {entry.prescriptionTitle && (
-                            <div className="mb-2">
-                              <span className="text-xs text-gray-500 dark:text-gray-400">
-                                Prescrição: {entry.prescriptionTitle}
-                              </span>
-                            </div>
-                          )}
-                          
-                          {/* Mood Information */}
-                          {(entry.moodBefore || entry.moodAfter) && (
-                            <div className="mb-3 p-3 rounded-lg bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 border border-blue-200/50 dark:border-blue-700/50">
-                              <div className="flex items-center gap-2 mb-2">
-                                <Smile className="h-4 w-4 text-purple-600 dark:text-purple-300" />
-                                <span className="text-sm font-medium text-gray-700 dark:text-gray-200">Humor</span>
-                              </div>
-                              <div className="space-y-1 text-sm">
-                                {entry.moodBefore && (
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-xs text-gray-500 dark:text-gray-400">Antes:</span>
-                                    <span className="text-lg">{getMoodEmoji(entry.moodBefore)}</span>
-                                    <span className="text-gray-700 dark:text-gray-300">{getMoodLabel(entry.moodBefore)}</span>
-                                  </div>
-                                )}
-                                {entry.moodAfter && (
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-xs text-gray-500 dark:text-gray-400">Depois:</span>
-                                    <span className="text-lg">{getMoodEmoji(entry.moodAfter)}</span>
-                                    <span className="text-gray-700 dark:text-gray-300">{getMoodLabel(entry.moodAfter)}</span>
-                                  </div>
-                                )}
-                              </div>
-                              {entry.moodNotes && (
-                                <div className="mt-2 text-xs text-gray-600 dark:text-gray-400">
-                                  <span className="font-medium">Observações do humor:</span> {entry.moodNotes}
-                                </div>
-                              )}
-                            </div>
-                          )}
-
-                          {entry.notes && (
-                            <div className="mt-2">
-                              <p className="text-sm text-gray-600 dark:text-gray-300">
-                                <span className="font-medium">Observações da refeição:</span> {entry.notes}
-                              </p>
-                            </div>
-                          )}
-                          <div className="mt-3 text-xs text-gray-500 dark:text-gray-400">
-                            Enviado em {new Date(entry.createdAt!).toLocaleDateString('pt-BR')} às {new Date(entry.createdAt!).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                          </div>
-                        </div>
+              <div className="py-2">
+                {NAV_ITEMS.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = activeSection === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => setActiveSection(item.id)}
+                      className={cn(
+                        "w-full flex items-center gap-3 px-4 py-3 text-left transition-all duration-150 group",
+                        isActive
+                          ? "bg-violet-50 border-r-2 border-violet-600"
+                          : "hover:bg-muted/50 border-r-2 border-transparent"
+                      )}
+                    >
+                      <div className={cn("p-1.5 rounded-lg flex-shrink-0 transition-colors", isActive ? "bg-violet-100" : "bg-muted/50 group-hover:bg-muted")}>
+                        <Icon className={cn("h-4 w-4", isActive ? "text-violet-600" : "text-muted-foreground")} />
                       </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="text-center py-12">
-                  <div className="p-4 bg-gray-100 dark:bg-gray-800 rounded-full w-20 h-20 mx-auto mb-4 flex items-center justify-center">
-                    <Camera className="h-10 w-10 text-gray-400 dark:text-gray-500" />
-                  </div>
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Nenhum registro no diário</h3>
-                  <p className="text-gray-600 dark:text-gray-300 mb-6 max-w-md mx-auto">
-                    O paciente ainda não enviou fotos ou registros de humor para as refeições. Os dados aparecerão aqui quando forem enviados.
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                      <div className="min-w-0 flex-1">
+                        <p className={cn("text-sm font-medium leading-tight", isActive ? "text-violet-700" : "text-foreground")}>{item.label}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5 leading-tight">{item.description}</p>
+                      </div>
+                      {isActive && <ChevronRight className="h-4 w-4 text-violet-500 flex-shrink-0" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </nav>
+          </aside>
+
+          {/* ── Mobile: bottom nav bar ── */}
+          <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border/60 shadow-lg">
+            <div className="flex overflow-x-auto scrollbar-hide">
+              {NAV_ITEMS.map((item) => {
+                const Icon = item.icon;
+                const isActive = activeSection === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => setActiveSection(item.id)}
+                    className={cn(
+                      "flex flex-col items-center gap-1 px-3 py-2 flex-shrink-0 min-w-[64px] transition-colors",
+                      isActive ? "text-violet-600" : "text-muted-foreground"
+                    )}
+                  >
+                    <Icon className="h-5 w-5" />
+                    <span className="text-[10px] font-medium leading-tight text-center">{item.label.split(" ")[0]}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* ── Main Content ── */}
+          <main className="flex-1 min-w-0 pb-20 lg:pb-0">
+            {sectionMap[activeSection]?.()}
+          </main>
         </div>
-      </main>
+      </div>
 
-      {/* AlertDialog for photo deletion confirmation */}
-      <AlertDialog
-        open={!!entryToDelete}
-        onOpenChange={(isOpen) => !isOpen && setEntryToDelete(null)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tem certeza de que deseja excluir esta entrada do diário alimentar? Tanto a foto quanto todas as informações associadas serão removidas permanentemente. Esta ação não pode ser desfeita.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                if (entryToDelete) {
-                  deletePhotoMutation.mutate(entryToDelete);
-                }
-              }}
-              disabled={deletePhotoMutation.isPending}
-            >
-              {deletePhotoMutation.isPending ? 'Excluindo...' : 'Excluir'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* ─── Dialogs ─────────────────────────────────────────────────────────── */}
 
-      {/* Dialog for showing follow-up link */}
+      {/* Follow-up link */}
       <Dialog open={!!followUpLink} onOpenChange={() => setFollowUpLink(null)}>
         <DialogContent>
           <DialogHeader>
@@ -1795,23 +1311,34 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
         </DialogContent>
       </Dialog>
 
-      {/* Create Subscription Dialog */}
+      {/* Delete diary entry */}
+      <AlertDialog open={!!entryToDelete} onOpenChange={(open) => !open && setEntryToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+            <AlertDialogDescription>Tem certeza de que deseja excluir esta entrada do diário alimentar? Tanto a foto quanto todas as informações associadas serão removidas permanentemente. Esta ação não pode ser desfeita.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { if (entryToDelete) deletePhotoMutation.mutate(entryToDelete); }} disabled={deletePhotoMutation.isPending}>
+              {deletePhotoMutation.isPending ? "Excluindo..." : "Excluir"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Create Subscription */}
       <Dialog open={isCreateSubscriptionDialogOpen} onOpenChange={setIsCreateSubscriptionDialogOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Criar Nova Assinatura</DialogTitle>
-            <DialogDescription>
-              Crie uma nova assinatura para o paciente {patient?.name}
-            </DialogDescription>
+            <DialogDescription>Crie uma nova assinatura para o paciente {patient?.name}</DialogDescription>
           </DialogHeader>
-          
           <div className="space-y-4">
             <div>
-              <Label htmlFor="planType">Tipo de Plano</Label>
-              <Select value={newSubscriptionPlanType} onValueChange={(value) => setNewSubscriptionPlanType(value as Subscription['planType'])}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o tipo de plano" />
-                </SelectTrigger>
+              <Label>Tipo de Plano</Label>
+              <Select value={newSubscriptionPlanType} onValueChange={(v) => setNewSubscriptionPlanType(v as Subscription["planType"])}>
+                <SelectTrigger><SelectValue placeholder="Selecione o tipo de plano" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="free">Gratuito</SelectItem>
                   <SelectItem value="monthly">Mensal</SelectItem>
@@ -1819,13 +1346,10 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                 </SelectContent>
               </Select>
             </div>
-            
             <div>
-              <Label htmlFor="status">Status Inicial</Label>
-              <Select value={newSubscriptionStatus} onValueChange={(value) => setNewSubscriptionStatus(value as Subscription['status'])}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o status" />
-                </SelectTrigger>
+              <Label>Status Inicial</Label>
+              <Select value={newSubscriptionStatus} onValueChange={(v) => setNewSubscriptionStatus(v as Subscription["status"])}>
+                <SelectTrigger><SelectValue placeholder="Selecione o status" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="active">Ativo</SelectItem>
                   <SelectItem value="pending_payment">Aguardando Pagamento</SelectItem>
@@ -1833,60 +1357,35 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                 </SelectContent>
               </Select>
             </div>
-
-            {/* Expiration date field for all plan types */}
             <div>
-              <Label htmlFor="expiresAt">Data de Expiração</Label>
-              <Input
-                type="date"
-                value={newSubscriptionExpiresAt}
-                onChange={(e) => setNewSubscriptionExpiresAt(e.target.value)}
-                placeholder="Defina uma data de expiração personalizada"
-              />
+              <Label>Data de Expiração</Label>
+              <Input type="date" value={newSubscriptionExpiresAt} onChange={(e) => setNewSubscriptionExpiresAt(e.target.value)} />
               <p className="text-xs text-gray-500 mt-1">
-                {newSubscriptionPlanType === 'free' 
-                  ? 'Para planos gratuitos, deixe em branco para "sem expiração" ou defina uma data para controle interno'
-                  : `Se não informada, será calculada automaticamente: ${newSubscriptionPlanType === 'monthly' ? '1 mês' : '3 meses'} a partir de hoje`
-                }
+                {newSubscriptionPlanType === "free" ? "Deixe em branco para sem expiração" : `Se não informada, será calculada automaticamente: ${newSubscriptionPlanType === "monthly" ? "1 mês" : "3 meses"} a partir de hoje`}
               </p>
             </div>
           </div>
-
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsCreateSubscriptionDialogOpen(false)}>
-              Cancelar
-            </Button>
-            <Button 
-              onClick={() => createSubscriptionMutation.mutate({ 
-                planType: newSubscriptionPlanType, 
-                status: newSubscriptionStatus,
-                expiresAt: newSubscriptionExpiresAt || undefined
-              })}
-              disabled={createSubscriptionMutation.isPending}
-            >
+            <Button variant="outline" onClick={() => setIsCreateSubscriptionDialogOpen(false)}>Cancelar</Button>
+            <Button onClick={() => createSubscriptionMutation.mutate({ planType: newSubscriptionPlanType, status: newSubscriptionStatus, expiresAt: newSubscriptionExpiresAt || undefined })} disabled={createSubscriptionMutation.isPending}>
               {createSubscriptionMutation.isPending ? "Criando..." : "Criar Assinatura"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Edit Subscription Dialog */}
+      {/* Edit Subscription */}
       <Dialog open={isEditSubscriptionDialogOpen} onOpenChange={setIsEditSubscriptionDialogOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Editar Assinatura</DialogTitle>
-            <DialogDescription>
-              Edite a assinatura do paciente {patient?.name}
-            </DialogDescription>
+            <DialogDescription>Edite a assinatura do paciente {patient?.name}</DialogDescription>
           </DialogHeader>
-          
           <div className="space-y-4">
             <div>
-              <Label htmlFor="planType">Tipo de Plano</Label>
-              <Select value={newSubscriptionPlanType} onValueChange={(value) => setNewSubscriptionPlanType(value as Subscription['planType'])}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o tipo de plano" />
-                </SelectTrigger>
+              <Label>Tipo de Plano</Label>
+              <Select value={newSubscriptionPlanType} onValueChange={(v) => setNewSubscriptionPlanType(v as Subscription["planType"])}>
+                <SelectTrigger><SelectValue placeholder="Selecione o tipo de plano" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="free">Gratuito</SelectItem>
                   <SelectItem value="monthly">Mensal</SelectItem>
@@ -1894,13 +1393,10 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                 </SelectContent>
               </Select>
             </div>
-            
             <div>
-              <Label htmlFor="status">Status</Label>
-              <Select value={newSubscriptionStatus} onValueChange={(value) => setNewSubscriptionStatus(value as Subscription['status'])}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o status" />
-                </SelectTrigger>
+              <Label>Status</Label>
+              <Select value={newSubscriptionStatus} onValueChange={(v) => setNewSubscriptionStatus(v as Subscription["status"])}>
+                <SelectTrigger><SelectValue placeholder="Selecione o status" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="active">Ativo</SelectItem>
                   <SelectItem value="pending_payment">Aguardando Pagamento</SelectItem>
@@ -1910,49 +1406,24 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                 </SelectContent>
               </Select>
             </div>
-
-            {/* Expiration date field for all plan types */}
             <div>
-              <Label htmlFor="expiresAt">Data de Expiração</Label>
-              <Input
-                type="date"
-                value={newSubscriptionExpiresAt}
-                onChange={(e) => setNewSubscriptionExpiresAt(e.target.value)}
-                placeholder="Defina uma data de expiração personalizada"
-              />
+              <Label>Data de Expiração</Label>
+              <Input type="date" value={newSubscriptionExpiresAt} onChange={(e) => setNewSubscriptionExpiresAt(e.target.value)} />
               <p className="text-xs text-gray-500 mt-1">
-                {newSubscriptionPlanType === 'free' 
-                  ? 'Para planos gratuitos, deixe em branco para "sem expiração" ou defina uma data para controle interno'
-                  : 'Defina a data de expiração do plano'
-                }
+                {newSubscriptionPlanType === "free" ? "Deixe em branco para sem expiração" : "Defina a data de expiração do plano"}
               </p>
             </div>
           </div>
-
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditSubscriptionDialogOpen(false)}>
-              Cancelar
-            </Button>
-            <Button 
-              onClick={() => {
-                if (currentSubscription) {
-                  editSubscriptionMutation.mutate({ 
-                    subscriptionId: currentSubscription.id,
-                    planType: newSubscriptionPlanType, 
-                    status: newSubscriptionStatus,
-                    expiresAt: newSubscriptionExpiresAt || undefined
-                  });
-                }
-              }}
-              disabled={editSubscriptionMutation.isPending}
-            >
+            <Button variant="outline" onClick={() => setIsEditSubscriptionDialogOpen(false)}>Cancelar</Button>
+            <Button onClick={() => { if (currentSubscription) editSubscriptionMutation.mutate({ subscriptionId: currentSubscription.id, planType: newSubscriptionPlanType, status: newSubscriptionStatus, expiresAt: newSubscriptionExpiresAt || undefined }); }} disabled={editSubscriptionMutation.isPending}>
               {editSubscriptionMutation.isPending ? "Salvando..." : "Salvar Alterações"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Anthropometry View Modal (Read-only) */}
+      {/* Anthropometry View Modal */}
       <Dialog open={isAnthroViewOpen} onOpenChange={(open) => { setIsAnthroViewOpen(open); if (!open) setAnthroToView(null); }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -1979,7 +1450,7 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                     { label: "Braço n. dom. contraído", value: anthroToView.circumNonDominantArmContracted },
                     { label: "Coxa proximal n. dom.", value: anthroToView.circumNonDominantProximalThigh },
                     { label: "Panturrilha n. dom.", value: anthroToView.circumNonDominantCalf },
-                  ].filter(item => item.value != null).map(item => (
+                  ].filter((item) => item.value != null).map((item) => (
                     <div key={item.label} className="rounded-lg border border-border/60 bg-muted/30 p-3">
                       <p className="text-xs text-muted-foreground mb-1">{item.label}</p>
                       <p className="text-sm font-semibold">{item.value} <span className="text-xs font-normal text-muted-foreground">cm</span></p>
@@ -1995,7 +1466,7 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                     { label: "Tricipital", value: anthroToView.foldTriceps },
                     { label: "Subescapular", value: anthroToView.foldSubscapular },
                     { label: "Suprailíaca", value: anthroToView.foldSuprailiac },
-                  ].filter(item => item.value != null).map(item => (
+                  ].filter((item) => item.value != null).map((item) => (
                     <div key={item.label} className="rounded-lg border border-border/60 bg-muted/30 p-3">
                       <p className="text-xs text-muted-foreground mb-1">{item.label}</p>
                       <p className="text-sm font-semibold">{item.value} <span className="text-xs font-normal text-muted-foreground">mm</span></p>
@@ -2008,15 +1479,14 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setIsAnthroViewOpen(false)}>Fechar</Button>
             <Button onClick={() => { setIsAnthroViewOpen(false); if (anthroToView) { setAnthroToEdit(anthroToView); openAnthroDialog(anthroToView); } }}>
-              <Pencil className="h-4 w-4 mr-2" />
-              Editar Avaliação
+              <Pencil className="h-4 w-4 mr-2" />Editar Avaliação
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Anthropometry Dialog */}
-      <Dialog open={isAnthroDialogOpen} onOpenChange={(open) => { setIsAnthroDialogOpen(open); if (!open) { setAnthroToEdit(null); } }}>
+      {/* Anthropometry Create/Edit Dialog */}
+      <Dialog open={isAnthroDialogOpen} onOpenChange={(open) => { setIsAnthroDialogOpen(open); if (!open) setAnthroToEdit(null); }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{anthroToEdit ? "Editar Avaliação Antropométrica" : "Nova Avaliação Antropométrica"}</DialogTitle>
@@ -2025,7 +1495,7 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
           <div className="space-y-6 py-2">
             <div className="space-y-2">
               <Label htmlFor="anthro-title">Título da Avaliação</Label>
-              <Input id="anthro-title" placeholder="Ex: Avaliação Março/2026" value={anthroForm.title} onChange={(e) => setAnthroForm(f => ({ ...f, title: e.target.value }))} />
+              <Input id="anthro-title" placeholder="Ex: Avaliação Março/2026" value={anthroForm.title} onChange={(e) => setAnthroForm((f) => ({ ...f, title: e.target.value }))} />
             </div>
             <div>
               <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Circunferências Corporais (cm)</h3>
@@ -2043,7 +1513,7 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                 ].map(({ key, label }) => (
                   <div key={key} className="space-y-1">
                     <Label htmlFor={`anthro-${key}`} className="text-xs">{label}</Label>
-                    <Input id={`anthro-${key}`} type="number" step="0.1" placeholder="0.0" value={(anthroForm as any)[key]} onChange={(e) => setAnthroForm(f => ({ ...f, [key]: e.target.value }))} />
+                    <Input id={`anthro-${key}`} type="number" step="0.1" placeholder="0.0" value={(anthroForm as any)[key]} onChange={(e) => setAnthroForm((f) => ({ ...f, [key]: e.target.value }))} />
                   </div>
                 ))}
               </div>
@@ -2059,7 +1529,7 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                 ].map(({ key, label }) => (
                   <div key={key} className="space-y-1">
                     <Label htmlFor={`anthro-${key}`} className="text-xs">{label}</Label>
-                    <Input id={`anthro-${key}`} type="number" step="0.1" placeholder="0.0" value={(anthroForm as any)[key]} onChange={(e) => setAnthroForm(f => ({ ...f, [key]: e.target.value }))} />
+                    <Input id={`anthro-${key}`} type="number" step="0.1" placeholder="0.0" value={(anthroForm as any)[key]} onChange={(e) => setAnthroForm((f) => ({ ...f, [key]: e.target.value }))} />
                   </div>
                 ))}
               </div>
@@ -2073,6 +1543,62 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+// ─── Shared Sub-components ────────────────────────────────────────────────────
+
+function SectionHeader({ icon, title, subtitle }: { icon: React.ReactNode; title: string; subtitle?: string }) {
+  return (
+    <div className="flex items-center gap-3 px-6 py-4 border-b border-border/50 bg-muted/20">
+      <div className="p-2 bg-violet-100 rounded-lg">{icon && <span className="text-violet-600">{icon}</span>}</div>
+      <div>
+        <h3 className="font-bold text-foreground">{title}</h3>
+        {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
+      </div>
+    </div>
+  );
+}
+
+function InfoRow({ icon, label, value, testId }: { icon: React.ReactNode; label: string; value: string; testId?: string }) {
+  return (
+    <div className="flex items-start gap-3 p-3 rounded-xl bg-muted/30 border border-border/40">
+      <div className="p-1.5 bg-white rounded-lg shadow-sm flex-shrink-0 mt-0.5">{icon}</div>
+      <div className="min-w-0 flex-1">
+        <p className="text-xs text-muted-foreground font-medium">{label}</p>
+        <p className="text-sm font-semibold text-foreground mt-0.5" data-testid={testId}>{value}</p>
+      </div>
+    </div>
+  );
+}
+
+function TagsRow({ label, tags, color }: { label: string; tags: string[]; color: "emerald" | "red" | "orange" }) {
+  const colorMap = {
+    emerald: { bg: "bg-emerald-50 border-emerald-100", tagBg: "bg-emerald-100 text-emerald-700" },
+    red: { bg: "bg-red-50 border-red-100", tagBg: "bg-red-100 text-red-700" },
+    orange: { bg: "bg-orange-50 border-orange-100", tagBg: "bg-orange-100 text-orange-700" },
+  };
+  const c = colorMap[color];
+  return (
+    <div className={cn("p-3 rounded-xl border", c.bg)}>
+      <p className="text-xs font-medium text-muted-foreground mb-2">{label}</p>
+      <div className="flex flex-wrap gap-1.5">
+        {tags.map((tag, i) => (
+          <span key={i} className={cn("px-2 py-0.5 text-xs rounded-full font-medium", c.tagBg)}>{tag}</span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function EmptyState({ icon, title, description, action }: { icon: React.ReactNode; title: string; description: string; action?: React.ReactNode }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-12 text-center">
+      <div className="p-4 bg-muted/50 rounded-full w-20 h-20 flex items-center justify-center text-muted-foreground/50 mb-4">{icon}</div>
+      <h3 className="text-base font-semibold text-foreground mb-1">{title}</h3>
+      <p className="text-sm text-muted-foreground max-w-xs mb-4">{description}</p>
+      {action}
     </div>
   );
 }
