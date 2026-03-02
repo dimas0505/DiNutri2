@@ -81,6 +81,18 @@ async function ensureRoutesRegistered() {
       console.error("[DB] Failed to ensure patient_documents table:", err);
     }
 
+    // Add weight_kg column to anthropometric_assessments if it doesn't exist.
+    // This is idempotent — safe to run on every cold start.
+    try {
+      await db.execute(sql`
+        ALTER TABLE anthropometric_assessments
+        ADD COLUMN IF NOT EXISTS weight_kg REAL
+      `);
+      console.log("[DB] anthropometric_assessments.weight_kg column ensured.");
+    } catch (err) {
+      console.error("[DB] Failed to ensure weight_kg column:", err);
+    }
+
     await setupRoutes(app);
     
     // Middleware de tratamento de erros

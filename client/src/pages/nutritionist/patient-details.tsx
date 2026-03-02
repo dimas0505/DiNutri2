@@ -87,6 +87,7 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
   const [anthroToView, setAnthroToView] = useState<AnthropometricAssessment | null>(null);
   const [anthroForm, setAnthroForm] = useState({
     title: "",
+    weightKg: "",
     circumNeck: "", circumChest: "", circumWaist: "",
     circumAbdomen: "", circumHip: "",
     circumNonDominantArmRelaxed: "", circumNonDominantArmContracted: "",
@@ -427,6 +428,7 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
     if (prefill) {
       setAnthroForm({
         title: prefill.title || "",
+        weightKg: prefill.weightKg?.toString() ?? "",
         circumNeck: prefill.circumNeck?.toString() ?? "",
         circumChest: prefill.circumChest?.toString() ?? "",
         circumWaist: prefill.circumWaist?.toString() ?? "",
@@ -443,7 +445,7 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
       });
       setAnthroToEdit(prefill);
     } else {
-      setAnthroForm({ title: "", circumNeck: "", circumChest: "", circumWaist: "", circumAbdomen: "", circumHip: "", circumNonDominantArmRelaxed: "", circumNonDominantArmContracted: "", circumNonDominantProximalThigh: "", circumNonDominantCalf: "", foldBiceps: "", foldTriceps: "", foldSubscapular: "", foldSuprailiac: "" });
+      setAnthroForm({ title: "", weightKg: "", circumNeck: "", circumChest: "", circumWaist: "", circumAbdomen: "", circumHip: "", circumNonDominantArmRelaxed: "", circumNonDominantArmContracted: "", circumNonDominantProximalThigh: "", circumNonDominantCalf: "", foldBiceps: "", foldTriceps: "", foldSubscapular: "", foldSuprailiac: "" });
       setAnthroToEdit(null);
     }
     setIsAnthroDialogOpen(true);
@@ -454,6 +456,7 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
     const data = {
       patientId: params.id,
       title: anthroForm.title,
+      weightKg: toNum(anthroForm.weightKg),
       circumNeck: toNum(anthroForm.circumNeck),
       circumChest: toNum(anthroForm.circumChest),
       circumWaist: toNum(anthroForm.circumWaist),
@@ -566,9 +569,28 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
               {patient.heightCm && (
                 <InfoRow icon={<Ruler className="h-4 w-4 text-indigo-500" />} label="Altura" value={`${patient.heightCm} cm`} testId="text-patient-height" />
               )}
-              {patient.weightKg && (
-                <InfoRow icon={<Weight className="h-4 w-4 text-blue-500" />} label="Peso" value={`${patient.weightKg} kg`} testId="text-patient-weight" />
-              )}
+              {(() => {
+                // Espelha o peso da última avaliação antropométrica; usa o cadastral como fallback
+                const latestWeight = anthroAssessments && anthroAssessments.length > 0
+                  ? anthroAssessments[0].weightKg
+                  : null;
+                const displayWeight = latestWeight ?? (patient.weightKg ? parseFloat(patient.weightKg) : null);
+                const isFromAssessment = latestWeight != null;
+                return displayWeight != null ? (
+                  <div className="flex items-center gap-3 p-3 rounded-xl border border-border/60 bg-muted/30">
+                    <div className="p-2 bg-fuchsia-100 rounded-lg">
+                      <Weight className="h-4 w-4 text-fuchsia-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs text-muted-foreground">Peso</p>
+                      <p className="text-sm font-semibold">{displayWeight} kg</p>
+                    </div>
+                    {isFromAssessment && (
+                      <span className="text-xs text-violet-500 bg-violet-50 border border-violet-200 px-2 py-0.5 rounded-full whitespace-nowrap">da última avaliação</span>
+                    )}
+                  </div>
+                ) : null;
+              })()}
             </div>
             {patient.notes && (
               <div className="mt-4 p-4 rounded-xl bg-muted/40 border border-border/50">
@@ -795,6 +817,7 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                         {assessment.createdAt ? formatDate(assessment.createdAt.toString()) : ""}
                       </p>
                       <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                        {assessment.weightKg != null && <span className="text-violet-600 font-semibold">Peso: <strong>{assessment.weightKg} kg</strong></span>}
                         {assessment.circumWaist && <span>Cintura: <strong>{assessment.circumWaist} cm</strong></span>}
                         {assessment.circumHip && <span>Quadril: <strong>{assessment.circumHip} cm</strong></span>}
                         {assessment.circumAbdomen && <span>Abdômen: <strong>{assessment.circumAbdomen} cm</strong></span>}
@@ -1437,6 +1460,17 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
           </DialogHeader>
           {anthroToView && (
             <div className="space-y-6 py-2">
+              {anthroToView.weightKg != null && (
+                <div className="flex items-center gap-4 p-4 rounded-xl border-2 border-violet-200 bg-violet-50/50">
+                  <div className="p-3 bg-violet-100 rounded-full">
+                    <Weight className="h-5 w-5 text-violet-600" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-violet-500 font-medium uppercase tracking-wide">Peso registrado</p>
+                    <p className="text-2xl font-bold text-violet-700">{anthroToView.weightKg} <span className="text-sm font-normal text-violet-400">kg</span></p>
+                  </div>
+                </div>
+              )}
               <div>
                 <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Circunferências Corporais</h3>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -1490,12 +1524,36 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{anthroToEdit ? "Editar Avaliação Antropométrica" : "Nova Avaliação Antropométrica"}</DialogTitle>
-            <DialogDescription>Preencha os campos de circunferências e dobras cutâneas.</DialogDescription>
+            <DialogDescription>Preencha o peso, circunferências e dobras cutâneas desta avaliação.</DialogDescription>
           </DialogHeader>
           <div className="space-y-6 py-2">
             <div className="space-y-2">
               <Label htmlFor="anthro-title">Título da Avaliação</Label>
               <Input id="anthro-title" placeholder="Ex: Avaliação Março/2026" value={anthroForm.title} onChange={(e) => setAnthroForm((f) => ({ ...f, title: e.target.value }))} />
+            </div>
+            <div className="p-4 rounded-xl border-2 border-violet-200 bg-violet-50/50">
+              <h3 className="text-sm font-semibold text-violet-700 uppercase tracking-wide mb-3 flex items-center gap-2">
+                <Weight className="h-4 w-4" /> Peso Corporal
+              </h3>
+              <div className="flex items-center gap-3">
+                <div className="flex-1 space-y-1">
+                  <Label htmlFor="anthro-weightKg" className="text-xs">Peso (kg)</Label>
+                  <Input
+                    id="anthro-weightKg"
+                    type="number"
+                    step="0.1"
+                    placeholder="Ex: 63.5"
+                    value={anthroForm.weightKg}
+                    onChange={(e) => setAnthroForm((f) => ({ ...f, weightKg: e.target.value }))}
+                    className="text-lg font-semibold"
+                  />
+                </div>
+                <div className="text-sm text-muted-foreground pt-5">
+                  <span className="text-2xl font-bold text-violet-600">{anthroForm.weightKg || "—"}</span>
+                  <span className="ml-1 text-violet-400">kg</span>
+                </div>
+              </div>
+              <p className="text-xs text-violet-500 mt-2">O peso registrado aqui será usado para acompanhar a evolução do paciente ao longo das avaliações.</p>
             </div>
             <div>
               <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Circunferências Corporais (cm)</h3>
