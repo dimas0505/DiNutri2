@@ -129,10 +129,10 @@ export default function PatientProfilePage() {
 
               {/* Informações principais */}
               <div className="flex-1 min-w-0">
-                <p className="text-white font-semibold text-base leading-tight truncate">
+                <p className="text-white font-semibold text-base leading-tight break-words">
                   {patient.name || "Paciente"}
                 </p>
-                <p className="text-white/75 text-xs mt-0.5 truncate">
+                <p className="text-white/75 text-xs mt-0.5 break-all">
                   {patient.email || ""}
                 </p>
                 {patient.goal && (
@@ -211,9 +211,9 @@ export default function PatientProfilePage() {
                         </div>
 
                         {/* Label e valor */}
-                        <div className="flex-1 min-w-0 flex items-center justify-between gap-2">
+                        <div className="flex-1 min-w-0 flex flex-col gap-0.5">
                           <span className="text-xs text-muted-foreground font-medium">{item.label}</span>
-                          <span className="text-sm font-semibold text-foreground text-right truncate max-w-[55%]">
+                          <span className="text-sm font-semibold text-foreground break-words">
                             {item.value}
                           </span>
                         </div>
@@ -238,7 +238,7 @@ export default function PatientProfilePage() {
                       <p className="text-sm font-semibold text-foreground">
                         Nenhuma avaliação disponível
                       </p>
-                      <p className="text-xs text-muted-foreground mt-1 max-w-[240px]">
+                      <p className="text-xs text-muted-foreground mt-1">
                         Seu nutricionista irá registrar suas medidas em breve.
                       </p>
                     </div>
