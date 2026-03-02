@@ -1548,33 +1548,33 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                   );
                   if (!result) return null;
                   return (
-                    <div className="mt-4 p-4 rounded-xl border-2 border-orange-200 bg-gradient-to-br from-orange-50 to-amber-50">
-                      <div className="flex items-center gap-2 mb-3">
-                        <div className="p-1.5 bg-orange-100 rounded-lg">
-                          <Percent className="h-4 w-4 text-orange-600" />
-                        </div>
-                        <p className="text-xs font-bold text-orange-800 uppercase tracking-wide">Percentual de Gordura — Durnin &amp; Womersley (1974)</p>
-                      </div>
-                      <div className="grid grid-cols-3 gap-4">
-                        <div className="text-center p-2 bg-white/60 rounded-lg">
-                          <p className="text-[10px] text-orange-600 font-medium uppercase mb-1">Soma das dobras</p>
-                          <p className="text-xl font-bold text-orange-900">{result.sumFolds}<span className="text-xs font-normal ml-0.5">mm</span></p>
-                        </div>
-                        <div className="text-center p-2 bg-white/60 rounded-lg">
-                          <p className="text-[10px] text-orange-600 font-medium uppercase mb-1">% Gordura Corporal</p>
-                          <p className="text-3xl font-bold text-orange-900">{result.bodyFatPercent}<span className="text-base font-normal ml-0.5">%</span></p>
-                        </div>
-                        <div className="text-center p-2 bg-white/60 rounded-lg">
-                          <p className="text-[10px] text-orange-600 font-medium uppercase mb-1">Classificação</p>
-                          <p className={`text-sm font-bold ${result.classificationColor}`}>{result.classification}</p>
-                        </div>
-                      </div>
-                      <p className="text-[10px] text-orange-500 mt-2 text-center">Densidade corporal: {result.density} Kg/L · Equação de Brozek (1963)</p>
-                    </div>
-
-                    {/* Análise Completa por Dobras */}
                     <>
-                    <div className="mt-4 space-y-2 text-sm">
+                      <div className="mt-4 p-4 rounded-xl border-2 border-orange-200 bg-gradient-to-br from-orange-50 to-amber-50">
+                        <div className="flex items-center gap-2 mb-3">
+                          <div className="p-1.5 bg-orange-100 rounded-lg">
+                            <Percent className="h-4 w-4 text-orange-600" />
+                          </div>
+                          <p className="text-xs font-bold text-orange-800 uppercase tracking-wide">Percentual de Gordura — Durnin &amp; Womersley (1974)</p>
+                        </div>
+                        <div className="grid grid-cols-3 gap-4">
+                          <div className="text-center p-2 bg-white/60 rounded-lg">
+                            <p className="text-[10px] text-orange-600 font-medium uppercase mb-1">Soma das dobras</p>
+                            <p className="text-xl font-bold text-orange-900">{result.sumFolds}<span className="text-xs font-normal ml-0.5">mm</span></p>
+                          </div>
+                          <div className="text-center p-2 bg-white/60 rounded-lg">
+                            <p className="text-[10px] text-orange-600 font-medium uppercase mb-1">% Gordura Corporal</p>
+                            <p className="text-3xl font-bold text-orange-900">{result.bodyFatPercent}<span className="text-base font-normal ml-0.5">%</span></p>
+                          </div>
+                          <div className="text-center p-2 bg-white/60 rounded-lg">
+                            <p className="text-[10px] text-orange-600 font-medium uppercase mb-1">Classificação</p>
+                            <p className={`text-sm font-bold ${result.classificationColor}`}>{result.classification}</p>
+                          </div>
+                        </div>
+                        <p className="text-[10px] text-orange-500 mt-2 text-center">Densidade corporal: {result.density} Kg/L · Equação de Brozek (1963)</p>
+                      </div>
+
+                      {/* Análise Completa por Dobras */}
+                      <div className="mt-4 space-y-2 text-sm">
                       <h4 className="font-semibold text-muted-foreground uppercase text-xs tracking-wide mb-3">Análises por dobras e diâmetro ósseo</h4>
                       
                       <div className="grid grid-cols-2 gap-2">
