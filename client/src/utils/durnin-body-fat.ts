@@ -27,11 +27,12 @@ interface DurninCoefficients {
  * D = c - m × log₁₀(soma das 4 dobras)
  */
 const MALE_COEFFICIENTS: Array<{ minAge: number; maxAge: number } & DurninCoefficients> = [
-  { minAge: 16, maxAge: 19, c: 1.1620, m: 0.0630 },
+  { minAge: 0, maxAge: 16, c: 1.1533, m: 0.0643 }, // < 17 anos
+  { minAge: 17, maxAge: 19, c: 1.1620, m: 0.0630 },
   { minAge: 20, maxAge: 29, c: 1.1631, m: 0.0632 },
   { minAge: 30, maxAge: 39, c: 1.1422, m: 0.0544 },
   { minAge: 40, maxAge: 49, c: 1.1620, m: 0.0700 },
-  { minAge: 50, maxAge: 72, c: 1.1715, m: 0.0779 },
+  { minAge: 50, maxAge: 120, c: 1.1715, m: 0.0779 }, // > 50 anos
 ];
 
 /**
@@ -39,11 +40,12 @@ const MALE_COEFFICIENTS: Array<{ minAge: number; maxAge: number } & DurninCoeffi
  * D = c - m × log₁₀(soma das 4 dobras)
  */
 const FEMALE_COEFFICIENTS: Array<{ minAge: number; maxAge: number } & DurninCoefficients> = [
-  { minAge: 16, maxAge: 19, c: 1.1549, m: 0.0678 },
+  { minAge: 0, maxAge: 16, c: 1.1369, m: 0.0598 }, // < 17 anos
+  { minAge: 17, maxAge: 19, c: 1.1549, m: 0.0678 },
   { minAge: 20, maxAge: 29, c: 1.1599, m: 0.0717 },
   { minAge: 30, maxAge: 39, c: 1.1423, m: 0.0632 },
   { minAge: 40, maxAge: 49, c: 1.1333, m: 0.0612 },
-  { minAge: 50, maxAge: 72, c: 1.1339, m: 0.0645 },
+  { minAge: 50, maxAge: 120, c: 1.1339, m: 0.0645 }, // > 50 anos
 ];
 
 export interface DurninResult {
@@ -92,7 +94,7 @@ export function classifyBodyFat(
  * @param subscapular Dobra subescapular (mm)
  * @param suprailiac  Dobra suprailíaca (mm)
  * @param sex        Sexo biológico: "M" (masculino) | "F" (feminino) | "Outro"
- * @param age        Idade em anos (16–72)
+ * @param age        Idade em anos
  * @returns          Resultado com %GC, densidade e classificação, ou null se dados inválidos
  */
 export function calculateDurninBodyFat(
@@ -112,7 +114,8 @@ export function calculateDurninBodyFat(
     return null;
   }
 
-  if (!sex || !age || isNaN(age) || age < 16 || age > 72) {
+  // Idade mínima recomendada é 16-17 anos, mas aceitamos o cálculo se houver coeficientes
+  if (!sex || age == null || isNaN(age) || age < 10) {
     return null;
   }
 
@@ -160,7 +163,7 @@ export function calculateAgeFromBirthDate(birthDate: string | null | undefined):
     if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
       age--;
     }
-    return age >= 16 && age <= 72 ? age : null;
+    return age;
   } catch {
     return null;
   }

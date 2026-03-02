@@ -1462,8 +1462,8 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
 
       {/* Anthropometry View Modal */}
       <Dialog open={isAnthroViewOpen} onOpenChange={(open) => { setIsAnthroViewOpen(open); if (!open) setAnthroToView(null); }}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
+        <DialogContent className="max-w-2xl w-[95vw] h-[85vh] flex flex-col p-0 overflow-hidden">
+          <DialogHeader className="p-6 pb-2 flex-shrink-0">
             <DialogTitle className="flex items-center gap-2">
               <Eye className="h-5 w-5 text-muted-foreground" />
               {anthroToView?.title ?? "Avaliação Antropométrica"}
@@ -1473,7 +1473,7 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
             </DialogDescription>
           </DialogHeader>
           {anthroToView && (
-            <div className="space-y-6 py-2">
+            <div className="flex-1 overflow-y-auto px-6 py-2 space-y-6">
               {anthroToView.weightKg != null && (
                 <div className="flex items-center gap-4 p-4 rounded-xl border-2 border-violet-200 bg-violet-50/50">
                   <div className="p-3 bg-violet-100 rounded-full">
@@ -1564,9 +1564,9 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
               </div>
             </div>
           )}
-          <DialogFooter className="gap-2">
+          <DialogFooter className="p-6 pt-2 border-t flex-shrink-0 gap-2">
             <Button variant="outline" onClick={() => setIsAnthroViewOpen(false)}>Fechar</Button>
-            <Button onClick={() => { setIsAnthroViewOpen(false); if (anthroToView) { setAnthroToEdit(anthroToView); openAnthroDialog(anthroToView); } }}>
+            <Button onClick={() => { if (anthroToView) { setIsAnthroViewOpen(false); openAnthroDialog(anthroToView); } }}>
               <Pencil className="h-4 w-4 mr-2" />Editar Avaliação
             </Button>
           </DialogFooter>
@@ -1663,7 +1663,7 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                   if (!hasAnyFold) return null;
                   return (
                     <div className="mt-3 p-3 rounded-lg border border-amber-200 bg-amber-50 text-xs text-amber-700">
-                      <p className="font-medium">Preencha as 4 dobras e verifique se o paciente possui sexo e data de nascimento cadastrados (16–72 anos) para calcular o %GC automaticamente.</p>
+                      <p className="font-medium">Preencha as 4 dobras e verifique se o paciente possui sexo e data de nascimento cadastrados para calcular o %GC automaticamente.</p>
                     </div>
                   );
                 }
