@@ -140,6 +140,14 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
     enabled: !!patient,
   });
 
+  const { data: nutritionistSettings } = useQuery({
+    queryKey: ["/api/nutritionist/settings"],
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/nutritionist/settings");
+      return response.json();
+    },
+  });
+
   // ─── Derived State ────────────────────────────────────────────────────────
 
   const currentAnamnesisRecord = anamnesisHistory && anamnesisHistory.length > 0
@@ -825,7 +833,8 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                         {(() => {
                           const age = calculateAgeFromBirthDate(patient?.birthDate);
                           const sex = patient?.sex as "M" | "F" | "Outro" | null | undefined;
-                          const r = calculateDurninBodyFat(assessment.foldTriceps, assessment.foldBiceps, assessment.foldSubscapular, assessment.foldSuprailiac, sex, age);
+                          const equation = (nutritionistSettings?.bodyFatEquation || "siri") as "siri" | "brozek";
+                          const r = calculateDurninBodyFat(assessment.foldTriceps, assessment.foldBiceps, assessment.foldSubscapular, assessment.foldSuprailiac, sex, age, equation);
                           if (!r) return null;
                           return (
                             <span className="inline-flex items-center gap-1 text-orange-600 font-semibold">
@@ -1526,13 +1535,15 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                 {(() => {
                   const age = calculateAgeFromBirthDate(patient?.birthDate);
                   const sex = patient?.sex as "M" | "F" | "Outro" | null | undefined;
+                  const equation = (nutritionistSettings?.bodyFatEquation || "siri") as "siri" | "brozek";
                   const result = calculateDurninBodyFat(
                     anthroToView.foldTriceps,
                     anthroToView.foldBiceps,
                     anthroToView.foldSubscapular,
                     anthroToView.foldSuprailiac,
                     sex,
-                    age
+                    age,
+                    equation
                   );
                   if (!result) return null;
                   return (
@@ -1650,13 +1661,15 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
               {(() => {
                 const age = calculateAgeFromBirthDate(patient?.birthDate);
                 const sex = patient?.sex as "M" | "F" | "Outro" | null | undefined;
+                const equation = (nutritionistSettings?.bodyFatEquation || "siri") as "siri" | "brozek";
                 const result = calculateDurninBodyFat(
                   anthroForm.foldTriceps ? parseFloat(anthroForm.foldTriceps) : null,
                   anthroForm.foldBiceps ? parseFloat(anthroForm.foldBiceps) : null,
                   anthroForm.foldSubscapular ? parseFloat(anthroForm.foldSubscapular) : null,
                   anthroForm.foldSuprailiac ? parseFloat(anthroForm.foldSuprailiac) : null,
                   sex,
-                  age
+                  age,
+                  equation
                 );
                 if (!result) {
                   const hasAnyFold = anthroForm.foldTriceps || anthroForm.foldBiceps || anthroForm.foldSubscapular || anthroForm.foldSuprailiac;

@@ -1,11 +1,14 @@
 /**
  * Cálculo do Percentual de Gordura Corporal pela Equação de Durnin & Womersley (1974)
- * com conversão de densidade pela fórmula de Brozek (1963)
+ * com conversão de densidade parametrizável (Siri 1961 ou Brozek 1963)
  *
  * Referências:
  *   Durnin, J.V.G.A. & Womersley, J. (1974). Body fat assessed from total body density
  *   and its estimation from skinfold thickness: measurements on 481 men and women aged
  *   from 16 to 72 years. British Journal of Nutrition, 32(1), 77–97.
+ *
+ *   Siri, W.E. (1961). Body composition from fluid spaces and density: Analysis of methods.
+ *   In Techniques for Measuring Body Composition (pp. 223–244). National Academy of Sciences.
  *
  *   Brozek, J., Grande, F., Anderson, J.T., & Keys, A. (1963). Densitometric analysis
  *   of body composition: Revision of some quantitative assumptions. Annals of the New
@@ -15,11 +18,15 @@
  *   1. Soma das 4 dobras cutâneas: tríceps + bíceps + subescapular + suprailíaca (mm)
  *   2. Densidade corporal (D) calculada a partir do log₁₀ da soma, usando coeficientes
  *      específicos por sexo e faixa etária (Durnin & Womersley, 1974).
- *   3. Percentual de gordura (%GC) calculado pela equação de Brozek (1963):
- *      %GC = (4,57 / D − 4,142) × 100
+ *   3. Percentual de gordura (%GC) calculado pela equação selecionada:
+ *      - Siri (1961): %GC = (4,95 / D − 4,50) × 100
+ *      - Brozek (1963): %GC = (4,57 / D − 4,142) × 100
  *
  * Faixas etárias suportadas: 16–72 anos
  */
+
+/** Tipo de equação para conversão de densidade em %GC */
+export type BodyFatEquation = "siri" | "brozek";
 
 /** Coeficientes da equação de Durnin & Womersley por sexo e faixa etária */
 interface DurninCoefficients {
@@ -56,7 +63,7 @@ const FEMALE_COEFFICIENTS: Array<{ minAge: number; maxAge: number } & DurninCoef
 export interface DurninResult {
   /** Soma das 4 dobras cutâneas (mm) */
   sumFolds: number;
-  /** Densidade corporal calculada (g/cm³) */
+  /** Densidade corporal calculada (g/cm³ ou Kg/L) */
   density: number;
   /** Percentual de gordura corporal (%) */
   bodyFatPercent: number;
@@ -64,6 +71,8 @@ export interface DurninResult {
   classification: string;
   /** Cor da classificação para exibição */
   classificationColor: string;
+  /** Equação utilizada para conversão */
+  equation: BodyFatEquation;
 }
 
 /**
@@ -92,7 +101,7 @@ export function classifyBodyFat(
 }
 
 /**
- * Calcula o percentual de gordura corporal pela equação de Durnin & Womersley (1974)
+ * Calcula a densidade corporal pela equação de Durnin & Womersley (1974)
  *
  * @param triceps    Dobra tricipital (mm)
  * @param biceps     Dobra bicipital (mm)
@@ -100,16 +109,16 @@ export function classifyBodyFat(
  * @param suprailiac  Dobra suprailíaca (mm)
  * @param sex        Sexo biológico: "M" (masculino) | "F" (feminino) | "Outro"
  * @param age        Idade em anos
- * @returns          Resultado com %GC, densidade e classificação, ou null se dados inválidos
+ * @returns          Densidade corporal ou null se dados inválidos
  */
-export function calculateDurninBodyFat(
+export function calculateDensity(
   triceps: number | null | undefined,
   biceps: number | null | undefined,
   subscapular: number | null | undefined,
   suprailiac: number | null | undefined,
   sex: "M" | "F" | "Outro" | null | undefined,
   age: number | null | undefined
-): DurninResult | null {
+): number | null {
   // Validação dos dados de entrada
   if (
     triceps == null || biceps == null || subscapular == null || suprailiac == null ||
@@ -119,7 +128,6 @@ export function calculateDurninBodyFat(
     return null;
   }
 
-  // Idade mínima recomendada é 16-17 anos, mas aceitamos o cálculo se houver coeficientes
   if (!sex || age == null || isNaN(age) || age < 10) {
     return null;
   }
@@ -139,11 +147,70 @@ export function calculateDurninBodyFat(
   const logSum = Math.log10(sumFolds);
   const density = coeffs.c - coeffs.m * logSum;
 
-  // Calcular %GC pela equação de Brozek (1963): %GC = (4,57 / D − 4,142) × 100
-  const bodyFatPercent = ((4.57 / density) - 4.142) * 100;
+  return density;
+}
+
+/**
+ * Converte densidade corporal em percentual de gordura usando a equação selecionada
+ *
+ * @param density  Densidade corporal (g/cm³)
+ * @param equation Equação a usar: "siri" ou "brozek"
+ * @returns        Percentual de gordura corporal (%) ou null se inválido
+ */
+export function convertDensityToBodyFat(
+  density: number | null | undefined,
+  equation: BodyFatEquation = "siri"
+): number | null {
+  if (density == null || isNaN(density) || density <= 0.9 || density >= 1.1) {
+    return null;
+  }
+
+  let bodyFatPercent: number;
+
+  if (equation === "brozek") {
+    // Brozek (1963): %GC = (4,57 / D − 4,142) × 100
+    bodyFatPercent = ((4.57 / density) - 4.142) * 100;
+  } else {
+    // Siri (1961): %GC = (4,95 / D − 4,50) × 100
+    bodyFatPercent = ((4.95 / density) - 4.50) * 100;
+  }
 
   if (bodyFatPercent < 0 || bodyFatPercent > 70) return null;
 
+  return bodyFatPercent;
+}
+
+/**
+ * Calcula o percentual de gordura corporal pela equação de Durnin & Womersley (1974)
+ * com conversão parametrizável
+ *
+ * @param triceps    Dobra tricipital (mm)
+ * @param biceps     Dobra bicipital (mm)
+ * @param subscapular Dobra subescapular (mm)
+ * @param suprailiac  Dobra suprailíaca (mm)
+ * @param sex        Sexo biológico: "M" (masculino) | "F" (feminino) | "Outro"
+ * @param age        Idade em anos
+ * @param equation   Equação para conversão: "siri" (padrão) ou "brozek"
+ * @returns          Resultado com %GC, densidade e classificação, ou null se dados inválidos
+ */
+export function calculateDurninBodyFat(
+  triceps: number | null | undefined,
+  biceps: number | null | undefined,
+  subscapular: number | null | undefined,
+  suprailiac: number | null | undefined,
+  sex: "M" | "F" | "Outro" | null | undefined,
+  age: number | null | undefined,
+  equation: BodyFatEquation = "siri"
+): DurninResult | null {
+  // Calcular densidade
+  const density = calculateDensity(triceps, biceps, subscapular, suprailiac, sex, age);
+  if (density == null) return null;
+
+  // Converter densidade em %GC
+  const bodyFatPercent = convertDensityToBodyFat(density, equation);
+  if (bodyFatPercent == null) return null;
+
+  const sumFolds = (triceps ?? 0) + (biceps ?? 0) + (subscapular ?? 0) + (suprailiac ?? 0);
   const { label, color } = classifyBodyFat(bodyFatPercent, sex, age);
 
   return {
@@ -152,6 +219,7 @@ export function calculateDurninBodyFat(
     bodyFatPercent: Math.round(bodyFatPercent * 10) / 10,
     classification: label,
     classificationColor: color,
+    equation,
   };
 }
 

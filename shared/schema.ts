@@ -23,6 +23,8 @@ export const users = pgTable("users", {
   profileImageUrl: varchar("profile_image_url"),
   role: varchar("role", { enum: ["admin", "nutritionist", "patient"] }).notNull().default("patient"),
   hashedPassword: varchar("hashed_password"),
+  // Configurações do nutricionista
+  bodyFatEquation: varchar("body_fat_equation", { enum: ["siri", "brozek"] }).default("siri"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
