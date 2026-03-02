@@ -3,10 +3,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { User, Mail, Calendar, Ruler, Weight, Activity, Target, Clipboard } from "lucide-react";
+import { User, Mail, Calendar, Ruler, Weight, Activity, Target, Clipboard, Percent } from "lucide-react";
 import type { Patient, AnthropometricAssessment } from "@shared/schema";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { calculateDurninBodyFat, calculateAgeFromBirthDate } from "@/utils/durnin-body-fat";
 
 interface ProfileModalProps {
   open: boolean;
@@ -167,6 +168,43 @@ export function ProfileModal({ open, onOpenChange, patient }: ProfileModalProps)
                         </div>
                       ))}
                     </div>
+
+                    {/* Resultado %GC - Durnin & Womersley (1974) */}
+                    {(() => {
+                      const age = calculateAgeFromBirthDate(patient.birthDate);
+                      const sex = patient.sex as "M" | "F" | "Outro" | null | undefined;
+                      const result = calculateDurninBodyFat(
+                        latestAnthro?.foldTriceps,
+                        latestAnthro?.foldBiceps,
+                        latestAnthro?.foldSubscapular,
+                        latestAnthro?.foldSuprailiac,
+                        sex,
+                        age
+                      );
+                      if (!result) return null;
+                      return (
+                        <div className="mt-3 p-3 rounded-xl border-2 border-orange-200"
+                             style={{ background: "linear-gradient(135deg, #FFF7ED 0%, #FFFBEB 100%)" }}>
+                          <div className="flex items-center gap-1.5 mb-2">
+                            <div className="p-1 bg-orange-100 rounded">
+                              <Percent className="h-3.5 w-3.5 text-orange-600" />
+                            </div>
+                            <p className="text-[10px] font-bold text-orange-800 uppercase tracking-wide">% Gordura — Durnin &amp; Womersley</p>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-[10px] text-orange-600 font-medium">Percentual de gordura</p>
+                              <p className="text-2xl font-bold text-orange-900">{result.bodyFatPercent}<span className="text-sm font-normal ml-0.5">%</span></p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-[10px] text-orange-600 font-medium">Classificação</p>
+                              <p className={`text-sm font-bold ${result.classificationColor}`}>{result.classification}</p>
+                              <p className="text-[10px] text-orange-500 mt-0.5">Soma: {result.sumFolds} mm</p>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                 )}
               </div>
