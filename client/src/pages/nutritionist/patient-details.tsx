@@ -37,6 +37,8 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
   const [isAnthroDialogOpen, setIsAnthroDialogOpen] = useState(false);
   const [anthroToEdit, setAnthroToEdit] = useState<AnthropometricAssessment | null>(null);
   const [anthroToDelete, setAnthroToDelete] = useState<string | null>(null);
+  const [isAnthroViewOpen, setIsAnthroViewOpen] = useState(false);
+  const [anthroToView, setAnthroToView] = useState<AnthropometricAssessment | null>(null);
   const [anthroForm, setAnthroForm] = useState({
     title: "",
     circumNeck: "", circumChest: "", circumWaist: "",
@@ -1366,6 +1368,9 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                                   </div>
                                 </div>
                                 <div className="flex gap-1 flex-shrink-0">
+                                  <Button size="sm" variant="outline" title="Visualizar" onClick={() => { setAnthroToView(assessment); setIsAnthroViewOpen(true); }}>
+                                    <Eye className="h-3.5 w-3.5" />
+                                  </Button>
                                   <Button size="sm" variant="outline" title="Editar" onClick={() => { setAnthroToEdit(assessment); openAnthroDialog(assessment); }}>
                                     <Pencil className="h-3.5 w-3.5" />
                                   </Button>
@@ -1942,6 +1947,69 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
               disabled={editSubscriptionMutation.isPending}
             >
               {editSubscriptionMutation.isPending ? "Salvando..." : "Salvar Alterações"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Anthropometry View Modal (Read-only) */}
+      <Dialog open={isAnthroViewOpen} onOpenChange={(open) => { setIsAnthroViewOpen(open); if (!open) setAnthroToView(null); }}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Eye className="h-5 w-5 text-muted-foreground" />
+              {anthroToView?.title ?? "Avaliação Antropométrica"}
+            </DialogTitle>
+            <DialogDescription>
+              {anthroToView?.createdAt ? new Date(anthroToView.createdAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" }) : ""}
+            </DialogDescription>
+          </DialogHeader>
+          {anthroToView && (
+            <div className="space-y-6 py-2">
+              <div>
+                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Circunferências Corporais</h3>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {[
+                    { label: "Pescoço", value: anthroToView.circumNeck },
+                    { label: "Tórax", value: anthroToView.circumChest },
+                    { label: "Cintura", value: anthroToView.circumWaist },
+                    { label: "Abdômen", value: anthroToView.circumAbdomen },
+                    { label: "Quadril", value: anthroToView.circumHip },
+                    { label: "Braço n. dom. relaxado", value: anthroToView.circumNonDominantArmRelaxed },
+                    { label: "Braço n. dom. contraído", value: anthroToView.circumNonDominantArmContracted },
+                    { label: "Coxa proximal n. dom.", value: anthroToView.circumNonDominantProximalThigh },
+                    { label: "Panturrilha n. dom.", value: anthroToView.circumNonDominantCalf },
+                  ].filter(item => item.value != null).map(item => (
+                    <div key={item.label} className="rounded-lg border border-border/60 bg-muted/30 p-3">
+                      <p className="text-xs text-muted-foreground mb-1">{item.label}</p>
+                      <p className="text-sm font-semibold">{item.value} <span className="text-xs font-normal text-muted-foreground">cm</span></p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Dobras Cutâneas</h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {[
+                    { label: "Bicipital", value: anthroToView.foldBiceps },
+                    { label: "Tricipital", value: anthroToView.foldTriceps },
+                    { label: "Subescapular", value: anthroToView.foldSubscapular },
+                    { label: "Suprailíaca", value: anthroToView.foldSuprailiac },
+                  ].filter(item => item.value != null).map(item => (
+                    <div key={item.label} className="rounded-lg border border-border/60 bg-muted/30 p-3">
+                      <p className="text-xs text-muted-foreground mb-1">{item.label}</p>
+                      <p className="text-sm font-semibold">{item.value} <span className="text-xs font-normal text-muted-foreground">mm</span></p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setIsAnthroViewOpen(false)}>Fechar</Button>
+            <Button onClick={() => { setIsAnthroViewOpen(false); if (anthroToView) { setAnthroToEdit(anthroToView); openAnthroDialog(anthroToView); } }}>
+              <Pencil className="h-4 w-4 mr-2" />
+              Editar Avaliação
             </Button>
           </DialogFooter>
         </DialogContent>
