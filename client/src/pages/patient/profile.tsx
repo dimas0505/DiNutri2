@@ -72,7 +72,7 @@ export default function PatientProfilePage() {
         { icon: Calendar, label: "Data de Nascimento",   value: formatDate(patient.birthDate),                         color: "bg-fuchsia-50 text-fuchsia-600" },
         { icon: User,     label: "Sexo",                 value: getSexLabel(patient.sex),                              color: "bg-purple-50 text-purple-600" },
         { icon: Ruler,    label: "Altura",                value: patient.heightCm ? `${patient.heightCm} cm` : "Não informado", color: "bg-violet-50 text-violet-600" },
-        { icon: Weight,   label: "Peso",                 value: patient.weightKg ? `${patient.weightKg} kg` : "Não informado", color: "bg-fuchsia-50 text-fuchsia-600" },
+        { icon: Weight,   label: "Peso",                 value: latestAnthro?.weightKg != null ? `${latestAnthro.weightKg} kg` : (patient.weightKg ? `${patient.weightKg} kg` : "Não informado"), color: "bg-fuchsia-50 text-fuchsia-600" },
         { icon: Target,   label: "Objetivo",             value: getGoalLabel(patient.goal),                            color: "bg-purple-50 text-purple-600" },
       ]
     : [];
@@ -145,22 +145,25 @@ export default function PatientProfilePage() {
               </div>
 
               {/* Métricas rápidas */}
-              {(patient.heightCm || patient.weightKg) && (
-                <div className="flex-shrink-0 flex flex-col gap-2">
-                  {patient.heightCm && (
-                    <div className="flex flex-col items-center bg-white/15 rounded-xl px-3 py-1.5 border border-white/20">
-                      <span className="text-white font-bold text-sm leading-none">{patient.heightCm}</span>
-                      <span className="text-white/70 text-[10px] mt-0.5">cm</span>
-                    </div>
-                  )}
-                  {patient.weightKg && (
-                    <div className="flex flex-col items-center bg-white/15 rounded-xl px-3 py-1.5 border border-white/20">
-                      <span className="text-white font-bold text-sm leading-none">{patient.weightKg}</span>
-                      <span className="text-white/70 text-[10px] mt-0.5">kg</span>
-                    </div>
-                  )}
-                </div>
-              )}
+              {(() => {
+                const displayWeight = latestAnthro?.weightKg ?? (patient.weightKg ? parseFloat(patient.weightKg) : null);
+                return (patient.heightCm || displayWeight) ? (
+                  <div className="flex-shrink-0 flex flex-col gap-2">
+                    {patient.heightCm && (
+                      <div className="flex flex-col items-center bg-white/15 rounded-xl px-3 py-1.5 border border-white/20">
+                        <span className="text-white font-bold text-sm leading-none">{patient.heightCm}</span>
+                        <span className="text-white/70 text-[10px] mt-0.5">cm</span>
+                      </div>
+                    )}
+                    {displayWeight != null && (
+                      <div className="flex flex-col items-center bg-white/15 rounded-xl px-3 py-1.5 border border-white/20">
+                        <span className="text-white font-bold text-sm leading-none">{displayWeight}</span>
+                        <span className="text-white/70 text-[10px] mt-0.5">kg</span>
+                      </div>
+                    )}
+                  </div>
+                ) : null;
+              })()}
             </div>
           </div>
         )}

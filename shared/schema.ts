@@ -185,6 +185,8 @@ export const anthropometricAssessments = pgTable("anthropometric_assessments", {
   circumNonDominantArmContracted: real("circum_non_dominant_arm_contracted"),
   circumNonDominantProximalThigh: real("circum_non_dominant_proximal_thigh"),
   circumNonDominantCalf: real("circum_non_dominant_calf"),
+  // Weight (kg) - registered at each assessment for evolution tracking
+  weightKg: real("weight_kg"),
   // Skinfolds - Durnin equation (mm)
   foldBiceps: real("fold_biceps"),
   foldTriceps: real("fold_triceps"),
