@@ -73,6 +73,40 @@ export interface DurninResult {
   classificationColor: string;
   /** Equação utilizada para conversão */
   equation: BodyFatEquation;
+  /** Peso de gordura em kg */
+  fatMassKg?: number;
+  /** Massa livre de gordura em kg */
+  leanMassKg?: number;
+  /** Peso residual em kg */
+  residualWeightKg?: number;
+  /** Faixa ideal de %GC */
+  idealBodyFatRange?: { min: number; max: number };
+}
+
+/**
+ * Retorna a faixa ideal de percentual de gordura corporal por sexo e idade
+ * Baseado em Gallagher et al. (2000) e referências clínicas
+ */
+export function getIdealBodyFatRange(
+  sex: "M" | "F" | "Outro",
+  age: number
+): { min: number; max: number } {
+  if (sex === "M") {
+    if (age < 20) return { min: 10, max: 16 };
+    if (age < 30) return { min: 10, max: 18 };
+    if (age < 40) return { min: 11, max: 19 };
+    if (age < 50) return { min: 12, max: 21 };
+    if (age < 60) return { min: 13, max: 22 };
+    return { min: 14, max: 23 };
+  } else {
+    // Feminino ou Outro
+    if (age < 20) return { min: 16, max: 22 };
+    if (age < 30) return { min: 16, max: 24 };
+    if (age < 40) return { min: 17, max: 25 };
+    if (age < 50) return { min: 18, max: 27 };
+    if (age < 60) return { min: 19, max: 28 };
+    return { min: 20, max: 29 };
+  }
 }
 
 /**
@@ -200,7 +234,8 @@ export function calculateDurninBodyFat(
   suprailiac: number | null | undefined,
   sex: "M" | "F" | "Outro" | null | undefined,
   age: number | null | undefined,
-  equation: BodyFatEquation = "siri"
+  equation: BodyFatEquation = "siri",
+  weightKg: number | null | undefined = null
 ): DurninResult | null {
   // Calcular densidade
   const density = calculateDensity(triceps, biceps, subscapular, suprailiac, sex, age);
@@ -212,6 +247,24 @@ export function calculateDurninBodyFat(
 
   const sumFolds = (triceps ?? 0) + (biceps ?? 0) + (subscapular ?? 0) + (suprailiac ?? 0);
   const { label, color } = classifyBodyFat(bodyFatPercent, sex, age);
+  const idealRange = getIdealBodyFatRange(sex, age);
+
+  // Calcular composição corporal se peso for fornecido
+  let fatMassKg: number | undefined;
+  let leanMassKg: number | undefined;
+  let residualWeightKg: number | undefined;
+
+  if (weightKg && weightKg > 0) {
+    // Peso de gordura = (% gordura / 100) * Peso total
+    fatMassKg = Math.round((bodyFatPercent / 100) * weightKg * 10) / 10;
+    
+    // Massa magra = Peso total - Peso de gordura
+    leanMassKg = Math.round((weightKg - fatMassKg) * 10) / 10;
+    
+    // Peso residual (Wurch, 1973): Homens = Peso * 0.241 | Mulheres = Peso * 0.209
+    const residualCoeff = sex === "M" ? 0.241 : 0.209;
+    residualWeightKg = Math.round(weightKg * residualCoeff * 10) / 10;
+  }
 
   return {
     sumFolds: Math.round(sumFolds * 10) / 10,
@@ -220,6 +273,10 @@ export function calculateDurninBodyFat(
     classification: label,
     classificationColor: color,
     equation,
+    fatMassKg,
+    leanMassKg,
+    residualWeightKg,
+    idealBodyFatRange: idealRange,
   };
 }
 
