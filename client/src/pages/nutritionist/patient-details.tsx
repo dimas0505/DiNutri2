@@ -1557,7 +1557,7 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                           <p className={`text-sm font-bold ${result.classificationColor}`}>{result.classification}</p>
                         </div>
                       </div>
-                      <p className="text-[10px] text-orange-500 mt-2 text-center">Densidade corporal: {result.density} g/cm³ · Equação de Siri (1956)</p>
+                      <p className="text-[10px] text-orange-500 mt-2 text-center">Densidade corporal: {result.density} Kg/L · Equação de Brozek (1963)</p>
                     </div>
                   );
                 })()}
@@ -1689,7 +1689,7 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                         <p className={`text-sm font-bold ${result.classificationColor}`}>{result.classification}</p>
                       </div>
                     </div>
-                    <p className="text-[10px] text-orange-500 mt-2 text-center">Densidade: {result.density} g/cm³ · Equação de Siri (1956)</p>
+                      <p className="text-[10px] text-orange-500 mt-2 text-center">Densidade corporal: {result.density} Kg/L · Equação de Brozek (1963)</p>
                   </div>
                 );
               })()}

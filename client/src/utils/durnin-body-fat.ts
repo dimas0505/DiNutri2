@@ -1,17 +1,22 @@
 /**
  * Cálculo do Percentual de Gordura Corporal pela Equação de Durnin & Womersley (1974)
+ * com conversão de densidade pela fórmula de Brozek (1963)
  *
- * Referência:
+ * Referências:
  *   Durnin, J.V.G.A. & Womersley, J. (1974). Body fat assessed from total body density
  *   and its estimation from skinfold thickness: measurements on 481 men and women aged
  *   from 16 to 72 years. British Journal of Nutrition, 32(1), 77–97.
  *
+ *   Brozek, J., Grande, F., Anderson, J.T., & Keys, A. (1963). Densitometric analysis
+ *   of body composition: Revision of some quantitative assumptions. Annals of the New
+ *   York Academy of Sciences, 110, 113–140.
+ *
  * Método:
  *   1. Soma das 4 dobras cutâneas: tríceps + bíceps + subescapular + suprailíaca (mm)
  *   2. Densidade corporal (D) calculada a partir do log₁₀ da soma, usando coeficientes
- *      específicos por sexo e faixa etária.
- *   3. Percentual de gordura (%GC) calculado pela equação de Siri (1956):
- *      %GC = (4,95 / D − 4,50) × 100
+ *      específicos por sexo e faixa etária (Durnin & Womersley, 1974).
+ *   3. Percentual de gordura (%GC) calculado pela equação de Brozek (1963):
+ *      %GC = (4,57 / D − 4,142) × 100
  *
  * Faixas etárias suportadas: 16–72 anos
  */
@@ -134,8 +139,8 @@ export function calculateDurninBodyFat(
   const logSum = Math.log10(sumFolds);
   const density = coeffs.c - coeffs.m * logSum;
 
-  // Calcular %GC pela equação de Siri (1956): %GC = (4,95 / D − 4,50) × 100
-  const bodyFatPercent = ((4.95 / density) - 4.50) * 100;
+  // Calcular %GC pela equação de Brozek (1963): %GC = (4,57 / D − 4,142) × 100
+  const bodyFatPercent = ((4.57 / density) - 4.142) * 100;
 
   if (bodyFatPercent < 0 || bodyFatPercent > 70) return null;
 
@@ -143,7 +148,7 @@ export function calculateDurninBodyFat(
 
   return {
     sumFolds: Math.round(sumFolds * 10) / 10,
-    density: Math.round(density * 10000) / 10000,
+    density: Math.round(density * 1000) / 1000, // 3 casas decimais (Kg/L)
     bodyFatPercent: Math.round(bodyFatPercent * 10) / 10,
     classification: label,
     classificationColor: color,
