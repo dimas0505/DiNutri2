@@ -194,6 +194,8 @@ export const anthropometricAssessments = pgTable("anthropometric_assessments", {
   foldTriceps: real("fold_triceps"),
   foldSubscapular: real("fold_subscapular"),
   foldSuprailiac: real("fold_suprailiac"),
+  // Conversion equation used for body fat percentage calculation
+  conversionEquation: varchar("conversion_equation", { enum: ["siri", "brozek"] }).default("siri"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

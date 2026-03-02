@@ -94,6 +94,7 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
     circumNonDominantArmRelaxed: "", circumNonDominantArmContracted: "",
     circumNonDominantProximalThigh: "", circumNonDominantCalf: "",
     foldBiceps: "", foldTriceps: "", foldSubscapular: "", foldSuprailiac: "",
+    conversionEquation: "siri" as "siri" | "brozek",
   });
 
   // ─── Queries ─────────────────────────────────────────────────────────────
@@ -451,10 +452,11 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
         foldTriceps: prefill.foldTriceps?.toString() ?? "",
         foldSubscapular: prefill.foldSubscapular?.toString() ?? "",
         foldSuprailiac: prefill.foldSuprailiac?.toString() ?? "",
+        conversionEquation: (prefill.conversionEquation as "siri" | "brozek") || "siri",
       });
       setAnthroToEdit(prefill);
     } else {
-      setAnthroForm({ title: "", weightKg: "", circumNeck: "", circumChest: "", circumWaist: "", circumAbdomen: "", circumHip: "", circumNonDominantArmRelaxed: "", circumNonDominantArmContracted: "", circumNonDominantProximalThigh: "", circumNonDominantCalf: "", foldBiceps: "", foldTriceps: "", foldSubscapular: "", foldSuprailiac: "" });
+      setAnthroForm({ title: "", weightKg: "", circumNeck: "", circumChest: "", circumWaist: "", circumAbdomen: "", circumHip: "", circumNonDominantArmRelaxed: "", circumNonDominantArmContracted: "", circumNonDominantProximalThigh: "", circumNonDominantCalf: "", foldBiceps: "", foldTriceps: "", foldSubscapular: "", foldSuprailiac: "", conversionEquation: "siri" });
       setAnthroToEdit(null);
     }
     setIsAnthroDialogOpen(true);
@@ -479,6 +481,7 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
       foldTriceps: toNum(anthroForm.foldTriceps),
       foldSubscapular: toNum(anthroForm.foldSubscapular),
       foldSuprailiac: toNum(anthroForm.foldSuprailiac),
+      conversionEquation: anthroForm.conversionEquation,
     };
     if (anthroToEdit) {
       updateAnthroMutation.mutate({ id: anthroToEdit.id, data });
@@ -1535,7 +1538,7 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                 {(() => {
                   const age = calculateAgeFromBirthDate(patient?.birthDate);
                   const sex = patient?.sex as "M" | "F" | "Outro" | null | undefined;
-                  const equation = (nutritionistSettings?.bodyFatEquation || "siri") as "siri" | "brozek";
+                  const equation = (anthroToView?.conversionEquation as "siri" | "brozek") || (nutritionistSettings?.bodyFatEquation || "siri") as "siri" | "brozek";
                   const result = calculateDurninBodyFat(
                     anthroToView.foldTriceps,
                     anthroToView.foldBiceps,
@@ -1570,7 +1573,7 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                             <p className={`text-sm font-bold ${result.classificationColor}`}>{result.classification}</p>
                           </div>
                         </div>
-                        <p className="text-[10px] text-orange-500 mt-2 text-center">Densidade corporal: {result.density} Kg/L · Equação de Brozek (1963)</p>
+                        <p className="text-[10px] text-orange-500 mt-2 text-center">Densidade corporal: {result.density} Kg/L · Equação de {equation === "brozek" ? "Brozek (1963)" : "Siri (1961)"}</p>
                       </div>
 
                       {/* Análise Completa por Dobras */}
@@ -1717,11 +1720,40 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                 ))}
               </div>
 
+              {/* Seletor de Equação de Conversão */}
+              <div className="mt-4 p-3 rounded-lg border border-slate-200 bg-slate-50">
+                <Label className="text-xs font-semibold text-slate-700 uppercase tracking-wide mb-2 block">Equação de Conversão (Densidade → % Gordura)</Label>
+                <div className="flex gap-3">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="conversionEquation"
+                      value="siri"
+                      checked={anthroForm.conversionEquation === "siri"}
+                      onChange={(e) => setAnthroForm((f) => ({ ...f, conversionEquation: "siri" }))}
+                      className="w-4 h-4"
+                    />
+                    <span className="text-sm text-slate-700">Siri (1961)</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="conversionEquation"
+                      value="brozek"
+                      checked={anthroForm.conversionEquation === "brozek"}
+                      onChange={(e) => setAnthroForm((f) => ({ ...f, conversionEquation: "brozek" }))}
+                      className="w-4 h-4"
+                    />
+                    <span className="text-sm text-slate-700">Brozek (1963)</span>
+                  </label>
+                </div>
+              </div>
+
               {/* Resultado automático do %GC - Durnin & Womersley (1974) */}
               {(() => {
                 const age = calculateAgeFromBirthDate(patient?.birthDate);
                 const sex = patient?.sex as "M" | "F" | "Outro" | null | undefined;
-                const equation = (nutritionistSettings?.bodyFatEquation || "siri") as "siri" | "brozek";
+                const equation = anthroForm.conversionEquation as "siri" | "brozek";
                 const result = calculateDurninBodyFat(
                   anthroForm.foldTriceps ? parseFloat(anthroForm.foldTriceps) : null,
                   anthroForm.foldBiceps ? parseFloat(anthroForm.foldBiceps) : null,
@@ -1762,7 +1794,7 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                         <p className={`text-sm font-bold ${result.classificationColor}`}>{result.classification}</p>
                       </div>
                     </div>
-                      <p className="text-[10px] text-orange-500 mt-2 text-center">Densidade corporal: {result.density} Kg/L · Equação de Brozek (1963)</p>
+                      <p className="text-[10px] text-orange-500 mt-2 text-center">Densidade corporal: {result.density} Kg/L · Equação de {anthroForm.conversionEquation === "brozek" ? "Brozek (1963)" : "Siri (1961)"}</p>
                   </div>
                 );
               })()}
