@@ -450,8 +450,17 @@ export async function setupRoutes(app: Express): Promise<void> {
   // --- PRESCRIPTION ROUTES ---
   app.post('/api/prescriptions', isAuthenticated, async (req: any, res) => {
     try {
+      // Normaliza campos de data: o drizzle-zod espera objetos Date,
+      // mas o frontend envia strings ISO (ex: "2026-05-31T00:00:00.000Z")
+      const body = { ...req.body };
+      if (body.expiresAt && typeof body.expiresAt === 'string') {
+        body.expiresAt = new Date(body.expiresAt);
+      }
+      if (body.publishedAt && typeof body.publishedAt === 'string') {
+        body.publishedAt = new Date(body.publishedAt);
+      }
       const prescriptionData = insertPrescriptionSchema.parse({
-        ...req.body,
+        ...body,
         nutritionistId: req.user.id,
       });
       const newPrescription = await storage.createPrescription(prescriptionData);
