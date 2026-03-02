@@ -336,7 +336,9 @@ export default function PatientProfilePage() {
                             latestAnthro?.foldSubscapular,
                             latestAnthro?.foldSuprailiac,
                             sex,
-                            age
+                            age,
+                            "siri",
+                            latestAnthro?.weightKg ? parseFloat(latestAnthro.weightKg.toString()) : null
                           );
                           if (!result) return null;
                           return (

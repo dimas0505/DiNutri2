@@ -1543,7 +1543,8 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                     anthroToView.foldSuprailiac,
                     sex,
                     age,
-                    equation
+                    equation,
+                    anthroToView.weightKg ? parseFloat(anthroToView.weightKg.toString()) : null
                   );
                   if (!result) return null;
                   return (
@@ -1569,6 +1570,63 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                         </div>
                       </div>
                       <p className="text-[10px] text-orange-500 mt-2 text-center">Densidade corporal: {result.density} Kg/L · Equação de Brozek (1963)</p>
+                    </div>
+
+                    {/* Análise Completa por Dobras */}
+                    <div className="mt-4 space-y-2 text-sm">
+                      <h4 className="font-semibold text-muted-foreground uppercase text-xs tracking-wide mb-3">Análises por dobras e diâmetro ósseo</h4>
+                      
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="p-3 rounded-lg border border-border/60 bg-muted/30">
+                          <p className="text-[10px] text-muted-foreground mb-1">Percentual de Gordura ({result.equation === 'brozek' ? 'Brozek, 1963' : 'Siri, 1961'})</p>
+                          <p className="text-lg font-bold text-orange-600">{result.bodyFatPercent}%</p>
+                        </div>
+                        <div className="p-3 rounded-lg border border-border/60 bg-muted/30">
+                          <p className="text-[10px] text-muted-foreground mb-1">Percentual Ideal</p>
+                          <p className="text-lg font-bold text-blue-600">{result.idealBodyFatRange?.min}% a {result.idealBodyFatRange?.max}%</p>
+                        </div>
+                      </div>
+
+                      <div className="p-3 rounded-lg border border-border/60 bg-muted/30">
+                        <p className="text-[10px] text-muted-foreground mb-1">Classif. do % GC</p>
+                        <p className={`text-sm font-bold ${result.classificationColor}`}>{result.classification}</p>
+                      </div>
+
+                      {result.fatMassKg != null && (
+                        <div className="p-3 rounded-lg border border-border/60 bg-muted/30">
+                          <p className="text-[10px] text-muted-foreground mb-1">Peso de gordura</p>
+                          <p className="text-sm font-bold">{result.fatMassKg} <span className="text-xs font-normal text-muted-foreground">Kg</span></p>
+                        </div>
+                      )}
+
+                      {result.leanMassKg != null && (
+                        <div className="p-3 rounded-lg border border-border/60 bg-muted/30">
+                          <p className="text-[10px] text-muted-foreground mb-1">Massa Livre de Gordura</p>
+                          <p className="text-sm font-bold">{result.leanMassKg} <span className="text-xs font-normal text-muted-foreground">Kg</span></p>
+                        </div>
+                      )}
+
+                      {result.residualWeightKg != null && (
+                        <div className="p-3 rounded-lg border border-border/60 bg-muted/30">
+                          <p className="text-[10px] text-muted-foreground mb-1">Peso residual</p>
+                          <p className="text-sm font-bold">{result.residualWeightKg} <span className="text-xs font-normal text-muted-foreground">Kg</span></p>
+                        </div>
+                      )}
+
+                      <div className="p-3 rounded-lg border border-border/60 bg-muted/30">
+                        <p className="text-[10px] text-muted-foreground mb-1">Somatório de Dobras</p>
+                        <p className="text-sm font-bold">{result.sumFolds} <span className="text-xs font-normal text-muted-foreground">mm</span></p>
+                      </div>
+
+                      <div className="p-3 rounded-lg border border-border/60 bg-muted/30">
+                        <p className="text-[10px] text-muted-foreground mb-1">Densidade Corporal</p>
+                        <p className="text-sm font-bold">{result.density} <span className="text-xs font-normal text-muted-foreground">Kg/L</span></p>
+                      </div>
+
+                      <div className="p-3 rounded-lg border border-border/60 bg-muted/30">
+                        <p className="text-[10px] text-muted-foreground mb-1">Referência usada</p>
+                        <p className="text-sm font-bold">Durnin &amp; Womersley, 1974</p>
+                      </div>
                     </div>
                   );
                 })()}

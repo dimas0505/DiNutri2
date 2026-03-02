@@ -179,7 +179,9 @@ export function ProfileModal({ open, onOpenChange, patient }: ProfileModalProps)
                         latestAnthro?.foldSubscapular,
                         latestAnthro?.foldSuprailiac,
                         sex,
-                        age
+                        age,
+                        "siri",
+                        latestAnthro?.weightKg ? parseFloat(latestAnthro.weightKg.toString()) : null
                       );
                       if (!result) return null;
                       return (
