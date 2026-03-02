@@ -1573,6 +1573,7 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                     </div>
 
                     {/* Análise Completa por Dobras */}
+                    <>
                     <div className="mt-4 space-y-2 text-sm">
                       <h4 className="font-semibold text-muted-foreground uppercase text-xs tracking-wide mb-3">Análises por dobras e diâmetro ósseo</h4>
                       
@@ -1628,6 +1629,7 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                         <p className="text-sm font-bold">Durnin &amp; Womersley, 1974</p>
                       </div>
                     </div>
+                    </>
                   );
                 })()}
               </div>
