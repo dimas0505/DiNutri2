@@ -1487,12 +1487,12 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
 
       {/* Anthropometry Create/Edit Dialog */}
       <Dialog open={isAnthroDialogOpen} onOpenChange={(open) => { setIsAnthroDialogOpen(open); if (!open) setAnthroToEdit(null); }}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
+        <DialogContent className="max-w-lg w-full flex flex-col" style={{ maxHeight: "85vh" }}>
+          <DialogHeader className="flex-shrink-0">
             <DialogTitle>{anthroToEdit ? "Editar Avaliação Antropométrica" : "Nova Avaliação Antropométrica"}</DialogTitle>
-            <DialogDescription>Preencha os campos de circunferências e dobras cutâneas.</DialogDescription>
+            <DialogDescription>Preencha o peso, circunferências e dobras cutâneas desta avaliação.</DialogDescription>
           </DialogHeader>
-          <div className="space-y-6 py-2">
+          <div className="flex-1 overflow-y-auto pr-1 space-y-6 py-2">
             <div className="space-y-2">
               <Label htmlFor="anthro-title">Título da Avaliação</Label>
               <Input id="anthro-title" placeholder="Ex: Avaliação Março/2026" value={anthroForm.title} onChange={(e) => setAnthroForm((f) => ({ ...f, title: e.target.value }))} />
@@ -1535,7 +1535,7 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
               </div>
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="flex-shrink-0 pt-2 border-t border-border/40">
             <Button variant="outline" onClick={() => setIsAnthroDialogOpen(false)}>Cancelar</Button>
             <Button onClick={submitAnthroForm} disabled={!anthroForm.title || createAnthroMutation.isPending || updateAnthroMutation.isPending}>
               {createAnthroMutation.isPending || updateAnthroMutation.isPending ? "Salvando..." : "Salvar"}
