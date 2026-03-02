@@ -95,6 +95,9 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
     circumNonDominantArmRelaxed: "", circumNonDominantArmContracted: "",
     circumNonDominantProximalThigh: "", circumNonDominantCalf: "",
     foldBiceps: "", foldTriceps: "", foldSubscapular: "", foldSuprailiac: "",
+    // Campos manuais de gordura corporal (sobrescrevem o cálculo automático na visão do paciente)
+    manualBodyFatPercent: "",
+    manualBodyFatClassification: "",
   });
 
   // ─── Queries ─────────────────────────────────────────────────────────────
@@ -452,10 +455,12 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
         foldTriceps: prefill.foldTriceps?.toString() ?? "",
         foldSubscapular: prefill.foldSubscapular?.toString() ?? "",
         foldSuprailiac: prefill.foldSuprailiac?.toString() ?? "",
+        manualBodyFatPercent: prefill.manualBodyFatPercent?.toString() ?? "",
+        manualBodyFatClassification: prefill.manualBodyFatClassification ?? "",
       });
       setAnthroToEdit(prefill);
     } else {
-      setAnthroForm({ title: "", weightKg: "", circumNeck: "", circumChest: "", circumWaist: "", circumAbdomen: "", circumHip: "", circumNonDominantArmRelaxed: "", circumNonDominantArmContracted: "", circumNonDominantProximalThigh: "", circumNonDominantCalf: "", foldBiceps: "", foldTriceps: "", foldSubscapular: "", foldSuprailiac: "" });
+      setAnthroForm({ title: "", weightKg: "", circumNeck: "", circumChest: "", circumWaist: "", circumAbdomen: "", circumHip: "", circumNonDominantArmRelaxed: "", circumNonDominantArmContracted: "", circumNonDominantProximalThigh: "", circumNonDominantCalf: "", foldBiceps: "", foldTriceps: "", foldSubscapular: "", foldSuprailiac: "", manualBodyFatPercent: "", manualBodyFatClassification: "" });
       setAnthroToEdit(null);
     }
     setIsAnthroDialogOpen(true);
@@ -480,6 +485,8 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
       foldTriceps: toNum(anthroForm.foldTriceps),
       foldSubscapular: toNum(anthroForm.foldSubscapular),
       foldSuprailiac: toNum(anthroForm.foldSuprailiac),
+      manualBodyFatPercent: toNum(anthroForm.manualBodyFatPercent),
+      manualBodyFatClassification: anthroForm.manualBodyFatClassification.trim() || null,
     };
     if (anthroToEdit) {
       updateAnthroMutation.mutate({ id: anthroToEdit.id, data });
@@ -832,6 +839,19 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                         {assessment.circumHip && <span>Quadril: <strong>{assessment.circumHip} cm</strong></span>}
                         {assessment.circumAbdomen && <span>Abdômen: <strong>{assessment.circumAbdomen} cm</strong></span>}
                         {(() => {
+                          // Prioridade: valores manuais > cálculo automático Durnin & Womersley
+                          if (assessment.manualBodyFatPercent != null) {
+                            return (
+                              <span className="inline-flex items-center gap-1 text-orange-600 font-semibold">
+                                <Percent className="h-3 w-3" />
+                                %GC: <strong>{assessment.manualBodyFatPercent}%</strong>
+                                {assessment.manualBodyFatClassification && (
+                                  <span className="font-normal text-orange-500">({assessment.manualBodyFatClassification})</span>
+                                )}
+                                <span className="text-[10px] font-normal text-orange-400">[manual]</span>
+                              </span>
+                            );
+                          }
                           const age = calculateAgeFromBirthDate(patient?.birthDate);
                           const sex = patient?.sex as "M" | "F" | "Outro" | null | undefined;
                           const equation = (nutritionistSettings?.bodyFatEquation || "siri") as "siri" | "brozek";
@@ -1532,6 +1552,21 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                   ))}
                 </div>
 
+                {/* Indicador de valores manuais preenchidos */}
+                {anthroToView?.manualBodyFatPercent != null && (
+                  <div className="mt-2 p-3 rounded-lg border border-orange-200 bg-orange-50 flex items-start gap-2">
+                    <Percent className="h-4 w-4 text-orange-600 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="text-xs font-semibold text-orange-800">Valores manuais preenchidos</p>
+                      <p className="text-[11px] text-orange-700 mt-0.5">
+                        O paciente verá: <strong>{anthroToView.manualBodyFatPercent}%</strong>
+                        {anthroToView.manualBodyFatClassification && <> — <strong>{anthroToView.manualBodyFatClassification}</strong></>}.
+                        O cálculo automático abaixo é exibido apenas para o nutricionista.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 {/* Resultado do %GC - Durnin & Womersley (1974) */}
                 {(() => {
                   const age = calculateAgeFromBirthDate(patient?.birthDate);
@@ -1785,7 +1820,52 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                 ))}
               </div>
 
-              {/* Resultado automático do %GC - Durnin & Womersley (1974) */}
+              {/* Campos manuais de %GC — preenchidos pelo nutricionista; sobrescrevem o cálculo na visão do paciente */}
+              <div className="mt-4 p-4 rounded-xl border-2 border-orange-200 bg-gradient-to-br from-orange-50 to-amber-50">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="p-1.5 bg-orange-100 rounded-lg">
+                    <Percent className="h-4 w-4 text-orange-600" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-orange-800 uppercase tracking-wide">% Gordura Corporal — Preenchimento Manual</p>
+                    <p className="text-[10px] text-orange-600 mt-0.5">Esses valores serão exibidos no card laranja do paciente. Quando preenchidos, substituem o cálculo automático.</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label htmlFor="anthro-manualBodyFatPercent" className="text-xs text-orange-700 font-medium">Percentual de gordura (%)</Label>
+                    <Input
+                      id="anthro-manualBodyFatPercent"
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      max="100"
+                      placeholder="Ex: 24.5"
+                      value={anthroForm.manualBodyFatPercent}
+                      onChange={(e) => setAnthroForm((f) => ({ ...f, manualBodyFatPercent: e.target.value }))}
+                      className="border-orange-200 focus:border-orange-400"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="anthro-manualBodyFatClassification" className="text-xs text-orange-700 font-medium">Classificação</Label>
+                    <Input
+                      id="anthro-manualBodyFatClassification"
+                      type="text"
+                      placeholder="Ex: Adequado"
+                      value={anthroForm.manualBodyFatClassification}
+                      onChange={(e) => setAnthroForm((f) => ({ ...f, manualBodyFatClassification: e.target.value }))}
+                      className="border-orange-200 focus:border-orange-400"
+                    />
+                  </div>
+                </div>
+                {anthroForm.manualBodyFatPercent && (
+                  <p className="text-[10px] text-orange-600 mt-2">
+                    ℹ️ O cálculo automático (Durnin &amp; Womersley) continua disponível abaixo para referência do nutricionista, mas não será exibido ao paciente enquanto este campo estiver preenchido.
+                  </p>
+                )}
+              </div>
+
+              {/* Resultado automático do %GC - Durnin & Womersley (1974) — visível apenas para o nutricionista */}
               {(() => {
                 const age = calculateAgeFromBirthDate(patient?.birthDate);
                 const sex = patient?.sex as "M" | "F" | "Outro" | null | undefined;

@@ -9,6 +9,8 @@ import {
   Activity, Target, Clipboard, TrendingUp, Percent,
 } from "lucide-react";
 import type { Patient, AnthropometricAssessment } from "@shared/schema";
+// Importações mantidas para reativação futura do cálculo automático Durnin & Womersley
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { calculateDurninBodyFat, calculateAgeFromBirthDate } from "@/utils/durnin-body-fat";
 
 export default function PatientProfilePage() {
@@ -325,54 +327,70 @@ export default function PatientProfilePage() {
                             </div>
                           ))}
                         </div>
-
-                        {/* Resultado %GC - Durnin & Womersley (1974) */}
-                        {(() => {
-                          const age = calculateAgeFromBirthDate(patient?.birthDate);
-                          const sex = patient?.sex as "M" | "F" | "Outro" | null | undefined;
-                          const result = calculateDurninBodyFat(
-                            latestAnthro?.foldTriceps,
-                            latestAnthro?.foldBiceps,
-                            latestAnthro?.foldSubscapular,
-                            latestAnthro?.foldSuprailiac,
-                            sex,
-                            age,
-                            "siri",
-                            latestAnthro?.weightKg ? parseFloat(latestAnthro.weightKg.toString()) : null
-                          );
-                          if (!result) return null;
-                          return (
-                            <div className="mt-3 rounded-2xl overflow-hidden shadow-sm"
-                                 style={{ background: "linear-gradient(135deg, #F97316 0%, #FBBF24 100%)" }}>
-                              <div className="px-4 py-3">
-                                <div className="flex items-center gap-2 mb-2">
-                                  <div className="w-7 h-7 rounded-lg bg-white/20 flex items-center justify-center">
-                                    <Percent className="h-4 w-4 text-white" />
-                                  </div>
-                                  <p className="text-white font-bold text-xs uppercase tracking-wide">
-                                    % Gordura Corporal — Durnin &amp; Womersley
-                                  </p>
-                                </div>
-                                <div className="flex items-end justify-between">
-                                  <div>
-                                    <p className="text-white/80 text-[10px] uppercase font-medium">Resultado</p>
-                                    <p className="text-white font-bold text-4xl leading-none">
-                                      {result.bodyFatPercent}
-                                      <span className="text-xl font-normal ml-0.5">%</span>
-                                    </p>
-                                  </div>
-                                  <div className="text-right">
-                                    <p className="text-white/80 text-[10px] uppercase font-medium">Classificação</p>
-                                    <p className="text-white font-semibold text-sm">{result.classification}</p>
-                                    <p className="text-white/70 text-[10px] mt-0.5">Soma: {result.sumFolds} mm</p>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })()}
                       </div>
                     )}
+
+                    {/* Card de % Gordura Corporal
+                         Exibido quando o nutricionista preenche os valores manuais.
+                         Prioridade: valores manuais (preenchidos pelo nutricionista) >
+                         cálculo automático Durnin & Womersley (adormecido quando manual está preenchido).
+                         O card é exibido independentemente de haver dobras cutâneas cadastradas. */}
+                    {(() => {
+                      if (!latestAnthro) return null;
+                      // 1º) Verificar se há valores manuais preenchidos pelo nutricionista
+                      const hasManual =
+                        latestAnthro.manualBodyFatPercent != null &&
+                        !isNaN(latestAnthro.manualBodyFatPercent);
+
+                      if (hasManual) {
+                        return (
+                          <div className="mt-1 rounded-2xl overflow-hidden shadow-sm"
+                               style={{ background: "linear-gradient(135deg, #F97316 0%, #FBBF24 100%)" }}>
+                            <div className="px-4 py-3">
+                              <div className="flex items-center gap-2 mb-2">
+                                <div className="w-7 h-7 rounded-lg bg-white/20 flex items-center justify-center">
+                                  <Percent className="h-4 w-4 text-white" />
+                                </div>
+                                <p className="text-white font-bold text-xs uppercase tracking-wide">
+                                  % Gordura Corporal
+                                </p>
+                              </div>
+                              <div className="flex items-end justify-between">
+                                <div>
+                                  <p className="text-white/80 text-[10px] uppercase font-medium">Resultado</p>
+                                  <p className="text-white font-bold text-4xl leading-none">
+                                    {latestAnthro.manualBodyFatPercent}
+                                    <span className="text-xl font-normal ml-0.5">%</span>
+                                  </p>
+                                </div>
+                                {latestAnthro.manualBodyFatClassification && (
+                                  <div className="text-right">
+                                    <p className="text-white/80 text-[10px] uppercase font-medium">Classificação</p>
+                                    <p className="text-white font-semibold text-sm">{latestAnthro.manualBodyFatClassification}</p>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      // 2º) Fallback: cálculo automático Durnin & Womersley (adormecido — não exibido ao paciente)
+                      // O código abaixo está intencionalmente comentado para preservar a lógica
+                      // e ser reativado futuramente quando os campos manuais forem removidos.
+                      // const age = calculateAgeFromBirthDate(patient?.birthDate);
+                      // const sex = patient?.sex as "M" | "F" | "Outro" | null | undefined;
+                      // const result = calculateDurninBodyFat(
+                      //   latestAnthro?.foldTriceps, latestAnthro?.foldBiceps,
+                      //   latestAnthro?.foldSubscapular, latestAnthro?.foldSuprailiac,
+                      //   sex, age, "siri",
+                      //   latestAnthro?.weightKg ? parseFloat(latestAnthro.weightKg.toString()) : null
+                      // );
+                      // if (!result) return null;
+                      // ... card com result.bodyFatPercent e result.classification
+
+                      return null;
+                    })()}
 
                   </div>
                 )}

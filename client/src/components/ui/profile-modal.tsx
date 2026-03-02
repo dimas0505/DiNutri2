@@ -7,6 +7,8 @@ import { User, Mail, Calendar, Ruler, Weight, Activity, Target, Clipboard, Perce
 import type { Patient, AnthropometricAssessment } from "@shared/schema";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+// Importações mantidas para reativação futura do cálculo automático Durnin & Womersley
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { calculateDurninBodyFat, calculateAgeFromBirthDate } from "@/utils/durnin-body-fat";
 
 interface ProfileModalProps {
@@ -168,45 +170,34 @@ export function ProfileModal({ open, onOpenChange, patient }: ProfileModalProps)
                         </div>
                       ))}
                     </div>
+                  </div>
+                )}
 
-                    {/* Resultado %GC - Durnin & Womersley (1974) */}
-                    {(() => {
-                      const age = calculateAgeFromBirthDate(patient.birthDate);
-                      const sex = patient.sex as "M" | "F" | "Outro" | null | undefined;
-                      const result = calculateDurninBodyFat(
-                        latestAnthro?.foldTriceps,
-                        latestAnthro?.foldBiceps,
-                        latestAnthro?.foldSubscapular,
-                        latestAnthro?.foldSuprailiac,
-                        sex,
-                        age,
-                        "siri",
-                        latestAnthro?.weightKg ? parseFloat(latestAnthro.weightKg.toString()) : null
-                      );
-                      if (!result) return null;
-                      return (
-                        <div className="mt-3 p-3 rounded-xl border-2 border-orange-200"
-                             style={{ background: "linear-gradient(135deg, #FFF7ED 0%, #FFFBEB 100%)" }}>
-                          <div className="flex items-center gap-1.5 mb-2">
-                            <div className="p-1 bg-orange-100 rounded">
-                              <Percent className="h-3.5 w-3.5 text-orange-600" />
-                            </div>
-                            <p className="text-[10px] font-bold text-orange-800 uppercase tracking-wide">% Gordura — Durnin &amp; Womersley</p>
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-[10px] text-orange-600 font-medium">Percentual de gordura</p>
-                              <p className="text-2xl font-bold text-orange-900">{result.bodyFatPercent}<span className="text-sm font-normal ml-0.5">%</span></p>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-[10px] text-orange-600 font-medium">Classificação</p>
-                              <p className={`text-sm font-bold ${result.classificationColor}`}>{result.classification}</p>
-                              <p className="text-[10px] text-orange-500 mt-0.5">Soma: {result.sumFolds} mm</p>
-                            </div>
-                          </div>
+                {/* Card de % Gordura Corporal
+                     Exibido quando o nutricionista preenche os valores manuais.
+                     Independente de haver dobras cutâneas cadastradas.
+                     O cálculo automático Durnin & Womersley está adormecido (comentado) até reativação futura. */}
+                {latestAnthro?.manualBodyFatPercent != null && !isNaN(latestAnthro.manualBodyFatPercent) && (
+                  <div className="mt-1 p-3 rounded-xl border-2 border-orange-200"
+                       style={{ background: "linear-gradient(135deg, #FFF7ED 0%, #FFFBEB 100%)" }}>
+                    <div className="flex items-center gap-1.5 mb-2">
+                      <div className="p-1 bg-orange-100 rounded">
+                        <Percent className="h-3.5 w-3.5 text-orange-600" />
+                      </div>
+                      <p className="text-[10px] font-bold text-orange-800 uppercase tracking-wide">% Gordura Corporal</p>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-[10px] text-orange-600 font-medium">Percentual de gordura</p>
+                        <p className="text-2xl font-bold text-orange-900">{latestAnthro.manualBodyFatPercent}<span className="text-sm font-normal ml-0.5">%</span></p>
+                      </div>
+                      {latestAnthro.manualBodyFatClassification && (
+                        <div className="text-right">
+                          <p className="text-[10px] text-orange-600 font-medium">Classificação</p>
+                          <p className="text-sm font-bold text-orange-800">{latestAnthro.manualBodyFatClassification}</p>
                         </div>
-                      );
-                    })()}
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
