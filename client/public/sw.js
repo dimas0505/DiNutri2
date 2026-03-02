@@ -9,7 +9,8 @@ const STATIC_ASSETS = [
   // Icons
   '/icon-192x192.png',
   '/icon-512x512.png',
-  '/logo_dinutri.png'
+  '/logo_dinutri.png',
+  '/nova_logo_dinutri.png'
 ];
 
 // Install event - cache static assets
