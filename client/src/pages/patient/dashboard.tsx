@@ -5,7 +5,7 @@ import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import type { Patient } from "@shared/schema";
+import type { Patient, Subscription } from "@shared/schema";
 
 interface DashboardCard {
   title: string;
@@ -99,6 +99,67 @@ function getGoalLabel(goal: string | null | undefined): string {
   }
 }
 
+/**
+ * Determina se a assinatura está realmente ativa, levando em conta
+ * tanto o campo `status` quanto a data de expiração.
+ */
+function getPlanStatus(subscription: Subscription | null | undefined): {
+  label: string;
+  dotColor: string;
+  bgColor: string;
+} {
+  if (!subscription) {
+    return {
+      label: "Sem plano ativo",
+      dotColor: "bg-[#94A3B8]",
+      bgColor: "bg-[#5B21B6]/45",
+    };
+  }
+
+  const now = new Date();
+  const isExpiredByDate = subscription.expiresAt
+    ? new Date(subscription.expiresAt) < now
+    : false;
+
+  if (isExpiredByDate || subscription.status === "expired" || subscription.status === "canceled") {
+    return {
+      label: subscription.status === "canceled" ? "Plano cancelado" : "Plano expirado",
+      dotColor: "bg-[#EF4444]",
+      bgColor: "bg-[#5B21B6]/45",
+    };
+  }
+
+  if (subscription.status === "pending_payment") {
+    return {
+      label: "Pagamento pendente",
+      dotColor: "bg-[#F59E0B]",
+      bgColor: "bg-[#5B21B6]/45",
+    };
+  }
+
+  if (subscription.status === "pending_approval") {
+    return {
+      label: "Aguardando aprovação",
+      dotColor: "bg-[#F59E0B]",
+      bgColor: "bg-[#5B21B6]/45",
+    };
+  }
+
+  if (subscription.status === "active") {
+    return {
+      label: "Plano ativo",
+      dotColor: "bg-[#22C55E]",
+      bgColor: "bg-[#5B21B6]/45",
+    };
+  }
+
+  return {
+    label: "Sem plano ativo",
+    dotColor: "bg-[#94A3B8]",
+    bgColor: "bg-[#5B21B6]/45",
+  };
+}
+
 export default function PatientDashboard() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
@@ -110,6 +171,20 @@ export default function PatientDashboard() {
       return res.json();
     },
   });
+
+  const { data: subscription } = useQuery<Subscription>({
+    queryKey: ["/api/patients", patientProfile?.id, "subscription"],
+    queryFn: async () => {
+      const res = await apiRequest("GET", `/api/patients/${patientProfile!.id}/subscription`);
+      if (!res.ok) return null;
+      return res.json();
+    },
+    enabled: !!patientProfile?.id,
+    // Não lançar erro quando não há plano (404 é esperado)
+    retry: false,
+  });
+
+  const planStatus = getPlanStatus(subscription);
 
   return (
     <MobileLayout hideHeader>
@@ -141,9 +216,9 @@ export default function PatientDashboard() {
               Objetivo: {getGoalLabel(patientProfile?.goal)}
             </div>
             <div className="block">
-              <span className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-[#5B21B6]/45 text-sm">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#22C55E]" />
-                Plano Ativo
+              <span className={cn("inline-flex items-center gap-2 px-3 py-2 rounded-full text-sm", planStatus.bgColor)}>
+                <span className={cn("w-2.5 h-2.5 rounded-full", planStatus.dotColor)} />
+                {planStatus.label}
               </span>
             </div>
           </div>
