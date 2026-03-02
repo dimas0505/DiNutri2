@@ -1,4 +1,4 @@
-const CACHE_NAME = 'dinutri-v1'; // Production cache version
+const CACHE_NAME = 'dinutri-v2'; // Updated: nova logo da marca (Mar 2026)
 const STATIC_CACHE = `${CACHE_NAME}-static`;
 const DYNAMIC_CACHE = `${CACHE_NAME}-dynamic`;
 
