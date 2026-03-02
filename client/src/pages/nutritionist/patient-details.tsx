@@ -18,6 +18,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import { DefaultMobileDrawer } from "@/components/layout/mobile-layout";
 import { AnamnesisNutritionistDataForm } from "@/components/nutritionist/anamnesis-nutritionist-data-form";
 import { generatePrescriptionPDF } from "@/utils/pdf-generator";
@@ -1680,93 +1681,110 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
               </div>
               <p className="text-xs text-violet-500 mt-2">O peso registrado aqui será usado para acompanhar a evolução do paciente ao longo das avaliações.</p>
             </div>
-            <div>
-              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Circunferências Corporais (cm)</h3>
-              <div className="grid grid-cols-2 gap-3">
-                {[
-                  { key: "circumNeck", label: "Pescoço" },
-                  { key: "circumChest", label: "Tórax" },
-                  { key: "circumWaist", label: "Cintura" },
-                  { key: "circumAbdomen", label: "Abdômen" },
-                  { key: "circumHip", label: "Quadril" },
-                  { key: "circumNonDominantArmRelaxed", label: "Braço não dominante relaxado" },
-                  { key: "circumNonDominantArmContracted", label: "Braço não dominante contraído" },
-                  { key: "circumNonDominantProximalThigh", label: "Coxa proximal não dominante" },
-                  { key: "circumNonDominantCalf", label: "Panturrilha lado não dominante" },
-                ].map(({ key, label }) => (
-                  <div key={key} className="space-y-1">
-                    <Label htmlFor={`anthro-${key}`} className="text-xs">{label}</Label>
-                    <Input id={`anthro-${key}`} type="number" step="0.1" placeholder="0.0" value={(anthroForm as any)[key]} onChange={(e) => setAnthroForm((f) => ({ ...f, [key]: e.target.value }))} />
+            <Accordion type="multiple" defaultValue={["item-1", "item-2"]} className="w-full space-y-2">
+              {/* Seção 1: Circunferências Corporais */}
+              <AccordionItem value="item-1" className="border border-border/60 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+                <AccordionTrigger className="px-4 py-3 hover:bg-slate-100 dark:hover:bg-slate-700/50 rounded-t-lg">
+                  <span className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Circunferências Corporais (cm)</span>
+                </AccordionTrigger>
+                <AccordionContent className="px-4 py-4 border-t border-border/40">
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {[
+                      { key: "circumNeck", label: "Pescoço" },
+                      { key: "circumChest", label: "Tórax" },
+                      { key: "circumWaist", label: "Cintura" },
+                      { key: "circumAbdomen", label: "Abdômen" },
+                      { key: "circumHip", label: "Quadril" },
+                      { key: "circumNonDominantArmRelaxed", label: "Braço n. dom. relaxado" },
+                      { key: "circumNonDominantArmContracted", label: "Braço n. dom. contraído" },
+                      { key: "circumNonDominantProximalThigh", label: "Coxa proximal n. dom." },
+                      { key: "circumNonDominantCalf", label: "Panturrilha n. dom." },
+                    ].map(({ key, label }) => (
+                      <div key={key} className="space-y-1">
+                        <Label htmlFor={`anthro-${key}`} className="text-xs font-medium text-muted-foreground">{label}</Label>
+                        <Input id={`anthro-${key}`} type="number" step="0.1" placeholder="0.0" value={(anthroForm as any)[key]} onChange={(e) => setAnthroForm((f) => ({ ...f, [key]: e.target.value }))} className="h-9" />
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            </div>
-            <div>
-              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Dobras Cutâneas - Equação de Durnin (mm)</h3>
-              <div className="grid grid-cols-2 gap-3">
-                {[
-                  { key: "foldBiceps", label: "Bicipital" },
-                  { key: "foldTriceps", label: "Tricipital" },
-                  { key: "foldSubscapular", label: "Subescapular" },
-                  { key: "foldSuprailiac", label: "Suprailíaca" },
-                ].map(({ key, label }) => (
-                  <div key={key} className="space-y-1">
-                    <Label htmlFor={`anthro-${key}`} className="text-xs">{label}</Label>
-                    <Input id={`anthro-${key}`} type="number" step="0.1" placeholder="0.0" value={(anthroForm as any)[key]} onChange={(e) => setAnthroForm((f) => ({ ...f, [key]: e.target.value }))} />
-                  </div>
-                ))}
-              </div>
+                </AccordionContent>
+              </AccordionItem>
 
-              {/* Resultado automático do %GC - Durnin & Womersley (1974) */}
-              {(() => {
-                const age = calculateAgeFromBirthDate(patient?.birthDate);
-                const sex = patient?.sex as "M" | "F" | "Outro" | null | undefined;
-                const equation = (nutritionistSettings?.bodyFatEquation || "siri") as "siri" | "brozek";
-                const result = calculateDurninBodyFat(
-                  anthroForm.foldTriceps ? parseFloat(anthroForm.foldTriceps) : null,
-                  anthroForm.foldBiceps ? parseFloat(anthroForm.foldBiceps) : null,
-                  anthroForm.foldSubscapular ? parseFloat(anthroForm.foldSubscapular) : null,
-                  anthroForm.foldSuprailiac ? parseFloat(anthroForm.foldSuprailiac) : null,
-                  sex,
-                  age,
-                  equation
-                );
-                if (!result) {
-                  const hasAnyFold = anthroForm.foldTriceps || anthroForm.foldBiceps || anthroForm.foldSubscapular || anthroForm.foldSuprailiac;
-                  if (!hasAnyFold) return null;
-                  return (
-                    <div className="mt-3 p-3 rounded-lg border border-amber-200 bg-amber-50 text-xs text-amber-700">
-                      <p className="font-medium">Preencha as 4 dobras e verifique se o paciente possui sexo e data de nascimento cadastrados para calcular o %GC automaticamente.</p>
+              {/* Seção 2: Dobras Cutâneas e Composição Corporal */}
+              <AccordionItem value="item-2" className="border border-border/60 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+                <AccordionTrigger className="px-4 py-3 hover:bg-slate-100 dark:hover:bg-slate-700/50 rounded-t-lg">
+                  <span className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Dobras Cutâneas e Composição Corporal</span>
+                </AccordionTrigger>
+                <AccordionContent className="px-4 py-4 border-t border-border/40 space-y-4">
+                  {/* Inputs de Dobras Cutâneas */}
+                  <div>
+                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Dobras Cutâneas - Equação de Durnin (mm)</h4>
+                    <div className="grid grid-cols-2 gap-3">
+                      {[
+                        { key: "foldBiceps", label: "Bicipital" },
+                        { key: "foldTriceps", label: "Tricipital" },
+                        { key: "foldSubscapular", label: "Subescapular" },
+                        { key: "foldSuprailiac", label: "Suprailíaca" },
+                      ].map(({ key, label }) => (
+                        <div key={key} className="space-y-1">
+                          <Label htmlFor={`anthro-${key}`} className="text-xs">{label}</Label>
+                          <Input id={`anthro-${key}`} type="number" step="0.1" placeholder="0.0" value={(anthroForm as any)[key]} onChange={(e) => setAnthroForm((f) => ({ ...f, [key]: e.target.value }))} />
+                        </div>
+                      ))}
                     </div>
-                  );
-                }
-                return (
-                  <div className="mt-3 p-4 rounded-xl border-2 border-orange-200 bg-gradient-to-br from-orange-50 to-amber-50">
-                    <div className="flex items-center gap-2 mb-3">
-                      <div className="p-1.5 bg-orange-100 rounded-lg">
-                        <Percent className="h-4 w-4 text-orange-600" />
-                      </div>
-                      <p className="text-xs font-bold text-orange-800 uppercase tracking-wide">Resultado Durnin &amp; Womersley (1974)</p>
-                    </div>
-                    <div className="grid grid-cols-3 gap-3">
-                      <div className="text-center">
-                        <p className="text-[10px] text-orange-600 font-medium uppercase">Soma dobras</p>
-                        <p className="text-lg font-bold text-orange-900">{result.sumFolds}<span className="text-xs font-normal ml-0.5">mm</span></p>
-                      </div>
-                      <div className="text-center">
-                        <p className="text-[10px] text-orange-600 font-medium uppercase">% Gordura</p>
-                        <p className="text-2xl font-bold text-orange-900">{result.bodyFatPercent}<span className="text-sm font-normal ml-0.5">%</span></p>
-                      </div>
-                      <div className="text-center">
-                        <p className="text-[10px] text-orange-600 font-medium uppercase">Classificação</p>
-                        <p className={`text-sm font-bold ${result.classificationColor}`}>{result.classification}</p>
-                      </div>
-                    </div>
-                      <p className="text-[10px] text-orange-500 mt-2 text-center">Densidade corporal: {result.density} Kg/L · Equação de Brozek (1963)</p>
                   </div>
-                );
-              })()}
-            </div>
+
+                  {/* Resultado automático do %GC - Durnin & Womersley (1974) */}
+                  {(() => {
+                    const age = calculateAgeFromBirthDate(patient?.birthDate);
+                    const sex = patient?.sex as "M" | "F" | "Outro" | null | undefined;
+                    const equation = (nutritionistSettings?.bodyFatEquation || "siri") as "siri" | "brozek";
+                    const result = calculateDurninBodyFat(
+                      anthroForm.foldTriceps ? parseFloat(anthroForm.foldTriceps) : null,
+                      anthroForm.foldBiceps ? parseFloat(anthroForm.foldBiceps) : null,
+                      anthroForm.foldSubscapular ? parseFloat(anthroForm.foldSubscapular) : null,
+                      anthroForm.foldSuprailiac ? parseFloat(anthroForm.foldSuprailiac) : null,
+                      sex,
+                      age,
+                      equation
+                    );
+                    if (!result) {
+                      const hasAnyFold = anthroForm.foldTriceps || anthroForm.foldBiceps || anthroForm.foldSubscapular || anthroForm.foldSuprailiac;
+                      if (!hasAnyFold) return null;
+                      return (
+                        <div className="mt-3 p-3 rounded-lg border border-amber-200 bg-amber-50 text-xs text-amber-700">
+                          <p className="font-medium">Preencha as 4 dobras e verifique se o paciente possui sexo e data de nascimento cadastrados para calcular o %GC automaticamente.</p>
+                        </div>
+                      );
+                    }
+                    return (
+                      <div className="mt-3 p-4 rounded-xl border-2 border-orange-200 bg-gradient-to-br from-orange-50 to-amber-50">
+                        <div className="flex items-center gap-2 mb-3">
+                          <div className="p-1.5 bg-orange-100 rounded-lg">
+                            <Percent className="h-4 w-4 text-orange-600" />
+                          </div>
+                          <p className="text-xs font-bold text-orange-800 uppercase tracking-wide">Resultado Durnin &amp; Womersley (1974)</p>
+                        </div>
+                        <div className="grid grid-cols-3 gap-3">
+                          <div className="text-center">
+                            <p className="text-[10px] text-orange-600 font-medium uppercase">Soma dobras</p>
+                            <p className="text-lg font-bold text-orange-900">{result.sumFolds}<span className="text-xs font-normal ml-0.5">mm</span></p>
+                          </div>
+                          <div className="text-center">
+                            <p className="text-[10px] text-orange-600 font-medium uppercase">% Gordura</p>
+                            <p className="text-2xl font-bold text-orange-900">{result.bodyFatPercent}<span className="text-sm font-normal ml-0.5">%</span></p>
+                          </div>
+                          <div className="text-center">
+                            <p className="text-[10px] text-orange-600 font-medium uppercase">Classificação</p>
+                            <p className={`text-sm font-bold ${result.classificationColor}`}>{result.classification}</p>
+                          </div>
+                        </div>
+                          <p className="text-[10px] text-orange-500 mt-2 text-center">Densidade corporal: {result.density} Kg/L · Equação de Brozek (1963)</p>
+                      </div>
+                    );
+                  })()}
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
           </div>
           <DialogFooter className="flex-shrink-0 pt-2 border-t border-border/40">
             <Button variant="outline" onClick={() => setIsAnthroDialogOpen(false)}>Cancelar</Button>
