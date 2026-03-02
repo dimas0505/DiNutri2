@@ -5,13 +5,13 @@ import bcrypt from "bcrypt";
 import bodyParser from "body-parser";
 import { storage, deleteFoodDiaryPhoto } from "./storage.js";
 import { setupAuth, isAuthenticated } from "./auth.js";
-import { insertPatientSchema, updatePatientSchema, insertPrescriptionSchema, updatePrescriptionSchema, insertMoodEntrySchema, insertAnamnesisRecordSchema, insertFoodDiaryEntrySchema, insertSubscriptionSchema } from "../shared/schema.js";
+import { insertPatientSchema, updatePatientSchema, insertPrescriptionSchema, updatePrescriptionSchema, insertMoodEntrySchema, insertAnamnesisRecordSchema, insertFoodDiaryEntrySchema, insertSubscriptionSchema, insertAnthropometricAssessmentSchema, updateAnthropometricAssessmentSchema } from "../shared/schema.js";
 import { z } from "zod";
 import { handleUpload, type HandleUploadBody } from '@vercel/blob/client';
 import { put } from '@vercel/blob';
 import multer from 'multer';
 import { eq, and, desc, or, sql } from 'drizzle-orm';
-import { anamnesisRecords, foodDiaryEntries, prescriptions, users, patients, subscriptions, activityLog, patientDocuments } from '../shared/schema.js';
+import { anamnesisRecords, foodDiaryEntries, prescriptions, users, patients, subscriptions, activityLog, patientDocuments, anthropometricAssessments } from '../shared/schema.js';
 import { db } from './db.js';
 import sharp from 'sharp';
 import { nanoid } from 'nanoid';
@@ -1507,6 +1507,127 @@ export async function setupRoutes(app: Express): Promise<void> {
     } catch (error) {
       console.error("Erro ao excluir avaliação:", error);
       res.status(500).json({ message: "Falha ao excluir avaliação." });
+    }
+  });
+
+  // --- ANTHROPOMETRIC ASSESSMENTS ROUTES ---
+
+  // GET: List all anthropometric assessments for a patient
+  app.get('/api/patients/:patientId/anthropometry', isAuthenticated, async (req: any, res) => {
+    try {
+      const { patientId } = req.params;
+      const patient = await storage.getPatient(patientId);
+      if (!patient || (req.user.role === 'nutritionist' && patient.ownerId !== req.user.id)) {
+        return res.status(404).json({ message: "Paciente não encontrado ou acesso não autorizado." });
+      }
+      const assessments = await db
+        .select()
+        .from(anthropometricAssessments)
+        .where(eq(anthropometricAssessments.patientId, patientId))
+        .orderBy(desc(anthropometricAssessments.createdAt));
+      return res.json(assessments);
+    } catch (error) {
+      console.error("Erro ao buscar avaliações antropométricas:", error);
+      res.status(500).json({ message: "Falha ao buscar avaliações antropométricas." });
+    }
+  });
+
+  // POST: Create a new anthropometric assessment
+  app.post('/api/patients/:patientId/anthropometry', isAuthenticated, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'nutritionist') {
+        return res.status(403).json({ message: "Acesso negado. Apenas nutricionistas." });
+      }
+      const { patientId } = req.params;
+      const patient = await storage.getPatient(patientId);
+      if (!patient || patient.ownerId !== req.user.id) {
+        return res.status(404).json({ message: "Paciente não encontrado ou acesso não autorizado." });
+      }
+      const parsed = insertAnthropometricAssessmentSchema.safeParse({ ...req.body, patientId, nutritionistId: req.user.id });
+      if (!parsed.success) {
+        return res.status(400).json({ message: "Dados inválidos.", errors: parsed.error.errors });
+      }
+      const [assessment] = await db
+        .insert(anthropometricAssessments)
+        .values({ id: nanoid(), ...parsed.data })
+        .returning();
+      return res.status(201).json(assessment);
+    } catch (error) {
+      console.error("Erro ao criar avaliação antropométrica:", error);
+      res.status(500).json({ message: "Falha ao criar avaliação antropométrica." });
+    }
+  });
+
+  // PUT: Update an anthropometric assessment
+  app.put('/api/anthropometry/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'nutritionist') {
+        return res.status(403).json({ message: "Acesso negado. Apenas nutricionistas." });
+      }
+      const [existing] = await db
+        .select()
+        .from(anthropometricAssessments)
+        .where(and(eq(anthropometricAssessments.id, req.params.id), eq(anthropometricAssessments.nutritionistId, req.user.id)));
+      if (!existing) {
+        return res.status(404).json({ message: "Avaliação não encontrada ou acesso não autorizado." });
+      }
+      const parsed = updateAnthropometricAssessmentSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: "Dados inválidos.", errors: parsed.error.errors });
+      }
+      const [updated] = await db
+        .update(anthropometricAssessments)
+        .set({ ...parsed.data, updatedAt: new Date() })
+        .where(eq(anthropometricAssessments.id, req.params.id))
+        .returning();
+      return res.json(updated);
+    } catch (error) {
+      console.error("Erro ao atualizar avaliação antropométrica:", error);
+      res.status(500).json({ message: "Falha ao atualizar avaliação antropométrica." });
+    }
+  });
+
+  // DELETE: Delete an anthropometric assessment
+  app.delete('/api/anthropometry/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'nutritionist') {
+        return res.status(403).json({ message: "Acesso negado. Apenas nutricionistas." });
+      }
+      const [existing] = await db
+        .select()
+        .from(anthropometricAssessments)
+        .where(and(eq(anthropometricAssessments.id, req.params.id), eq(anthropometricAssessments.nutritionistId, req.user.id)));
+      if (!existing) {
+        return res.status(404).json({ message: "Avaliação não encontrada ou acesso não autorizado." });
+      }
+      await db.delete(anthropometricAssessments).where(eq(anthropometricAssessments.id, req.params.id));
+      return res.status(204).send();
+    } catch (error) {
+      console.error("Erro ao excluir avaliação antropométrica:", error);
+      res.status(500).json({ message: "Falha ao excluir avaliação antropométrica." });
+    }
+  });
+
+  // GET: Patient fetches their own latest anthropometric assessment
+  app.get('/api/my-anthropometry/latest', isAuthenticated, async (req: any, res) => {
+    try {
+      const patientProfile = await storage.getPatientByUserId(req.user.id);
+      if (!patientProfile) {
+        return res.status(404).json({ message: "Perfil de paciente não encontrado." });
+      }
+      const [latest] = await db
+        .select()
+        .from(anthropometricAssessments)
+        .where(eq(anthropometricAssessments.patientId, patientProfile.id))
+        .orderBy(desc(anthropometricAssessments.createdAt))
+        .limit(1);
+      if (!latest) {
+        return res.status(404).json({ message: "Nenhuma avaliação encontrada." });
+      }
+      return res.json(latest);
+    } catch (error) {
+      console.error("Erro ao buscar última avaliação antropométrica:", error);
+      res.status(500).json({ message: "Falha ao buscar avaliação antropométrica." });
     }
   });
 }

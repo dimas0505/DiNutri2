@@ -1,0 +1,21 @@
+CREATE TABLE IF NOT EXISTS "anthropometric_assessments" (
+  "id" varchar PRIMARY KEY NOT NULL,
+  "patient_id" varchar NOT NULL REFERENCES "patients"("id") ON DELETE CASCADE,
+  "nutritionist_id" varchar NOT NULL REFERENCES "users"("id"),
+  "title" varchar NOT NULL,
+  "circum_neck" real,
+  "circum_chest" real,
+  "circum_waist" real,
+  "circum_abdomen" real,
+  "circum_hip" real,
+  "circum_non_dominant_arm_relaxed" real,
+  "circum_non_dominant_arm_contracted" real,
+  "circum_non_dominant_proximal_thigh" real,
+  "circum_non_dominant_calf" real,
+  "fold_biceps" real,
+  "fold_triceps" real,
+  "fold_subscapular" real,
+  "fold_suprailiac" real,
+  "created_at" timestamp DEFAULT now(),
+  "updated_at" timestamp DEFAULT now()
+);

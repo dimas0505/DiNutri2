@@ -3,6 +3,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { MobileLayout } from "@/components/layout/mobile-layout";
 import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
+import { useQuery } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import type { Patient } from "@shared/schema";
 
 interface DashboardCard {
   title: string;
@@ -87,9 +90,26 @@ function getGreeting() {
   return "Boa noite";
 }
 
+function getGoalLabel(goal: string | null | undefined): string {
+  switch (goal) {
+    case "lose_weight": return "Perder peso";
+    case "maintain_weight": return "Manter peso";
+    case "gain_weight": return "Ganhar peso";
+    default: return "Objetivo em definição";
+  }
+}
+
 export default function PatientDashboard() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
+
+  const { data: patientProfile } = useQuery<Patient>({
+    queryKey: ["/api/patient/my-profile"],
+    queryFn: async () => {
+      const res = await apiRequest("GET", "/api/patient/my-profile");
+      return res.json();
+    },
+  });
 
   return (
     <MobileLayout hideHeader>
@@ -118,7 +138,7 @@ export default function PatientDashboard() {
           <div className="mt-4 space-y-2">
             <div className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-white/18 text-sm">
               <span className="w-2.5 h-2.5 bg-white rounded-sm" />
-              Objetivo: Ganhar Peso
+              Objetivo: {getGoalLabel(patientProfile?.goal)}
             </div>
             <div className="block">
               <span className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-[#5B21B6]/45 text-sm">

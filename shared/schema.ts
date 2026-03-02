@@ -169,6 +169,31 @@ export const activityLog = pgTable("activity_log", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// Anthropometric Assessments table
+export const anthropometricAssessments = pgTable("anthropometric_assessments", {
+  id: varchar("id").primaryKey(),
+  patientId: varchar("patient_id").references(() => patients.id, { onDelete: 'cascade' }).notNull(),
+  nutritionistId: varchar("nutritionist_id").references(() => users.id).notNull(),
+  title: varchar("title").notNull(),
+  // Circumferences (cm)
+  circumNeck: real("circum_neck"),
+  circumChest: real("circum_chest"),
+  circumWaist: real("circum_waist"),
+  circumAbdomen: real("circum_abdomen"),
+  circumHip: real("circum_hip"),
+  circumNonDominantArmRelaxed: real("circum_non_dominant_arm_relaxed"),
+  circumNonDominantArmContracted: real("circum_non_dominant_arm_contracted"),
+  circumNonDominantProximalThigh: real("circum_non_dominant_proximal_thigh"),
+  circumNonDominantCalf: real("circum_non_dominant_calf"),
+  // Skinfolds - Durnin equation (mm)
+  foldBiceps: real("fold_biceps"),
+  foldTriceps: real("fold_triceps"),
+  foldSubscapular: real("fold_subscapular"),
+  foldSuprailiac: real("fold_suprailiac"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Patient Documents table (for assessment file uploads)
 export const patientDocuments = pgTable("patient_documents", {
   id: varchar("id").primaryKey(),
@@ -205,6 +230,7 @@ export const patientsRelations = relations(patients, ({ one, many }) => ({
   anamnesisRecords: many(anamnesisRecords),
   foodDiaryEntries: many(foodDiaryEntries),
   documents: many(patientDocuments),
+  anthropometricAssessments: many(anthropometricAssessments),
 }));
 
 export const invitationsRelations = relations(invitations, ({ one }) => ({
@@ -263,6 +289,17 @@ export const patientDocumentsRelations = relations(patientDocuments, ({ one }) =
   }),
   nutritionist: one(users, {
     fields: [patientDocuments.nutritionistId],
+    references: [users.id],
+  }),
+}));
+
+export const anthropometricAssessmentsRelations = relations(anthropometricAssessments, ({ one }) => ({
+  patient: one(patients, {
+    fields: [anthropometricAssessments.patientId],
+    references: [patients.id],
+  }),
+  nutritionist: one(users, {
+    fields: [anthropometricAssessments.nutritionistId],
     references: [users.id],
   }),
 }));
@@ -355,6 +392,17 @@ export const insertPatientDocumentSchema = createInsertSchema(patientDocuments).
   createdAt: true,
 });
 
+export const insertAnthropometricAssessmentSchema = createInsertSchema(anthropometricAssessments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const updateAnthropometricAssessmentSchema = insertAnthropometricAssessmentSchema.omit({
+  patientId: true,
+  nutritionistId: true,
+}).partial();
+
 export const updatePatientSchema = insertPatientSchema.partial();
 
 // Anamnesis registration schema (patient self-registration form)
@@ -405,6 +453,9 @@ export type Subscription = typeof subscriptions.$inferSelect;
 export type InsertSubscription = z.infer<typeof insertSubscriptionSchema>;
 export type PatientDocument = typeof patientDocuments.$inferSelect;
 export type InsertPatientDocument = z.infer<typeof insertPatientDocumentSchema>;
+export type AnthropometricAssessment = typeof anthropometricAssessments.$inferSelect;
+export type InsertAnthropometricAssessment = z.infer<typeof insertAnthropometricAssessmentSchema>;
+export type UpdateAnthropometricAssessment = z.infer<typeof updateAnthropometricAssessmentSchema>;
 
 // Extended type for food diary entries with prescription and mood information
 export interface FoodDiaryEntryWithPrescription extends FoodDiaryEntry {
