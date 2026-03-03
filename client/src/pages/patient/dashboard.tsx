@@ -1,11 +1,11 @@
-import { Bell, ClipboardList, Cross, ShieldCheck, TrendingUp, User, UtensilsCrossed } from "lucide-react";
+import { Bell, ClipboardList, Cross, ShieldCheck, TrendingUp, User, UtensilsCrossed, ChefHat } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { MobileLayout } from "@/components/layout/mobile-layout";
 import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import type { Patient, Subscription } from "@shared/schema";
+import type { Patient, Prescription, Subscription } from "@shared/schema";
 
 interface DashboardCard {
   title: string;
@@ -170,6 +170,21 @@ export default function PatientDashboard() {
 
   const planStatus = getPlanStatus(subscription);
 
+  // Buscar prescrições para detectar planos em preparação
+  const { data: prescriptions = [] } = useQuery<Prescription[]>({
+    queryKey: ["/api/patient/my-prescriptions"],
+    queryFn: async () => {
+      const res = await apiRequest("GET", "/api/patient/my-prescriptions");
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!patientProfile?.id,
+    retry: false,
+  });
+
+  // Planos em preparação (status = "preparing")
+  const preparingPlans = prescriptions.filter((p: Prescription) => p.status === "preparing");
+
   // Divide os 6 cards: primeira linha com 2 cards destacados (maiores),
   // e as 2 linhas seguintes com 2 cards cada no grid padrão.
   const [featuredCards, gridCards] = [dashboardCards.slice(0, 2), dashboardCards.slice(2)];
@@ -211,6 +226,34 @@ export default function PatientDashboard() {
             </div>
           </div>
         </section>
+
+        {/* Banner informativo: plano em preparação */}
+        {preparingPlans.length > 0 && (
+          <section className="px-5 pt-4">
+            {preparingPlans.map((plan: Prescription) => (
+              <button
+                key={plan.id}
+                type="button"
+                onClick={() => setLocation("/patient/prescriptions")}
+                className="w-full text-left rounded-2xl border-2 border-orange-300 bg-gradient-to-br from-orange-50 via-amber-50 to-orange-50 shadow-md p-4 flex items-start gap-3"
+                data-testid={`banner-preparing-plan-${plan.id}`}
+              >
+                <div className="p-2 bg-orange-100 rounded-xl flex-shrink-0">
+                  <ChefHat className="w-5 h-5 text-orange-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-orange-900 leading-tight">
+                    Plano em Preparação
+                  </p>
+                  <p className="text-xs text-orange-700 mt-0.5 leading-snug">
+                    Seu nutricionista está elaborando <span className="font-medium">{plan.title}</span>. Você será notificado quando estiver pronto.
+                  </p>
+                </div>
+                <span className="text-orange-400 text-lg leading-none flex-shrink-0">›</span>
+              </button>
+            ))}
+          </section>
+        )}
 
         <section className="px-5 pt-5">
           <h2 className="text-[1.7rem] font-bold text-[#252638]">Menu do Paciente</h2>

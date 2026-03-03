@@ -5,7 +5,7 @@ import {
   Copy, History, User, Calendar, Ruler, Weight, Target, Activity,
   Heart, Stethoscope, Pill, Camera, Image, Smile, Trash2, FileDown,
   CreditCard, Upload, Download, ClipboardList, Pencil,
-  Dumbbell, BookOpen, ChevronRight, Percent,
+  Dumbbell, BookOpen, ChevronRight, Percent, Zap,
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
@@ -72,6 +72,7 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
 
   // ── Feature State ──
   const [prescriptionToDelete, setPrescriptionToDelete] = useState<string | null>(null);
+  const [prescriptionToActivate, setPrescriptionToActivate] = useState<Prescription | null>(null);
   const [followUpLink, setFollowUpLink] = useState<string | null>(null);
   const [entryToDelete, setEntryToDelete] = useState<string | null>(null);
   const [isCreateSubscriptionDialogOpen, setIsCreateSubscriptionDialogOpen] = useState(false);
@@ -236,12 +237,12 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
 
   const createPrescriptionMutation = useMutation({
     mutationFn: () => {
-      const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + 90);
+      // Cria o plano com status "preparing" (Plano em Preparação) — o nutricionista
+      // elabora o conteúdo e depois ativa o plano via botão "Ativar Plano Alimentar".
       return fetch(`/api/prescriptions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ patientId: params.id, title: "Nova Prescrição", expiresAt: expiresAt.toISOString() }),
+        body: JSON.stringify({ patientId: params.id, title: "Nova Prescrição", status: "preparing" }),
       }).then((res) => {
         if (!res.ok) throw res;
         return res.json();
@@ -292,6 +293,22 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
         : "Não foi possível excluir a prescrição. Tente novamente.";
       toast({ title: "Erro", description: msg, variant: "destructive" });
       setPrescriptionToDelete(null);
+    },
+  });
+
+  const activatePrescriptionMutation = useMutation({
+    mutationFn: async (prescriptionId: string) => {
+      const response = await apiRequest("POST", `/api/prescriptions/${prescriptionId}/activate`, { durationDays: 90 });
+      return await response.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Plano Ativado!", description: "O plano alimentar foi ativado com sucesso." });
+      queryClient.invalidateQueries({ queryKey: ["/api/patients", params.id, "prescriptions"] });
+      setPrescriptionToActivate(null);
+    },
+    onError: () => {
+      toast({ title: "Erro", description: "Não foi possível ativar o plano alimentar. Tente novamente.", variant: "destructive" });
+      setPrescriptionToActivate(null);
     },
   });
 
@@ -948,11 +965,25 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                       </div>
                     </div>
                     <Badge
-                      variant={prescription.status === "published" ? "default" : "secondary"}
-                      className={prescription.status === "published" ? "bg-green-100 text-green-800 border-green-200" : "bg-gray-100 text-gray-700 border-gray-200"}
+                      variant="secondary"
+                      className={
+                        prescription.status === "active"
+                          ? "bg-green-100 text-green-800 border-green-200"
+                          : prescription.status === "published"
+                          ? "bg-blue-100 text-blue-800 border-blue-200"
+                          : prescription.status === "preparing"
+                          ? "bg-orange-100 text-orange-800 border-orange-200"
+                          : "bg-gray-100 text-gray-700 border-gray-200"
+                      }
                       data-testid={`badge-prescription-status-${prescription.id}`}
                     >
-                      {prescription.status === "published" ? "Publicado" : "Rascunho"}
+                      {prescription.status === "active"
+                        ? "Ativo"
+                        : prescription.status === "published"
+                        ? "Publicado"
+                        : prescription.status === "preparing"
+                        ? "Plano em Preparação"
+                        : "Rascunho"}
                     </Badge>
                   </div>
                   {prescription.generalNotes && (
@@ -962,8 +993,19 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                   )}
                   <div className="flex flex-wrap items-center gap-2 mt-4">
                     <Button variant="ghost" size="sm" onClick={() => setLocation(`/prescriptions/${prescription.id}/edit`)} data-testid={`button-edit-prescription-${prescription.id}`} className="bg-blue-100 hover:bg-blue-200 text-blue-700 border border-blue-200 rounded-lg">
-                      <Eye className="h-4 w-4 mr-1" />{prescription.status === "published" ? "Visualizar" : "Editar"}
+                      <Eye className="h-4 w-4 mr-1" />{prescription.status === "active" || prescription.status === "published" ? "Visualizar" : "Editar"}
                     </Button>
+                    {(prescription.status === "preparing" || prescription.status === "draft") && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setPrescriptionToActivate(prescription)}
+                        data-testid={`button-activate-prescription-${prescription.id}`}
+                        className="bg-orange-100 hover:bg-orange-200 text-orange-700 border border-orange-200 rounded-lg"
+                      >
+                        <Zap className="h-4 w-4 mr-1" />Ativar Plano
+                      </Button>
+                    )}
                     <Button variant="ghost" size="sm" onClick={() => duplicatePrescriptionMutation.mutate(prescription.id)} disabled={duplicatePrescriptionMutation.isPending} data-testid={`button-duplicate-prescription-${prescription.id}`} className="bg-purple-100 hover:bg-purple-200 text-purple-700 border border-purple-200 rounded-lg">
                       <FileText className="h-4 w-4 mr-1" />{duplicatePrescriptionMutation.isPending ? "Duplicando..." : "Duplicar"}
                     </Button>
@@ -1924,11 +1966,52 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* AlertDialog de Confirmação de Ativação de Plano */}
+      <AlertDialog open={!!prescriptionToActivate} onOpenChange={(open) => { if (!open) setPrescriptionToActivate(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Zap className="h-5 w-5 text-orange-500" />
+              Ativar Plano Alimentar
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3 text-sm text-muted-foreground">
+                <p>
+                  Você está prestes a ativar o plano alimentar <strong className="text-foreground">"{prescriptionToActivate?.title}"</strong> para o paciente <strong className="text-foreground">{patient?.name}</strong>.
+                </p>
+                <div className="rounded-lg bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-900/30 p-3 space-y-1">
+                  <p className="font-medium text-orange-800 dark:text-orange-200">O que acontecerá:</p>
+                  <ul className="list-disc list-inside space-y-1 text-orange-700 dark:text-orange-300">
+                    <li>Status mudará para <strong>Ativo</strong></li>
+                    <li>Data de início será definida como <strong>hoje</strong></li>
+                    <li>Validade calculada automaticamente: <strong>90 dias</strong></li>
+                    <li>O paciente terá acesso imediato ao plano</li>
+                  </ul>
+                </div>
+                <p>Esta ação não pode ser desfeita. Deseja continuar?</p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => prescriptionToActivate && activatePrescriptionMutation.mutate(prescriptionToActivate.id)}
+              disabled={activatePrescriptionMutation.isPending}
+              className="bg-orange-500 hover:bg-orange-600 text-white"
+              data-testid="button-confirm-activate-patient-details"
+            >
+              <Zap className="h-4 w-4 mr-2" />
+              {activatePrescriptionMutation.isPending ? "Ativando..." : "Ativar Plano"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
 
-// ─── Shared Sub-components ────────────────────────────────────────────────────
+// ─── Shared Sub-components ────────────────────────────────────────────────────────────────────────────────
 
 function SectionHeader({ icon, title, subtitle }: { icon: React.ReactNode; title: string; subtitle?: string }) {
   return (
