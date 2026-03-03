@@ -1,4 +1,4 @@
-import { Bell, ClipboardList, Cross, FlaskConical, Lightbulb, ShieldCheck, TrendingUp, User, UtensilsCrossed } from "lucide-react";
+import { Bell, ClipboardList, Cross, ShieldCheck, TrendingUp, User, UtensilsCrossed } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { MobileLayout } from "@/components/layout/mobile-layout";
 import { useLocation } from "wouter";
@@ -56,22 +56,6 @@ const dashboardCards: DashboardCard[] = [
     icon: TrendingUp,
     iconBg: "bg-[#FFEAF4]",
     iconColor: "text-[#EC4899]",
-  },
-  {
-    title: "Orientações",
-    subtitle: "Dicas do nutricionista",
-    href: "/guidelines",
-    icon: Lightbulb,
-    iconBg: "bg-[#EEE8FF]",
-    iconColor: "text-[#8B5CF6]",
-  },
-  {
-    title: "Exames",
-    subtitle: "Seus resultados laboratoriais",
-    href: "/exams",
-    icon: FlaskConical,
-    iconBg: "bg-[#EAF8FC]",
-    iconColor: "text-[#06B6D4]",
   },
   {
     title: "Suplementos",
@@ -186,6 +170,10 @@ export default function PatientDashboard() {
 
   const planStatus = getPlanStatus(subscription);
 
+  // Divide os 6 cards: primeira linha com 2 cards destacados (maiores),
+  // e as 2 linhas seguintes com 2 cards cada no grid padrão.
+  const [featuredCards, gridCards] = [dashboardCards.slice(0, 2), dashboardCards.slice(2)];
+
   return (
     <MobileLayout hideHeader>
       <div className="min-h-screen bg-[#F0F1F7] pb-24">
@@ -228,20 +216,42 @@ export default function PatientDashboard() {
           <h2 className="text-[1.7rem] font-bold text-[#252638]">Menu do Paciente</h2>
           <p className="text-[0.95rem] text-[#6C7282] mt-1">Acesse suas informações e acompanhe sua evolução</p>
 
+          {/* Dois cards principais em destaque — linha superior com altura maior */}
           <div className="mt-4 grid grid-cols-2 gap-3">
-            {dashboardCards.map((card) => {
+            {featuredCards.map((card) => {
               const Icon = card.icon;
               return (
                 <button
                   key={card.title}
                   type="button"
                   onClick={() => setLocation(card.href)}
-                  className="bg-white rounded-2xl px-3 py-3 min-h-[140px] border border-[#E9E9EF] shadow-[0_2px_8px_rgba(12,12,13,0.04)] flex flex-col items-center justify-center text-center"
+                  className="bg-white rounded-2xl px-3 py-5 min-h-[160px] border border-[#E9E9EF] shadow-[0_2px_8px_rgba(12,12,13,0.04)] flex flex-col items-center justify-center text-center"
+                >
+                  <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center", card.iconBg)}>
+                    <Icon className={cn("w-6 h-6", card.iconColor)} />
+                  </div>
+                  <h3 className="mt-2.5 text-[1.1rem] font-bold text-[#272838] leading-tight">{card.title}</h3>
+                  <p className="mt-1 text-[0.72rem] text-[#6B7280] leading-snug">{card.subtitle}</p>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Quatro cards restantes em grid 2×2 */}
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            {gridCards.map((card) => {
+              const Icon = card.icon;
+              return (
+                <button
+                  key={card.title}
+                  type="button"
+                  onClick={() => setLocation(card.href)}
+                  className="bg-white rounded-2xl px-3 py-3 min-h-[130px] border border-[#E9E9EF] shadow-[0_2px_8px_rgba(12,12,13,0.04)] flex flex-col items-center justify-center text-center"
                 >
                   <div className={cn("w-11 h-11 rounded-2xl flex items-center justify-center", card.iconBg)}>
                     <Icon className={cn("w-5 h-5", card.iconColor)} />
                   </div>
-                  <h3 className="mt-2 text-[1.1rem] font-bold text-[#272838] leading-tight">{card.title}</h3>
+                  <h3 className="mt-2 text-[1.05rem] font-bold text-[#272838] leading-tight">{card.title}</h3>
                   <p className="mt-1 text-[0.72rem] text-[#6B7280] leading-snug">{card.subtitle}</p>
                 </button>
               );
