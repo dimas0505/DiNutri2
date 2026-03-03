@@ -1056,7 +1056,7 @@ export async function setupRoutes(app: Express): Promise<void> {
       }
 
       // Validate status
-      if (!['active', 'pending_payment', 'pending_approval'].includes(status)) {
+      if (!['active', 'pending_payment', 'pending_approval', 'pending_plan'].includes(status)) {
         return res.status(400).json({ error: 'Status inválido' });
       }
 
@@ -1070,12 +1070,20 @@ export async function setupRoutes(app: Express): Promise<void> {
         return res.status(404).json({ error: 'Paciente não encontrado ou acesso negado' });
       }
 
-      // Calculate dates based on plan type and status
+      // Calculate dates based on plan type and status.
+      // For pending_plan: startDate and expiresAt are intentionally left null/now
+      // because the validity period only begins when the nutritionist activates
+      // the meal plan (transitions to 'active' via the activate endpoint).
       const now = new Date();
       let startDate = now;
       let expirationDate = null;
 
-      if (status === 'active') {
+      if (status === 'pending_plan') {
+        // Access granted but meal plan not yet delivered.
+        // Dates will be set when the nutritionist activates the plan.
+        startDate = now; // record creation time; not used for display
+        expirationDate = null;
+      } else if (status === 'active') {
         if (planType === 'free') {
           // Free plans don't expire
           expirationDate = null;
@@ -1166,6 +1174,66 @@ export async function setupRoutes(app: Express): Promise<void> {
     } catch (error) {
       console.error("Erro ao buscar assinaturas pendentes:", error);
       res.status(500).json({ error: "Falha ao buscar assinaturas pendentes." });
+    }
+  });
+
+  // Nutritionist activates the meal plan for a patient (pending_plan → active).
+  // This endpoint sets startDate to now and calculates expiresAt based on planType,
+  // marking the official start of the patient's validity period.
+  app.post('/api/subscriptions/:subscriptionId/activate-plan', isAuthenticated, async (req: any, res) => {
+    try {
+      const subscriptionId = req.params.subscriptionId;
+      const nutritionistId = req.user.id;
+
+      if (req.user.role !== 'nutritionist') {
+        return res.status(403).json({ error: 'Acesso negado. Apenas nutricionistas.' });
+      }
+
+      // Security check: ensure subscription belongs to nutritionist's patient
+      const [subscriptionWithPatient] = await db
+        .select({ subscription: subscriptions, patient: patients })
+        .from(subscriptions)
+        .leftJoin(patients, eq(subscriptions.patientId, patients.id))
+        .where(eq(subscriptions.id, subscriptionId));
+
+      if (!subscriptionWithPatient || subscriptionWithPatient.patient?.ownerId !== nutritionistId) {
+        return res.status(404).json({ error: 'Assinatura não encontrada ou não autorizada.' });
+      }
+
+      const sub = subscriptionWithPatient.subscription;
+
+      if (sub.status !== 'pending_plan') {
+        return res.status(400).json({ error: 'Apenas assinaturas com status "Plano em Preparação" podem ser ativadas por este endpoint.' });
+      }
+
+      // Set startDate to now and calculate expiresAt based on planType
+      const now = new Date();
+      let expirationDate: Date | null = null;
+
+      if (sub.planType === 'monthly') {
+        expirationDate = new Date(now);
+        expirationDate.setMonth(expirationDate.getMonth() + 1);
+      } else if (sub.planType === 'quarterly') {
+        expirationDate = new Date(now);
+        expirationDate.setMonth(expirationDate.getMonth() + 3);
+      }
+      // free plans: expirationDate stays null
+
+      const [updatedSubscription] = await db
+        .update(subscriptions)
+        .set({
+          status: 'active',
+          startDate: now,
+          expiresAt: expirationDate,
+          updatedAt: now,
+        })
+        .where(eq(subscriptions.id, subscriptionId))
+        .returning();
+
+      return res.json(updatedSubscription);
+    } catch (error) {
+      console.error('Erro ao ativar plano alimentar:', error);
+      res.status(500).json({ error: 'Falha ao ativar plano alimentar.' });
     }
   });
 
