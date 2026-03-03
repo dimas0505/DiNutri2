@@ -129,6 +129,14 @@ function getPlanStatus(subscription: Subscription | null | undefined): {
     };
   }
 
+  if (subscription.status === "pending_plan") {
+    return {
+      label: "Plano em preparação",
+      dotColor: "bg-[#F97316]",
+      bgColor: "bg-[#5B21B6]/45",
+    };
+  }
+
   if (subscription.status === "active") {
     return {
       label: "Plano ativo",

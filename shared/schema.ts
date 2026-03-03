@@ -153,7 +153,7 @@ export const subscriptions = pgTable("subscriptions", {
   id: varchar("id").primaryKey(),
   patientId: varchar("patient_id").references(() => patients.id, { onDelete: 'cascade' }).notNull(),
   planType: varchar("plan_type", { enum: ["free", "monthly", "quarterly"] }).notNull(),
-  status: varchar("status", { enum: ["active", "pending_payment", "pending_approval", "expired", "canceled"] }).notNull(),
+  status: varchar("status", { enum: ["active", "pending_payment", "pending_approval", "pending_plan", "expired", "canceled"] }).notNull(),
   startDate: timestamp("start_date").notNull(),
   expiresAt: timestamp("expires_at"),
   paymentLink: text("payment_link"),

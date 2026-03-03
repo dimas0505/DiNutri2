@@ -5,7 +5,7 @@ import {
   Copy, History, User, Calendar, Ruler, Weight, Target, Activity,
   Heart, Stethoscope, Pill, Camera, Image, Smile, Trash2, FileDown,
   CreditCard, Upload, Download, ClipboardList, Pencil,
-  Dumbbell, BookOpen, ChevronRight, Percent,
+  Dumbbell, BookOpen, ChevronRight, Percent, PlayCircle, Clock,
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
@@ -359,6 +359,22 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
     },
   });
 
+  const activatePlanMutation = useMutation({
+    mutationFn: async (subscriptionId: string) => {
+      const response = await apiRequest("POST", `/api/subscriptions/${subscriptionId}/activate-plan`);
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error || "Falha ao ativar plano alimentar.");
+      }
+      return await response.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Plano Alimentar Ativado!", description: "A validade do plano começou a contar a partir de agora." });
+      queryClient.invalidateQueries({ queryKey: ["/api/patients", params.id, "subscription"] });
+    },
+    onError: (err: Error) => toast({ title: "Erro", description: err.message, variant: "destructive" }),
+  });
+
   const createAnthroMutation = useMutation({
     mutationFn: async (data: Omit<AnthropometricAssessment, "id" | "nutritionistId" | "createdAt" | "updatedAt">) => {
       const response = await apiRequest("POST", `/api/patients/${params.id}/anthropometry`, data);
@@ -417,6 +433,7 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
       active: { label: "Ativo", className: "bg-green-100 text-green-800" },
       pending_payment: { label: "Aguardando Pagamento", className: "bg-yellow-100 text-yellow-800" },
       pending_approval: { label: "Aguardando Aprovação", className: "bg-blue-100 text-blue-800" },
+      pending_plan: { label: "Plano em Preparação", className: "bg-orange-100 text-orange-800" },
       expired: { label: "Expirado", className: "bg-red-100 text-red-800" },
       canceled: { label: "Cancelado", className: "bg-gray-100 text-gray-800" },
     };
@@ -1029,6 +1046,53 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
         <div className="p-6">
           {currentSubscription ? (
             <div className="space-y-4">
+              {/* Card informativo especial para pending_plan */}
+              {currentSubscription.status === "pending_plan" && (
+                <div className="p-4 rounded-xl bg-gradient-to-br from-orange-50 to-amber-50 border-2 border-orange-200">
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 bg-orange-100 rounded-lg flex-shrink-0">
+                      <Clock className="h-5 w-5 text-orange-600" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-bold text-orange-800">Plano em Preparação</p>
+                      <p className="text-xs text-orange-700 mt-0.5">O acesso foi liberado, mas o plano alimentar ainda está sendo elaborado. A validade começa a contar somente após a ativação abaixo.</p>
+                    </div>
+                  </div>
+                  <div className="mt-3">
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button className="w-full bg-orange-600 hover:bg-orange-700 text-white" disabled={activatePlanMutation.isPending}>
+                          <PlayCircle className="h-4 w-4 mr-2" />
+                          {activatePlanMutation.isPending ? "Ativando..." : "Ativar Plano Alimentar"}
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Ativar Plano Alimentar</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Ao confirmar, a validade do plano <strong>{getPlanTypeLabel(currentSubscription.planType)}</strong> começará a contar a partir de agora.
+                            {currentSubscription.planType === "monthly" && " O plano expira em 1 mês."}
+                            {currentSubscription.planType === "quarterly" && " O plano expira em 3 meses."}
+                            {currentSubscription.planType === "free" && " O plano não terá data de expiração."}
+                            <span className="block mt-2 text-orange-600 font-medium">Esta ação não pode ser desfeita.</span>
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => activatePlanMutation.mutate(currentSubscription.id)}
+                            disabled={activatePlanMutation.isPending}
+                            className="bg-orange-600 text-white hover:bg-orange-700"
+                          >
+                            Confirmar Ativação
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
+                </div>
+              )}
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="p-4 rounded-xl bg-gradient-to-br from-blue-50 to-purple-50 border border-blue-100">
                   <div className="flex items-center gap-2 mb-2">
@@ -1043,12 +1107,16 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                     <Calendar className="h-4 w-4 text-green-600" />
                     <span className="text-sm font-semibold text-green-700">Validade</span>
                   </div>
-                  <p className="text-lg font-bold text-gray-900">
-                    {currentSubscription.expiresAt ? formatDate(currentSubscription.expiresAt.toString()) : "Sem expiração"}
-                  </p>
+                  {currentSubscription.status === "pending_plan" ? (
+                    <p className="text-sm text-orange-600 font-medium italic">Inicia após ativação do plano</p>
+                  ) : (
+                    <p className="text-lg font-bold text-gray-900">
+                      {currentSubscription.expiresAt ? formatDate(currentSubscription.expiresAt.toString()) : "Sem expiração"}
+                    </p>
+                  )}
                 </div>
               </div>
-              {currentSubscription.startDate && (
+              {currentSubscription.status !== "pending_plan" && currentSubscription.startDate && (
                 <p className="text-sm text-muted-foreground">Iniciado em: {formatDate(currentSubscription.startDate.toString())}</p>
               )}
               <div className="flex flex-wrap gap-3 pt-4 border-t border-border/50">
@@ -1418,23 +1486,31 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
               <Select value={newSubscriptionStatus} onValueChange={(v) => setNewSubscriptionStatus(v as Subscription["status"])}>
                 <SelectTrigger><SelectValue placeholder="Selecione o status" /></SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="pending_plan">Plano em Preparação (acesso liberado, plano alimentar pendente)</SelectItem>
                   <SelectItem value="active">Ativo</SelectItem>
                   <SelectItem value="pending_payment">Aguardando Pagamento</SelectItem>
                   <SelectItem value="pending_approval">Aguardando Aprovação</SelectItem>
                 </SelectContent>
               </Select>
+              {newSubscriptionStatus === "pending_plan" && (
+                <p className="text-xs text-orange-600 mt-1 font-medium">
+                  A validade começa a contar somente quando você clicar em “Ativar Plano Alimentar”.
+                </p>
+              )}
             </div>
-            <div>
-              <Label>Data de Expiração</Label>
-              <Input type="date" value={newSubscriptionExpiresAt} onChange={(e) => setNewSubscriptionExpiresAt(e.target.value)} />
-              <p className="text-xs text-gray-500 mt-1">
-                {newSubscriptionPlanType === "free" ? "Deixe em branco para sem expiração" : `Se não informada, será calculada automaticamente: ${newSubscriptionPlanType === "monthly" ? "1 mês" : "3 meses"} a partir de hoje`}
-              </p>
-            </div>
+            {newSubscriptionStatus !== "pending_plan" && (
+              <div>
+                <Label>Data de Expiração</Label>
+                <Input type="date" value={newSubscriptionExpiresAt} onChange={(e) => setNewSubscriptionExpiresAt(e.target.value)} />
+                <p className="text-xs text-gray-500 mt-1">
+                  {newSubscriptionPlanType === "free" ? "Deixe em branco para sem expiração" : `Se não informada, será calculada automaticamente: ${newSubscriptionPlanType === "monthly" ? "1 mês" : "3 meses"} a partir de hoje`}
+                </p>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsCreateSubscriptionDialogOpen(false)}>Cancelar</Button>
-            <Button onClick={() => createSubscriptionMutation.mutate({ planType: newSubscriptionPlanType, status: newSubscriptionStatus, expiresAt: newSubscriptionExpiresAt || undefined })} disabled={createSubscriptionMutation.isPending}>
+            <Button onClick={() => createSubscriptionMutation.mutate({ planType: newSubscriptionPlanType, status: newSubscriptionStatus, expiresAt: newSubscriptionStatus === "pending_plan" ? undefined : (newSubscriptionExpiresAt || undefined) })} disabled={createSubscriptionMutation.isPending}>
               {createSubscriptionMutation.isPending ? "Criando..." : "Criar Assinatura"}
             </Button>
           </DialogFooter>
@@ -1465,6 +1541,7 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
               <Select value={newSubscriptionStatus} onValueChange={(v) => setNewSubscriptionStatus(v as Subscription["status"])}>
                 <SelectTrigger><SelectValue placeholder="Selecione o status" /></SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="pending_plan">Plano em Preparação</SelectItem>
                   <SelectItem value="active">Ativo</SelectItem>
                   <SelectItem value="pending_payment">Aguardando Pagamento</SelectItem>
                   <SelectItem value="pending_approval">Aguardando Aprovação</SelectItem>

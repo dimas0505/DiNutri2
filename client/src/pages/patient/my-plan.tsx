@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { differenceInDays, format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Loader2, AlertCircle, ShieldCheck, XCircle } from "lucide-react";
+import { Loader2, AlertCircle, ShieldCheck, XCircle, Clock } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { MobileLayout } from "@/components/layout/mobile-layout";
 
@@ -43,6 +43,7 @@ export default function MyPlanPage() {
       active: { label: isActuallyExpired ? "Expirado" : "Ativo", className: isActuallyExpired ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200" : "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" },
       pending_payment: { label: "Aguardando Pagamento", className: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200" },
       pending_approval: { label: "Aguardando Aprovação", className: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200" },
+      pending_plan: { label: "Plano em Preparação", className: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200" },
       expired: { label: "Expirado", className: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200" },
       canceled: { label: "Cancelado", className: "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200" },
     };
@@ -160,6 +161,32 @@ export default function MyPlanPage() {
                 Você ainda não possui um plano ativo. Entre em contato com seu nutricionista para ativar um plano.
               </AlertDescription>
             </Alert>
+          ) : subscription.status === 'pending_plan' ? (
+            /* Card especial para plano em preparação */
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <span className="text-lg font-semibold capitalize">
+                  Plano {getPlanTypeLabel(subscription.planType)}
+                </span>
+                {renderStatusBadge(subscription.status, subscription.expiresAt)}
+              </div>
+              <div className="p-4 rounded-xl bg-gradient-to-br from-orange-50 to-amber-50 border-2 border-orange-200">
+                <div className="flex items-start gap-3">
+                  <div className="p-2 bg-orange-100 rounded-lg flex-shrink-0">
+                    <Clock className="h-5 w-5 text-orange-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-orange-800">Seu plano alimentar está sendo preparado</p>
+                    <p className="text-sm text-orange-700 mt-1 leading-relaxed">
+                      Seu nutricionista está elaborando seu plano alimentar personalizado. Em breve ele estará disponível aqui.
+                    </p>
+                    <p className="text-xs text-orange-600 mt-2 font-medium">
+                      A validade do seu plano começará a contar somente a partir da entrega do plano alimentar.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
           ) : (
             <>
               <div className="flex justify-between items-center">
@@ -200,12 +227,14 @@ export default function MyPlanPage() {
         <Button 
           size="lg" 
           className="w-full sm:w-auto"
-          disabled={!subscription || subscription.status === 'pending_payment' || subscription.status === 'pending_approval'}
+          disabled={!subscription || subscription.status === 'pending_payment' || subscription.status === 'pending_approval' || subscription.status === 'pending_plan'}
         >
           {subscription?.status === 'pending_payment' 
             ? 'Pagamento Pendente' 
             : subscription?.status === 'pending_approval'
             ? 'Aguardando Aprovação'
+            : subscription?.status === 'pending_plan'
+            ? 'Plano em Preparação'
             : 'Solicitar Renovação'
           }
         </Button>
