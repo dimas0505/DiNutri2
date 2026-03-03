@@ -23,7 +23,7 @@ import {
   insertFoodDiaryEntrySchema,
 } from "../shared/schema.js";
 import { db } from "./db.js";
-import { eq, desc, and, gte, lte, sql, SQL } from "drizzle-orm";
+import { eq, desc, and, or, gte, lte, sql, SQL } from "drizzle-orm";
 import { randomBytes } from "crypto";
 import { nanoid } from "nanoid";
 import bcrypt from "bcrypt";
@@ -68,6 +68,7 @@ export interface IStorage {
   createPrescription(prescription: InsertPrescription): Promise<Prescription>;
   updatePrescription(id: string, prescription: UpdatePrescription): Promise<Prescription>;
   publishPrescription(id: string): Promise<Prescription>;
+  activatePrescription(id: string, durationDays?: number): Promise<Prescription>;
   duplicatePrescription(id: string, title: string): Promise<Prescription>;
   duplicatePrescriptionToPatient(sourcePrescriptionId: string, targetPatientId: string, title: string): Promise<Prescription>;
   deletePrescription(id: string): Promise<void>;
@@ -431,11 +432,21 @@ export class DatabaseStorage implements IStorage {
     if (!patient) {
       return [];
     }
+    // Retorna prescrições com status 'active' (novo fluxo) ou 'published' (legado)
     return await db
       .select()
       .from(prescriptions)
-      .where(and(eq(prescriptions.patientId, patient.id), eq(prescriptions.status, "published")))
-      .orderBy(desc(prescriptions.publishedAt));
+      .where(
+        and(
+          eq(prescriptions.patientId, patient.id),
+          or(
+            eq(prescriptions.status, "active"),
+            eq(prescriptions.status, "published"),
+            eq(prescriptions.status, "preparing"),
+          )
+        )
+      )
+      .orderBy(desc(prescriptions.createdAt));
   }
 
   async createPrescription(prescription: InsertPrescription): Promise<Prescription> {
@@ -464,6 +475,25 @@ export class DatabaseStorage implements IStorage {
       .where(eq(prescriptions.id, id))
       .returning();
     return publishedPrescription;
+  }
+
+  async activatePrescription(id: string, durationDays: number = 90): Promise<Prescription> {
+    const now = new Date();
+    const expiresAt = new Date(now);
+    expiresAt.setDate(expiresAt.getDate() + durationDays);
+
+    const [activatedPrescription] = await db
+      .update(prescriptions)
+      .set({
+        status: "active",
+        startDate: now,
+        expiresAt,
+        publishedAt: now, // mantém publishedAt para compatibilidade com código legado
+        updatedAt: now,
+      })
+      .where(eq(prescriptions.id, id))
+      .returning();
+    return activatedPrescription;
   }
 
   async duplicatePrescription(id: string, title: string): Promise<Prescription> {

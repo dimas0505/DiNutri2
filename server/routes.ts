@@ -507,6 +507,9 @@ export async function setupRoutes(app: Express): Promise<void> {
       if (body.publishedAt && typeof body.publishedAt === 'string') {
         body.publishedAt = new Date(body.publishedAt);
       }
+      if (body.startDate && typeof body.startDate === 'string') {
+        body.startDate = new Date(body.startDate);
+      }
       const prescriptionData = insertPrescriptionSchema.parse({
         ...body,
         nutritionistId: req.user.id,
@@ -544,7 +547,12 @@ export async function setupRoutes(app: Express): Promise<void> {
 
   app.put('/api/prescriptions/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const prescriptionData = updatePrescriptionSchema.parse(req.body);
+      // Normaliza campos de data para objetos Date (o frontend envia strings ISO)
+      const body = { ...req.body };
+      if (body.expiresAt && typeof body.expiresAt === 'string') body.expiresAt = new Date(body.expiresAt);
+      if (body.publishedAt && typeof body.publishedAt === 'string') body.publishedAt = new Date(body.publishedAt);
+      if (body.startDate && typeof body.startDate === 'string') body.startDate = new Date(body.startDate);
+      const prescriptionData = updatePrescriptionSchema.parse(body);
       const updatedPrescription = await storage.updatePrescription(req.params.id, prescriptionData);
       res.json(updatedPrescription);
     } catch (error) {
@@ -563,6 +571,24 @@ export async function setupRoutes(app: Express): Promise<void> {
     } catch (error) {
       console.error("Error publishing prescription:", error);
       res.status(500).json({ message: "Failed to publish prescription" });
+    }
+  });
+
+  // Rota de ativação: muda status para "active", define startDate = now() e calcula expiresAt
+  app.post('/api/prescriptions/:id/activate', isAuthenticated, async (req: any, res) => {
+    try {
+      // Parâmetro opcional: duração em dias (padrão: 90 dias)
+      const durationDays: number = req.body?.durationDays ?? 90;
+      const prescription = await storage.activatePrescription(req.params.id, durationDays);
+      logActivity({
+        userId: req.user.id,
+        activityType: 'activate_prescription',
+        details: `Plano alimentar ativado: ${prescription.title} (${durationDays} dias)`,
+      });
+      res.json(prescription);
+    } catch (error: any) {
+      console.error('Error activating prescription:', error);
+      res.status(500).json({ message: 'Failed to activate prescription' });
     }
   });
 

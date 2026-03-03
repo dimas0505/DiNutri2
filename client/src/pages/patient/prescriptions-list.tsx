@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { Download, ArrowLeft, Clock, AlertTriangle, FileText, Calendar } from "lucide-react";
+import { Download, Clock, AlertTriangle, FileText, Calendar, ChefHat } from "lucide-react";
 import { format, isAfter, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import Header from "@/components/layout/header";
@@ -42,6 +42,8 @@ export default function PatientPrescriptionsList() {
   };
 
   const getExpirationStatus = (prescription: Prescription) => {
+    // Prescrições em preparação não têm datas — não exibir status de expiração
+    if (prescription.status === "preparing") return null;
     if (!prescription.expiresAt) return null;
     
     const daysUntilExpiration = getDaysUntilExpiration(prescription);
@@ -161,6 +163,49 @@ export default function PatientPrescriptionsList() {
     setLocation(`/patient/prescription?id=${prescriptionId}`);
   };
 
+  /**
+   * Card informativo laranja exibido quando o plano está em "Plano em Preparação".
+   * Não exibe datas (startDate / expiresAt), pois ainda não foram definidas.
+   */
+  const PreparingCard = ({ prescription }: { prescription: Prescription }) => (
+    <Card
+      key={prescription.id}
+      className="border-2 border-orange-300 bg-gradient-to-br from-orange-50 via-amber-50 to-orange-50 shadow-md"
+      data-testid={`card-prescription-preparing-${prescription.id}`}
+    >
+      <CardHeader className="pb-3">
+        <div className="flex items-start gap-3">
+          <div className="p-2 bg-orange-100 rounded-lg flex-shrink-0 mt-0.5">
+            <ChefHat className="h-5 w-5 text-orange-600" />
+          </div>
+          <div className="flex-1">
+            <div className="flex flex-wrap items-center gap-2 mb-1">
+              <CardTitle className="text-lg font-semibold text-orange-900">
+                {prescription.title}
+              </CardTitle>
+              <Badge className="bg-orange-100 text-orange-800 border border-orange-300 text-xs">
+                Plano em Preparação
+              </Badge>
+            </div>
+            <p className="text-sm text-orange-700">
+              Seu nutricionista está elaborando este plano alimentar especialmente para você.
+            </p>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="pt-0">
+        <div className="rounded-lg bg-orange-100/70 border border-orange-200 p-3 text-sm text-orange-800">
+          <p className="font-medium mb-1">O que esperar:</p>
+          <ul className="list-disc list-inside space-y-0.5 text-orange-700">
+            <li>O plano será ativado pelo nutricionista quando estiver pronto</li>
+            <li>Você receberá acesso completo assim que for ativado</li>
+            <li>As datas de início e validade serão definidas na ativação</li>
+          </ul>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
   const pageContent = () => {
     if (isLoading || prescriptionLoading) {
       return (
@@ -186,25 +231,48 @@ export default function PatientPrescriptionsList() {
     return (
       <div className="space-y-4">
         {prescriptions.map((prescription) => {
+          // Plano em preparação: exibir card informativo laranja
+          if (prescription.status === "preparing") {
+            return <PreparingCard key={prescription.id} prescription={prescription} />;
+          }
+
           const expirationStatus = getExpirationStatus(prescription);
           const isExpired = isPrescriptionExpired(prescription);
           const isDownloading = downloadingId === prescription.id;
+
+          // Determinar a data de início a exibir (startDate para planos ativos, publishedAt para legado)
+          const displayDate = prescription.startDate
+            ? new Date(prescription.startDate)
+            : prescription.publishedAt
+            ? new Date(prescription.publishedAt)
+            : null;
+
+          const isActive = prescription.status === "active";
 
           return (
             <Card key={prescription.id} className={`transition-all hover:shadow-md ${isExpired ? 'opacity-60' : ''}`}>
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <CardTitle className="text-lg font-semibold text-gray-900 mb-2">
-                      {prescription.title}
-                    </CardTitle>
+                    <div className="flex flex-wrap items-center gap-2 mb-2">
+                      <CardTitle className="text-lg font-semibold text-gray-900">
+                        {prescription.title}
+                      </CardTitle>
+                      {isActive && (
+                        <Badge className="bg-green-100 text-green-800 border border-green-300 text-xs">
+                          Ativo
+                        </Badge>
+                      )}
+                    </div>
                     
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                       <div className="flex items-center text-sm text-gray-600">
                         <Calendar className="h-4 w-4 mr-1" />
-                        Publicado em {prescription.publishedAt 
-                          ? format(new Date(prescription.publishedAt), "dd/MM/yyyy", { locale: ptBR })
-                          : 'Data não disponível'
+                        {isActive && prescription.startDate
+                          ? `Iniciado em ${format(new Date(prescription.startDate), "dd/MM/yyyy", { locale: ptBR })}`
+                          : displayDate
+                          ? `Publicado em ${format(displayDate, "dd/MM/yyyy", { locale: ptBR })}`
+                          : "Data não disponível"
                         }
                       </div>
                       
@@ -218,6 +286,13 @@ export default function PatientPrescriptionsList() {
                         </Badge>
                       )}
                     </div>
+
+                    {/* Validade do plano ativo */}
+                    {isActive && prescription.expiresAt && !isExpired && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        Válido até {format(new Date(prescription.expiresAt), "dd/MM/yyyy", { locale: ptBR })}
+                      </p>
+                    )}
 
                     {expirationStatus && (
                       <Alert className={`mt-3 ${expirationStatus.variant === 'destructive' ? 'border-destructive bg-destructive/5' : 'border-yellow-500 bg-yellow-50'}`}>
@@ -253,7 +328,7 @@ export default function PatientPrescriptionsList() {
                   <Button
                     onClick={() => handleDownload(prescription)}
                     className="flex-1 sm:flex-none"
-                    disabled={isDownloading}
+                    disabled={isDownloading || isExpired}
                   >
                     {isDownloading ? (
                       <>

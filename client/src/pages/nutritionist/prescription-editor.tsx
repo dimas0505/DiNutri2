@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { Plus, Copy, Upload, Download, Calendar as CalendarIcon } from "lucide-react";
+import { Plus, Copy, Upload, Download, Calendar as CalendarIcon, Zap } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import Header from "@/components/layout/header";
@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import MealEditor from "@/components/prescription/meal-editor";
@@ -25,6 +26,20 @@ import { DefaultMobileDrawer } from "@/components/layout/mobile-layout";
 
 interface PrescriptionEditorPageProps {
   params: { id: string };
+}
+
+/** Retorna o label e a variante do badge de acordo com o status da prescrição. */
+function getPrescriptionStatusBadge(status: Prescription["status"]): { label: string; className: string } {
+  switch (status) {
+    case "preparing":
+      return { label: "Plano em Preparação", className: "bg-orange-100 text-orange-800 border-orange-200" };
+    case "active":
+      return { label: "Ativo", className: "bg-green-100 text-green-800 border-green-200" };
+    case "published":
+      return { label: "Publicado", className: "bg-blue-100 text-blue-800 border-blue-200" };
+    default:
+      return { label: "Rascunho", className: "bg-gray-100 text-gray-700 border-gray-200" };
+  }
 }
 
 export default function PrescriptionEditorPage({ params }: PrescriptionEditorPageProps) {
@@ -42,6 +57,9 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
   const [isDuplicateDialogOpen, setIsDuplicateDialogOpen] = useState(false);
   const [selectedPatientId, setSelectedPatientId] = useState<string>("");
   const [selectedPrescriptionId, setSelectedPrescriptionId] = useState<string>("");
+
+  // Activation confirmation dialog state
+  const [isActivateDialogOpen, setIsActivateDialogOpen] = useState(false);
 
   const { data: prescription, isLoading } = useQuery<Prescription>({
     queryKey: ["/api/prescriptions", params.id],
@@ -95,7 +113,7 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
     onSuccess: () => {
       toast({
         title: "Sucesso",
-        description: "Prescrição salva como rascunho.",
+        description: "Prescrição salva.",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/prescriptions", params.id] });
     },
@@ -128,6 +146,35 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
       toast({
         title: "Erro",
         description: "Falha ao publicar prescrição.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  /**
+   * Mutation de ativação: salva o rascunho atual e depois ativa o plano.
+   * Define status = "active", startDate = agora, expiresAt = agora + 90 dias.
+   */
+  const activatePrescriptionMutation = useMutation({
+    mutationFn: async () => {
+      // Salva o conteúdo atual antes de ativar
+      await updatePrescriptionMutation.mutateAsync({ title, meals, generalNotes, expiresAt });
+      return await apiRequest("POST", `/api/prescriptions/${params.id}/activate`, { durationDays: 90 });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Plano Ativado!",
+        description: "O plano alimentar foi ativado e já está disponível para o paciente.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/prescriptions", params.id] });
+      if (patient) {
+        setLocation(`/patients/${patient.id}`);
+      }
+    },
+    onError: () => {
+      toast({
+        title: "Erro",
+        description: "Falha ao ativar o plano alimentar.",
         variant: "destructive",
       });
     },
@@ -202,6 +249,23 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
       return;
     }
     publishPrescriptionMutation.mutate();
+  };
+
+  const handleOpenActivateDialog = () => {
+    if (!title.trim()) {
+      toast({
+        title: "Erro",
+        description: "O título da prescrição é obrigatório antes de ativar.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setIsActivateDialogOpen(true);
+  };
+
+  const handleConfirmActivate = () => {
+    setIsActivateDialogOpen(false);
+    activatePrescriptionMutation.mutate();
   };
 
   const handleOpenDuplicateDialog = () => {
@@ -297,47 +361,37 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
         const csvText = e.target?.result as string;
         const parsedMeals = parseCsvToMeals(csvText);
         setMeals(parsedMeals);
-        
         toast({
           title: "Sucesso",
-          description: `${parsedMeals.length} refeição(ões) importada(s) com sucesso!`,
+          description: `${parsedMeals.length} refeição(ões) importada(s) do CSV.`,
         });
       } catch (error) {
         toast({
-          title: "Erro",
-          description: error instanceof Error ? error.message : "Erro ao processar arquivo CSV.",
+          title: "Erro ao importar CSV",
+          description: error instanceof Error ? error.message : "Formato inválido",
           variant: "destructive",
         });
-      } finally {
-        // Clear the file input
-        if (fileInputRef.current) {
-          fileInputRef.current.value = '';
-        }
       }
     };
-
-    reader.onerror = () => {
-      toast({
-        title: "Erro",
-        description: "Erro ao ler o arquivo.",
-        variant: "destructive",
-      });
-    };
-
     reader.readAsText(file);
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
-  // Import CSV handler
   const handleImportCsv = () => {
     fileInputRef.current?.click();
   };
 
-  // Export JSON handler
   const handleExportJson = () => {
+    if (!prescription) return;
+
     const exportData = {
-      title,
-      generalNotes,
-      meals
+      title: title,
+      generalNotes: generalNotes,
+      meals: meals,
+      exportedAt: new Date().toISOString(),
     };
 
     const jsonString = JSON.stringify(exportData, null, 2);
@@ -384,7 +438,13 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
     );
   }
 
-  const isSaving = updatePrescriptionMutation.isPending || publishPrescriptionMutation.isPending;
+  const isSaving = updatePrescriptionMutation.isPending || publishPrescriptionMutation.isPending || activatePrescriptionMutation.isPending;
+  const statusBadge = getPrescriptionStatusBadge(prescription.status as Prescription["status"]);
+
+  // Prescrição pode ser ativada se estiver em "preparing" ou "draft"
+  const canActivate = prescription.status === "preparing" || prescription.status === "draft";
+  // Prescrição já foi ativada ou publicada
+  const isAlreadyActive = prescription.status === "active" || prescription.status === "published";
 
   return (
     <div className="min-h-screen bg-background">
@@ -411,11 +471,12 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
                 <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-sm text-muted-foreground">
                   <span className="font-medium text-foreground">{patient?.name}</span>
                   <span className="hidden sm:inline">•</span>
-                  <Badge 
-                    variant={prescription.status === 'published' ? 'default' : 'secondary'} 
-                    className="px-3 py-1 font-medium shadow-sm"
+                  <Badge
+                    variant="secondary"
+                    className={cn("px-3 py-1 font-medium shadow-sm", statusBadge.className)}
+                    data-testid="badge-prescription-status"
                   >
-                    {prescription.status === 'published' ? 'Publicado' : 'Rascunho'}
+                    {statusBadge.label}
                   </Badge>
                 </div>
               </div>
@@ -431,23 +492,39 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
                 >
                   Fechar
                 </Button>
-                <Button
-                  variant="secondary"
-                  onClick={handleSaveDraft}
-                  disabled={isSaving}
-                  data-testid="button-save-draft"
-                  className="w-full sm:w-auto shadow-md bg-gradient-to-r from-secondary via-secondary to-secondary/90 hover:from-secondary/90 hover:via-secondary hover:to-secondary"
-                >
-                  {updatePrescriptionMutation.isPending ? "Salvando..." : "Salvar Rascunho"}
-                </Button>
-                <Button
-                  onClick={handlePublish}
-                  disabled={isSaving}
-                  data-testid="button-publish"
-                  className="w-full sm:w-auto shadow-lg bg-gradient-to-r from-primary via-primary to-primary/90 hover:from-primary/90 hover:via-primary hover:to-primary"
-                >
-                  {publishPrescriptionMutation.isPending ? "Publicando..." : "Publicar"}
-                </Button>
+                {!isAlreadyActive && (
+                  <Button
+                    variant="secondary"
+                    onClick={handleSaveDraft}
+                    disabled={isSaving}
+                    data-testid="button-save-draft"
+                    className="w-full sm:w-auto shadow-md bg-gradient-to-r from-secondary via-secondary to-secondary/90 hover:from-secondary/90 hover:via-secondary hover:to-secondary"
+                  >
+                    {updatePrescriptionMutation.isPending ? "Salvando..." : "Salvar"}
+                  </Button>
+                )}
+                {canActivate && (
+                  <Button
+                    onClick={handleOpenActivateDialog}
+                    disabled={isSaving}
+                    data-testid="button-activate-plan"
+                    className="w-full sm:w-auto shadow-lg bg-gradient-to-r from-orange-500 via-orange-500 to-amber-500 hover:from-orange-600 hover:via-orange-600 hover:to-amber-600 text-white"
+                  >
+                    <Zap className="h-4 w-4 mr-2" />
+                    {activatePrescriptionMutation.isPending ? "Ativando..." : "Ativar Plano Alimentar"}
+                  </Button>
+                )}
+                {/* Manter botão Publicar apenas para compatibilidade com fluxo legado */}
+                {prescription.status === "draft" && (
+                  <Button
+                    onClick={handlePublish}
+                    disabled={isSaving}
+                    data-testid="button-publish"
+                    className="w-full sm:w-auto shadow-lg bg-gradient-to-r from-primary via-primary to-primary/90 hover:from-primary/90 hover:via-primary hover:to-primary"
+                  >
+                    {publishPrescriptionMutation.isPending ? "Publicando..." : "Publicar"}
+                  </Button>
+                )}
               </div>
             </div>
           </CardContent>
@@ -560,63 +637,125 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
           </CardContent>
         </Card>
 
-        <Card className="mt-6 shadow-xl bg-gradient-to-br from-rose-50 via-card to-pink-50 dark:from-rose-950/20 dark:via-card dark:to-pink-950/20 border-2 border-rose-100 dark:border-rose-900/30">
-          <CardContent className="p-6 sm:p-8">
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="expires-at" className="text-lg sm:text-xl font-semibold text-foreground">
-                  Data de Validade (Opcional)
-                </Label>
-                <p className="text-sm text-muted-foreground">
-                  Defina até quando esta prescrição será válida para o paciente
-                </p>
-              </div>
-              <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-full sm:w-[280px] justify-start text-left font-normal",
-                        !expiresAt && "text-muted-foreground"
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {expiresAt ? format(expiresAt, "PPP", { locale: ptBR }) : "Selecionar data"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0">
-                    <Calendar
-                      mode="single"
-                      selected={expiresAt}
-                      onSelect={setExpiresAt}
-                      disabled={(date) => date < new Date()}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-                {expiresAt && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setExpiresAt(undefined)}
-                    className="text-muted-foreground hover:text-foreground"
-                  >
-                    Remover data
-                  </Button>
-                )}
-              </div>
-              {expiresAt && (
-                <div className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/30 rounded-lg">
-                  <p className="text-sm text-amber-800 dark:text-amber-200">
-                    <strong>Atenção:</strong> Esta prescrição expirará em {format(expiresAt, "PPP", { locale: ptBR })} e não estará mais acessível ao paciente após esta data.
+        {/* Data de Validade — visível apenas para planos ainda não ativados */}
+        {!isAlreadyActive && (
+          <Card className="mt-6 shadow-xl bg-gradient-to-br from-rose-50 via-card to-pink-50 dark:from-rose-950/20 dark:via-card dark:to-pink-950/20 border-2 border-rose-100 dark:border-rose-900/30">
+            <CardContent className="p-6 sm:p-8">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="expires-at" className="text-lg sm:text-xl font-semibold text-foreground">
+                    Data de Validade (Opcional)
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Defina até quando esta prescrição será válida para o paciente. Ao ativar o plano, a validade será calculada automaticamente (90 dias a partir da ativação).
                   </p>
                 </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+                <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full sm:w-[280px] justify-start text-left font-normal",
+                          !expiresAt && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {expiresAt ? format(expiresAt, "PPP", { locale: ptBR }) : "Selecionar data"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <Calendar
+                        mode="single"
+                        selected={expiresAt}
+                        onSelect={setExpiresAt}
+                        disabled={(date) => date < new Date()}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  {expiresAt && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setExpiresAt(undefined)}
+                      className="text-muted-foreground hover:text-foreground"
+                    >
+                      Remover data
+                    </Button>
+                  )}
+                </div>
+                {expiresAt && (
+                  <div className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/30 rounded-lg">
+                    <p className="text-sm text-amber-800 dark:text-amber-200">
+                      <strong>Atenção:</strong> Esta prescrição expirará em {format(expiresAt, "PPP", { locale: ptBR })} e não estará mais acessível ao paciente após esta data.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Informações do plano ativo */}
+        {isAlreadyActive && prescription.startDate && (
+          <Card className="mt-6 shadow-xl bg-gradient-to-br from-green-50 via-card to-emerald-50 dark:from-green-950/20 dark:via-card dark:to-emerald-950/20 border-2 border-green-100 dark:border-green-900/30">
+            <CardContent className="p-6 sm:p-8">
+              <div className="space-y-2">
+                <p className="text-lg font-semibold text-green-800 dark:text-green-200">Plano Ativo</p>
+                <p className="text-sm text-green-700 dark:text-green-300">
+                  Início: {format(new Date(prescription.startDate), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                </p>
+                {prescription.expiresAt && (
+                  <p className="text-sm text-green-700 dark:text-green-300">
+                    Validade: {format(new Date(prescription.expiresAt), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </main>
+
+      {/* Activation Confirmation Dialog */}
+      <AlertDialog open={isActivateDialogOpen} onOpenChange={setIsActivateDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Zap className="h-5 w-5 text-orange-500" />
+              Ativar Plano Alimentar
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3 text-sm text-muted-foreground">
+                <p>
+                  Você está prestes a ativar o plano alimentar <strong className="text-foreground">"{title}"</strong> para o paciente <strong className="text-foreground">{patient?.name}</strong>.
+                </p>
+                <div className="rounded-lg bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-900/30 p-3 space-y-1">
+                  <p className="font-medium text-orange-800 dark:text-orange-200">O que acontecerá:</p>
+                  <ul className="list-disc list-inside space-y-1 text-orange-700 dark:text-orange-300">
+                    <li>Status mudará para <strong>Ativo</strong></li>
+                    <li>Data de início será definida como <strong>hoje</strong></li>
+                    <li>Validade calculada automaticamente: <strong>90 dias</strong></li>
+                    <li>O paciente terá acesso imediato ao plano</li>
+                  </ul>
+                </div>
+                <p>Esta ação não pode ser desfeita. Deseja continuar?</p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmActivate}
+              className="bg-orange-500 hover:bg-orange-600 text-white"
+              data-testid="button-confirm-activate"
+            >
+              <Zap className="h-4 w-4 mr-2" />
+              Ativar Plano
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Duplicate Prescription Dialog */}
       <Dialog open={isDuplicateDialogOpen} onOpenChange={setIsDuplicateDialogOpen}>
@@ -670,7 +809,7 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
                     <SelectContent>
                       {selectedPatientPrescriptions.map((p) => (
                         <SelectItem key={p.id} value={p.id}>
-                          {p.title} ({p.status === 'published' ? 'Publicado' : 'Rascunho'})
+                          {p.title} ({p.status === 'published' ? 'Publicado' : p.status === 'active' ? 'Ativo' : p.status === 'preparing' ? 'Em Preparação' : 'Rascunho'})
                         </SelectItem>
                       ))}
                     </SelectContent>
