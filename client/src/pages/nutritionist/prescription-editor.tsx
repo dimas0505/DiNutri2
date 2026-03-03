@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { Plus, Copy, Upload, Download, Calendar as CalendarIcon, Zap } from "lucide-react";
+import { Plus, Copy, Upload, Download, Calendar as CalendarIcon, Zap, FileText } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import Header from "@/components/layout/header";
@@ -52,6 +52,8 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
   const [meals, setMeals] = useState<MealData[]>([]);
   const [expiresAt, setExpiresAt] = useState<Date | undefined>(undefined);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const pdfFileInputRef = useRef<HTMLInputElement>(null);
+  const [isImportingPdf, setIsImportingPdf] = useState(false);
   
   // Duplicate prescription dialog state
   const [isDuplicateDialogOpen, setIsDuplicateDialogOpen] = useState(false);
@@ -384,6 +386,59 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
     fileInputRef.current?.click();
   };
 
+  const handleImportPdf = () => {
+    pdfFileInputRef.current?.click();
+  };
+
+  const handlePdfFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.name.toLowerCase().endsWith('.pdf')) {
+      toast({
+        title: "Erro",
+        description: "Por favor, selecione um arquivo PDF.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsImportingPdf(true);
+    try {
+      const formData = new FormData();
+      formData.append('pdf', file);
+
+      const response = await fetch(`/api/prescriptions/${params.id}/import-pdf`, {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({ message: 'Erro desconhecido' }));
+        throw new Error(err.message || 'Falha ao importar PDF');
+      }
+
+      const result = await response.json();
+      setMeals(result.meals);
+      toast({
+        title: "PDF importado com sucesso!",
+        description: result.message,
+      });
+    } catch (error) {
+      toast({
+        title: "Erro ao importar PDF",
+        description: error instanceof Error ? error.message : "Formato inválido ou erro de processamento",
+        variant: "destructive",
+      });
+    } finally {
+      setIsImportingPdf(false);
+      if (pdfFileInputRef.current) {
+        pdfFileInputRef.current.value = '';
+      }
+    }
+  };
+
   const handleExportJson = () => {
     if (!prescription) return;
 
@@ -541,6 +596,14 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
               onChange={handleFileChange}
               className="hidden"
             />
+            {/* Hidden file input for PDF import */}
+            <input
+              ref={pdfFileInputRef}
+              type="file"
+              accept=".pdf,application/pdf"
+              onChange={handlePdfFileChange}
+              className="hidden"
+            />
             <div className="space-y-3 sm:space-y-0 sm:flex sm:justify-center sm:gap-4">
               <Button
                 onClick={addMeal}
@@ -561,6 +624,27 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
                 <Upload className="h-5 w-5" />
                 <span className="hidden sm:inline">Importar de Planilha (CSV)</span>
                 <span className="sm:hidden">Importar CSV</span>
+              </Button>
+              <Button
+                onClick={handleImportPdf}
+                variant="outline"
+                disabled={isImportingPdf}
+                className="w-full sm:w-auto flex items-center justify-center space-x-2 shadow-md border-2 border-red-200 dark:border-red-800 bg-gradient-to-r from-red-50 via-background to-orange-50 dark:from-red-950/30 dark:via-background dark:to-orange-950/30 hover:from-red-100 hover:via-muted hover:to-orange-100 dark:hover:from-red-900/50 dark:hover:via-muted dark:hover:to-orange-900/50"
+                size="lg"
+                data-testid="button-import-pdf"
+              >
+                <FileText className="h-5 w-5" />
+                {isImportingPdf ? (
+                  <>
+                    <span className="hidden sm:inline">Processando PDF...</span>
+                    <span className="sm:hidden">Processando...</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="hidden sm:inline">Importar de PDF</span>
+                    <span className="sm:hidden">Importar PDF</span>
+                  </>
+                )}
               </Button>
               <Button
                 onClick={handleExportJson}
