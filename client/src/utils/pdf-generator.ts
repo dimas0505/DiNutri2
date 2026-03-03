@@ -16,6 +16,22 @@ export async function generatePrescriptionPDF({
   onError 
 }: PDFGeneratorOptions): Promise<void> {
   try {
+    const escapeHtml = (value: string) =>
+      value
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+
+    const safeText = (value?: string | null) => {
+      if (!value || !value.trim()) return 'Não informado';
+      return escapeHtml(value);
+    };
+
+    const formatMultilineText = (value?: string | null) =>
+      safeText(value).replace(/\n/g, '<br/>');
+
     // Create a temporary container for the print content
     const printContainer = document.createElement('div');
     printContainer.style.position = 'absolute';
@@ -43,6 +59,11 @@ export async function generatePrescriptionPDF({
         day: 'numeric',
       });
     };
+
+    const title = safeText(prescription.title);
+    const publishedAtLabel = prescription.publishedAt
+      ? formatDate(prescription.publishedAt.toString())
+      : formatDate(new Date().toISOString());
 
     const calculateAge = (birthDate: string) => {
       if (!birthDate) return null;
@@ -75,22 +96,23 @@ export async function generatePrescriptionPDF({
 
     // Generate the print content HTML
     printContainer.innerHTML = `
-      <div style="background: white; color: #111827; min-height: auto; height: auto; page-break-inside: avoid;">
-        <!-- Document Header -->
-        <div style="text-align: center; margin-bottom: 32px; border-bottom: 2px solid #e5e7eb; padding-bottom: 24px; page-break-after: avoid;">
-          ${logoBase64 ? `<img src="${logoBase64}" style="width: 80px; height: 80px; margin-bottom: 16px;" alt="DiNutri Logo">` : ''}
-          <h1 style="font-size: 28px; font-weight: bold; color: #374151; margin-bottom: 8px; margin-top: 0;">PRESCRIÇÃO NUTRICIONAL</h1>
-          <div style="font-size: 18px; color: #6b7280;">
-            <div style="font-weight: 600;">${teamInfo.name}</div>
+      <div style="background: white; color: #0f172a; min-height: auto; height: auto; page-break-inside: avoid;">
+        <div style="margin-bottom: 28px; border-radius: 20px; background: linear-gradient(135deg, #0f766e, #0284c7); color: #ffffff; padding: 28px 30px; page-break-inside: avoid;">
+          <div style="display: flex; justify-content: space-between; align-items: center; gap: 16px;">
+            <div>
+              <p style="margin: 0; font-size: 12px; letter-spacing: 1px; text-transform: uppercase; opacity: 0.9;">Plano alimentar personalizado</p>
+              <h1 style="font-size: 30px; line-height: 1.2; font-weight: 700; margin: 8px 0 6px 0;">Prescrição Nutricional</h1>
+              <p style="font-size: 15px; margin: 0; opacity: 0.95;">${safeText(teamInfo.name)} • Emitido em ${publishedAtLabel}</p>
+            </div>
+            ${logoBase64 ? `<img src="${logoBase64}" style="width: 72px; height: 72px; border-radius: 16px; background: rgba(255,255,255,0.2); padding: 10px;" alt="DiNutri Logo">` : ''}
           </div>
         </div>
 
-        <!-- Patient Info -->
-        <div style="margin-bottom: 32px; background: #f9fafb; padding: 24px; border-radius: 8px; page-break-inside: avoid;">
-          <h2 style="font-size: 20px; font-weight: 600; margin-bottom: 16px; margin-top: 0;">Dados do Paciente</h2>
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; font-size: 14px;">
-            <div><strong>Nome:</strong> ${patient.name}</div>
-            <div><strong>Email:</strong> ${patient.email}</div>
+        <div style="margin-bottom: 26px; border: 1px solid #dbeafe; border-radius: 16px; background: #f8fafc; padding: 22px 24px; page-break-inside: avoid;">
+          <h2 style="font-size: 18px; font-weight: 700; color: #0f172a; margin: 0 0 14px 0;">Dados do paciente</h2>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px 18px; font-size: 14px; color: #334155;">
+            <div><strong>Nome:</strong> ${safeText(patient.name)}</div>
+            <div><strong>E-mail:</strong> ${safeText(patient.email)}</div>
             ${patient.birthDate ? `<div><strong>Idade:</strong> ${calculateAge(patient.birthDate)} anos</div>` : ''}
             ${patient.sex ? `<div><strong>Sexo:</strong> ${patient.sex === 'F' ? 'Feminino' : patient.sex === 'M' ? 'Masculino' : 'Outro'}</div>` : ''}
             ${patient.heightCm ? `<div><strong>Altura:</strong> ${patient.heightCm} cm</div>` : ''}
@@ -98,42 +120,41 @@ export async function generatePrescriptionPDF({
           </div>
         </div>
 
-        <!-- Prescription Title -->
-        <div style="margin-bottom: 32px; text-align: center; page-break-inside: avoid;">
-          <h2 style="font-size: 24px; font-weight: bold; color: #374151; margin-top: 0; margin-bottom: 8px;">
-            ${prescription.title}
+        <div style="margin-bottom: 30px; text-align: center; page-break-inside: avoid;">
+          <h2 style="font-size: 24px; font-weight: 700; color: #0f172a; margin: 0 0 8px 0;">
+            ${title}
           </h2>
-          <p style="color: #6b7280; margin-top: 8px; margin-bottom: 0;">
-            Publicado em ${prescription.publishedAt ? formatDate(prescription.publishedAt.toString()) : ''}
+          <p style="color: #475569; margin: 0; font-size: 14px;">
+            Documento elaborado para acompanhamento nutricional contínuo
           </p>
         </div>
 
-        <!-- Meals -->
         <div style="margin-bottom: 32px;">
-          ${prescription.meals.map(meal => `
-            <div style="margin-bottom: 32px; page-break-inside: avoid;">
-              <div style="background: #dbeafe; padding: 16px; border-radius: 8px 8px 0 0; border-left: 4px solid #3b82f6;">
-                <h3 style="font-size: 20px; font-weight: 600; color: #374151; margin: 0;">
-                  ${meal.name}
+          ${prescription.meals.map((meal, mealIndex) => `
+            <div style="margin-bottom: 26px; page-break-inside: avoid; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 10px rgba(15, 23, 42, 0.06);">
+              <div style="background: linear-gradient(90deg, #ecfeff, #f0f9ff); padding: 14px 18px; border-left: 5px solid #0ea5e9; display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+                <h3 style="font-size: 19px; font-weight: 700; color: #0f172a; margin: 0;">
+                  ${mealIndex + 1}. ${safeText(meal.name)}
                 </h3>
+                <span style="font-size: 12px; font-weight: 600; color: #0369a1; background: #e0f2fe; border: 1px solid #bae6fd; border-radius: 999px; padding: 4px 10px;">Refeição</span>
               </div>
-              <div style="border: 1px solid #e5e7eb; border-top: 0; border-radius: 0 0 8px 8px; padding: 16px;">
+              <div style="padding: 16px 18px; background: #ffffff;">
                 <div style="margin: 0; padding: 0;">
                   ${meal.items.map(item => `
-                    <div style="padding: 12px 0; border-bottom: 1px solid #f3f4f6; page-break-inside: avoid;">
+                    <div style="padding: 11px 0; border-bottom: 1px solid #f1f5f9; page-break-inside: avoid;">
                       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                        <span style="font-weight: 500; color: #374151;">${item.description}</span>
-                        <span style="color: #6b7280; font-weight: 500;">${item.amount}</span>
+                        <span style="font-weight: 600; color: #1e293b;">${safeText(item.description)}</span>
+                        <span style="color: #0f766e; font-weight: 700;">${safeText(item.amount)}</span>
                       </div>
                       ${item.substitutes && item.substitutes.length > 0 ? `
-                        <div style="margin-left: 16px; margin-top: 8px;">
-                          <div style="font-size: 12px; color: #3b82f6; font-weight: 600; margin-bottom: 4px;">
-                            ↪ Opções de substituição:
+                        <div style="margin-left: 14px; margin-top: 8px;">
+                          <div style="font-size: 12px; color: #0369a1; font-weight: 700; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.3px;">
+                            Opções de substituição
                           </div>
                           <div style="margin-left: 12px;">
                             ${item.substitutes.map(substitute => `
-                              <div style="font-size: 13px; color: #6b7280; margin-bottom: 2px;">
-                                • ${substitute}
+                              <div style="font-size: 13px; color: #475569; margin-bottom: 2px;">
+                                • ${safeText(substitute)}
                               </div>
                             `).join('')}
                           </div>
@@ -143,9 +164,9 @@ export async function generatePrescriptionPDF({
                   `).join('')}
                 </div>
                 ${meal.notes ? `
-                  <div style="margin-top: 16px; padding: 12px; background: #fefce8; border-radius: 6px; border-left: 4px solid #facc15; page-break-inside: avoid;">
-                    <p style="font-size: 14px; color: #374151; margin: 0;">
-                      <strong>Observação:</strong> ${meal.notes}
+                  <div style="margin-top: 16px; padding: 12px; background: #fffbeb; border-radius: 10px; border-left: 4px solid #f59e0b; page-break-inside: avoid;">
+                    <p style="font-size: 14px; color: #374151; margin: 0; line-height: 1.5;">
+                      <strong>Observação:</strong> ${formatMultilineText(meal.notes)}
                     </p>
                   </div>
                 ` : ''}
@@ -156,19 +177,18 @@ export async function generatePrescriptionPDF({
 
         ${prescription.generalNotes ? `
           <!-- General Notes -->
-          <div style="margin-top: 32px; padding: 24px; background: #f9fafb; border-radius: 8px; border: 1px solid #e5e7eb; page-break-inside: avoid;">
-            <h3 style="font-size: 18px; font-weight: 600; margin-bottom: 12px; margin-top: 0;">Observações Gerais</h3>
-            <p style="color: #374151; margin: 0;">
-              ${prescription.generalNotes}
+          <div style="margin-top: 24px; padding: 20px 22px; background: #f8fafc; border-radius: 14px; border: 1px solid #cbd5e1; page-break-inside: avoid;">
+            <h3 style="font-size: 17px; font-weight: 700; margin: 0 0 10px 0; color: #0f172a;">Observações gerais</h3>
+            <p style="color: #334155; margin: 0; line-height: 1.6;">
+              ${formatMultilineText(prescription.generalNotes)}
             </p>
           </div>
         ` : ''}
 
-        <!-- Footer -->
-        <div style="margin-top: 48px; padding-top: 24px; border-top: 2px solid #e5e7eb; text-align: center; font-size: 14px; color: #6b7280; page-break-inside: avoid;">
-          <p style="margin: 0 0 8px 0;">Esta prescrição foi elaborada especificamente para ${patient.name}.</p>
-          <p style="margin: 0 0 16px 0;">Em caso de dúvidas, entre em contato com a equipe DiNutri.</p>
-          <p style="margin: 0; font-weight: 600;">${teamInfo.name}</p>
+        <div style="margin-top: 36px; padding-top: 20px; border-top: 1px solid #dbeafe; text-align: center; font-size: 13px; color: #64748b; page-break-inside: avoid;">
+          <p style="margin: 0 0 8px 0;">Esta prescrição foi elaborada especificamente para ${safeText(patient.name)}.</p>
+          <p style="margin: 0 0 12px 0;">Em caso de dúvidas, entre em contato com sua equipe de acompanhamento.</p>
+          <p style="margin: 0; font-weight: 700; color: #0f172a;">${safeText(teamInfo.name)}</p>
         </div>
       </div>
     `;
