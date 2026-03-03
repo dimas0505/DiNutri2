@@ -194,6 +194,12 @@ export const anthropometricAssessments = pgTable("anthropometric_assessments", {
   foldTriceps: real("fold_triceps"),
   foldSubscapular: real("fold_subscapular"),
   foldSuprailiac: real("fold_suprailiac"),
+  // Manual body fat override — filled by the nutritionist.
+  // When present, replaces the automatic Durnin & Womersley calculation
+  // in the patient-facing card. The automatic calculation remains dormant
+  // and will be used again once these fields are cleared.
+  manualBodyFatPercent: real("manual_body_fat_percent"),
+  manualBodyFatClassification: varchar("manual_body_fat_classification"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
