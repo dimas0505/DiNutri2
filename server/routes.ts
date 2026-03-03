@@ -23,11 +23,13 @@ import OpenAI from 'openai';
 
 const SALT_ROUNDS = 10;
 
-// OpenAI client for PDF parsing
-const openaiClient = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-  baseURL: process.env.OPENAI_BASE_URL,
-});
+// OpenAI client for PDF parsing (optional in environments without OPENAI_API_KEY)
+const openaiClient = process.env.OPENAI_API_KEY
+  ? new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+      baseURL: process.env.OPENAI_BASE_URL,
+    })
+  : null;
 
 // Configure multer for prescription PDF uploads
 const uploadPrescriptionPdf = multer({
@@ -1770,6 +1772,12 @@ export async function setupRoutes(app: Express): Promise<void> {
 
       if (!pdfText || pdfText.trim().length < 50) {
         return res.status(422).json({ message: 'O PDF não contém texto legível suficiente para importação.' });
+      }
+
+      if (!openaiClient) {
+        return res.status(503).json({
+          message: 'Importação por IA indisponível no momento. Configure OPENAI_API_KEY para habilitar o recurso.',
+        });
       }
 
       // Usar OpenAI para interpretar o conteúdo do PDF
