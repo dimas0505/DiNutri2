@@ -18,16 +18,8 @@ import { nanoid } from 'nanoid';
 import { logActivity } from './activity-logger.js';
 import ExcelJS from 'exceljs';
 import { format } from 'date-fns';
-// Importação movida para dentro da rota para evitar erros de polyfill no Vercel durante o boot
-import OpenAI from 'openai';
 
 const SALT_ROUNDS = 10;
-
-// OpenAI client for PDF parsing
-const openaiClient = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-  baseURL: process.env.OPENAI_BASE_URL,
-});
 
 // Configure multer for prescription PDF uploads
 const uploadPrescriptionPdf = multer({
@@ -278,1398 +270,753 @@ export async function setupRoutes(app: Express): Promise<void> {
       }
   });
 
-  app.put('/api/admin/users/:id/password', isAuthenticated, isAdmin, async (req, res) => {
-      try {
-          const { newPassword } = req.body;
-          if (!newPassword || newPassword.length < 6) {
-              return res.status(400).json({ message: "A nova senha deve ter pelo menos 6 caracteres." });
-          }
-          const hashedPassword = await bcrypt.hash(newPassword, SALT_ROUNDS);
-          await storage.updateUserPassword(req.params.id, hashedPassword);
-          res.status(200).json({ message: "Senha atualizada com sucesso." });
-      } catch (error) {
-          console.error("Erro ao alterar senha:", error);
-          res.status(500).json({ message: "Falha ao alterar senha." });
-      }
-  });
-  
   app.delete('/api/admin/users/:id', isAuthenticated, isAdmin, async (req, res) => {
     try {
-      await storage.deleteUser(req.params.id);
-      res.status(204).send();
-    } catch (error: any) {
-      console.error("Erro ao deletar usuário:", error);
-      if (error.message.includes("possui")) {
-          return res.status(409).json({ message: error.message });
-      }
-      res.status(500).json({ message: "Falha ao deletar usuário." });
+        const { id } = req.params;
+        
+        // Check dependencies first
+        const hasPatients = await storage.userHasPatients(id);
+        const hasPrescriptions = await storage.userHasPrescriptions(id);
+        
+        if (hasPatients || hasPrescriptions) {
+            return res.status(400).json({ 
+                message: "Não é possível excluir este usuário pois ele possui pacientes ou prescrições associadas. Transfira os dados antes de excluir." 
+            });
+        }
+
+        // Se tiver convites, deleta eles primeiro
+        await storage.deleteUserInvitations(id);
+        
+        await storage.deleteUser(id);
+        res.status(204).send();
+    } catch (error) {
+        console.error("Erro ao excluir usuário:", error);
+        res.status(500).json({ message: "Falha ao excluir usuário." });
     }
   });
-  
+
+  app.post('/api/admin/users/transfer', isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { fromUserId, toUserId } = req.body;
+      if (!fromUserId || !toUserId) {
+        return res.status(400).json({ message: "IDs de origem e destino são obrigatórios." });
+      }
+      
+      await storage.transferPatients(fromUserId, toUserId);
+      res.json({ message: "Dados transferidos com sucesso." });
+    } catch (error) {
+      console.error("Erro ao transferir dados:", error);
+      res.status(500).json({ message: "Falha ao transferir dados." });
+    }
+  });
 
   // --- PATIENT ROUTES ---
-  app.post("/api/patient/register", async (req, res, next) => {
+  app.get('/api/nutritionist/patients', isAuthenticated, async (req: any, res) => {
     try {
-      const newUser = await storage.createPatientFromInvitation(req.body);
-      
-      req.login(newUser, (err) => {
-        if (err) {
-          return next(err);
+        if (req.user.role !== 'nutritionist' && req.user.role !== 'admin') {
+            return res.status(403).json({ message: "Acesso negado. Apenas nutricionistas." });
         }
-        res.status(201).json(newUser);
-      });
-    } catch (error: any) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Dados inválidos.", errors: error.flatten() });
-      }
-      if (error.message?.includes("409")) {
-        return res.status(409).json({ message: "Este email já está cadastrado." });
-      }
-      console.error("Erro ao registrar paciente:", error);
-      res.status(400).json({ message: error.message || "Falha ao registrar paciente." });
-    }
-  });
-  
-  app.post('/api/patients', isAuthenticated, async (req: any, res) => {
-    try {
-      const patientData = insertPatientSchema.parse({
-        ...req.body,
-        ownerId: req.user.id,
-      });
-
-      const existingUser = await storage.getUserByEmail(patientData.email!);
-      if(existingUser) {
-        return res.status(409).json({ message: "Já existe um usuário com este email." });
-      }
-      
-      const hashedPassword = await bcrypt.hash(req.body.password, SALT_ROUNDS);
-      const newUser = await storage.upsertUser({
-        email: patientData.email!,
-        firstName: patientData.name.split(' ')[0],
-        lastName: patientData.name.split(' ').slice(1).join(' '),
-        hashedPassword,
-        role: 'patient',
-      });
-
-      const newPatient = await storage.createPatient({ ...patientData, userId: newUser.id });
-
-      res.status(201).json(newPatient);
+        const patients = await storage.getPatientsByOwner(req.user.id);
+        res.json(patients);
     } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Dados do paciente inválidos.", errors: error.flatten() });
-      }
-      console.error("Erro ao criar paciente:", error);
-      res.status(500).json({ message: "Falha ao criar paciente." });
-    }
-  });
-
-  app.get('/api/patients', isAuthenticated, async (req: any, res) => {
-    try {
-      const patients = await storage.getPatientsByOwner(req.user.id);
-      res.json(patients);
-    } catch (error) {
-      console.error("Erro ao buscar pacientes:", error);
-      res.status(500).json({ message: "Falha ao buscar pacientes." });
+        console.error("Erro ao buscar pacientes:", error);
+        res.status(500).json({ message: "Falha ao buscar pacientes." });
     }
   });
 
   app.get('/api/patients/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const patient = await storage.getPatient(req.params.id);
-      if (patient && (req.user.role === 'admin' || patient.ownerId === req.user.id)) {
+        const patient = await storage.getPatient(req.params.id);
+        if (!patient) {
+            return res.status(404).json({ message: "Paciente não encontrado." });
+        }
+        
+        // Check ownership
+        if (req.user.role !== 'admin' && patient.ownerId !== req.user.id && patient.userId !== req.user.id) {
+            return res.status(403).json({ message: "Acesso negado." });
+        }
+        
         res.json(patient);
-      } else {
-        res.status(404).json({ message: "Paciente não encontrado ou acesso não autorizado." });
-      }
     } catch (error) {
-      console.error("Erro ao buscar detalhes do paciente:", error);
-      res.status(500).json({ message: "Falha ao buscar detalhes do paciente." });
+        console.error("Erro ao buscar paciente:", error);
+        res.status(500).json({ message: "Falha ao buscar paciente." });
+    }
+  });
+
+  app.post('/api/patients', isAuthenticated, async (req: any, res) => {
+    try {
+        if (req.user.role !== 'nutritionist' && req.user.role !== 'admin') {
+            return res.status(403).json({ message: "Acesso negado." });
+        }
+        
+        const validatedData = insertPatientSchema.parse(req.body);
+        const patient = await storage.createPatient({ ...validatedData, ownerId: req.user.id });
+        
+        logActivity({ userId: req.user.id, activityType: 'create_patient', details: `Paciente criado: ${patient.firstName} ${patient.lastName}` });
+        res.status(201).json(patient);
+    } catch (error) {
+        if (error instanceof z.ZodError) {
+            return res.status(400).json({ message: "Dados inválidos.", errors: error.errors });
+        }
+        console.error("Erro ao criar paciente:", error);
+        res.status(500).json({ message: "Falha ao criar paciente." });
     }
   });
 
   app.put('/api/patients/:id', isAuthenticated, async (req: any, res) => {
     try {
-      // Valida os dados recebidos usando o novo schema
-      const patientData = updatePatientSchema.parse(req.body);
-
-      const patient = await storage.getPatient(req.params.id);
-      
-      // Garante que o nutricionista só possa editar seus próprios pacientes
-      if (!patient || patient.ownerId !== req.user.id) {
-        return res.status(404).json({ message: "Paciente não encontrado ou acesso não autorizado." });
-      }
-
-      const updatedPatient = await storage.updatePatient(req.params.id, patientData);
-      res.json(updatedPatient);
+        const patient = await storage.getPatient(req.params.id);
+        if (!patient) {
+            return res.status(404).json({ message: "Paciente não encontrado." });
+        }
+        
+        if (req.user.role !== 'admin' && patient.ownerId !== req.user.id) {
+            return res.status(403).json({ message: "Acesso negado." });
+        }
+        
+        const validatedData = updatePatientSchema.parse(req.body);
+        const updatedPatient = await storage.updatePatient(req.params.id, validatedData);
+        
+        logActivity({ userId: req.user.id, activityType: 'update_patient', details: `Paciente atualizado: ${updatedPatient.firstName} ${updatedPatient.lastName}` });
+        res.json(updatedPatient);
     } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Dados do paciente inválidos.", errors: error.flatten() });
-      }
-      console.error("Erro ao atualizar paciente:", error);
-      res.status(500).json({ message: "Falha ao atualizar paciente." });
+        if (error instanceof z.ZodError) {
+            return res.status(400).json({ message: "Dados inválidos.", errors: error.errors });
+        }
+        console.error("Erro ao atualizar paciente:", error);
+        res.status(500).json({ message: "Falha ao atualizar paciente." });
     }
   });
 
   app.delete('/api/patients/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const { id } = req.params;
-      const nutritionistId = req.user.id;
-
-      const patient = await storage.getPatient(id);
-      
-      if (!patient || patient.ownerId !== nutritionistId) {
-        return res.status(404).json({ message: 'Paciente não encontrado' });
-      }
-
-      await db.transaction(async (tx) => {
-        await tx.delete(anamnesisRecords).where(eq(anamnesisRecords.patientId, id));
-        await tx.delete(foodDiaryEntries).where(eq(foodDiaryEntries.patientId, id));
-        await tx.delete(prescriptions).where(eq(prescriptions.patientId, id));
-        await tx.delete(patients).where(eq(patients.id, id));
-      });
-
-      return res.status(200).json({ message: 'Paciente excluído com sucesso' });
-    } catch (error) {
-      console.error("Erro ao excluir paciente:", error);
-      res.status(500).json({ message: "Falha ao excluir paciente." });
-    }
-  });
-  
-  app.get('/api/patient/my-profile', isAuthenticated, async (req: any, res) => {
-    try {
-      // Log activity to track when patient accesses their profile
-      logActivity({ userId: req.user.id, activityType: 'view_profile' });
-      
-      const patientProfile = await storage.getPatientByUserId(req.user.id);
-      if (patientProfile) {
-        res.json(patientProfile);
-      } else {
-        res.status(404).json({ message: 'Perfil de paciente não encontrado.' });
-      }
-    } catch (error) {
-      console.error("Erro ao buscar perfil do paciente:", error);
-      res.status(500).json({ message: 'Falha ao buscar perfil do paciente.' });
-    }
-  });
-
-  app.post('/api/patients/:id/request-follow-up', isAuthenticated, async (req: any, res) => {
-    try {
-      // Futuramente, podemos gerar um token único aqui. Por simplicidade,
-      // por enquanto vamos apenas gerar uma URL simples.
-      const patientId = req.params.id;
-      const patient = await storage.getPatient(patientId);
-
-      if (!patient || patient.ownerId !== req.user.id) {
-        return res.status(404).json({ message: "Paciente não encontrado." });
-      }
-
-      // Este link não é seguro por token, mas serve para o fluxo inicial.
-      // Uma implementação robusta usaria um token de uso único.
-      const followUpUrl = `${req.protocol}://${req.get('host')}/anamnese/retorno?patientId=${patientId}`;
-      
-      res.json({ followUpUrl });
-    } catch (error) {
-      console.error("Erro ao solicitar anamnese de retorno:", error);
-      res.status(500).json({ message: "Falha ao gerar link." });
-    }
-  });
-
-  app.post('/api/patients/:id/anamnesis-records', isAuthenticated, async (req: any, res) => {
-    try {
-        const patientId = req.params.id;
-        // Apenas o próprio paciente (no futuro) ou o nutricionista dono podem adicionar um registro.
-        const patient = await storage.getPatient(patientId);
-        if (!patient || (req.user.role === 'nutritionist' && patient.ownerId !== req.user.id)) {
-            return res.status(403).json({ message: "Acesso negado." });
-        }
-
-        const recordData = insertAnamnesisRecordSchema.parse({
-            ...req.body,
-            patientId: patientId,
-        });
-        const newRecord = await storage.createAnamnesisRecord(recordData);
-        // Atualiza o peso mais recente na tabela principal do paciente para fácil acesso
-        if (recordData.weightKg) {
-            await storage.updatePatient(patientId, { weightKg: recordData.weightKg });
-        }
-        res.status(201).json(newRecord);
-    } catch (error) {
-        if (error instanceof z.ZodError) {
-            return res.status(400).json({ message: "Dados inválidos.", errors: error.flatten() });
-        }
-        console.error("Erro ao salvar anamnese de retorno:", error);
-        res.status(500).json({ message: "Falha ao salvar anamnese de retorno." });
-    }
-  });
-
-  app.get('/api/patients/:id/anamnesis-records', isAuthenticated, async (req: any, res) => {
-    try {
-        const patientId = req.params.id;
-        const patient = await storage.getPatient(patientId);
-        if (!patient || patient.ownerId !== req.user.id) {
+        const patient = await storage.getPatient(req.params.id);
+        if (!patient) {
             return res.status(404).json({ message: "Paciente não encontrado." });
         }
-        const records = await storage.getAnamnesisRecords(patientId);
-        res.json(records);
+        
+        if (req.user.role !== 'admin' && patient.ownerId !== req.user.id) {
+            return res.status(403).json({ message: "Acesso negado." });
+        }
+        
+        await storage.deletePatient(req.params.id);
+        logActivity({ userId: req.user.id, activityType: 'delete_patient', details: `Paciente excluído: ${patient.firstName} ${patient.lastName}` });
+        res.status(204).send();
     } catch (error) {
-        console.error("Erro ao buscar histórico:", error);
-        res.status(500).json({ message: "Falha ao buscar histórico de anamnese." });
+        console.error("Erro ao excluir paciente:", error);
+        res.status(500).json({ message: "Falha ao excluir paciente." });
     }
   });
 
   // --- PRESCRIPTION ROUTES ---
-  app.post('/api/prescriptions', isAuthenticated, async (req: any, res) => {
+  app.get('/api/patients/:id/prescriptions', isAuthenticated, async (req: any, res) => {
     try {
-      // Normaliza campos de data: o drizzle-zod v0.7.x espera objetos Date para campos
-      // timestamp, mas o frontend envia strings ISO via JSON (ex: "2026-05-31T00:00:00.000Z").
-      // Sem essa conversão, o Zod rejeita com erro 400 "expected date, received string".
-      const body = { ...req.body };
-      if (body.expiresAt && typeof body.expiresAt === 'string') {
-        body.expiresAt = new Date(body.expiresAt);
-      }
-      if (body.publishedAt && typeof body.publishedAt === 'string') {
-        body.publishedAt = new Date(body.publishedAt);
-      }
-      if (body.startDate && typeof body.startDate === 'string') {
-        body.startDate = new Date(body.startDate);
-      }
-      const prescriptionData = insertPrescriptionSchema.parse({
-        ...body,
-        nutritionistId: req.user.id,
-      });
-      const newPrescription = await storage.createPrescription(prescriptionData);
-      res.status(201).json(newPrescription);
+        const patient = await storage.getPatient(req.params.id);
+        if (!patient) {
+            return res.status(404).json({ message: "Paciente não encontrado." });
+        }
+        
+        if (req.user.role !== 'admin' && patient.ownerId !== req.user.id && patient.userId !== req.user.id) {
+            return res.status(403).json({ message: "Acesso negado." });
+        }
+        
+        const prescriptions = await storage.getPrescriptionsByPatient(req.params.id);
+        res.json(prescriptions);
     } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Dados da prescrição inválidos.", errors: error.flatten() });
-      }
-      console.error("Erro ao criar prescrição:", error);
-      res.status(500).json({ message: "Falha ao criar prescrição." });
+        console.error("Erro ao buscar prescrições:", error);
+        res.status(500).json({ message: "Falha ao buscar prescrições." });
     }
   });
 
-  app.get('/api/patients/:patientId/prescriptions', isAuthenticated, async (req, res) => {
+  app.post('/api/prescriptions', isAuthenticated, async (req: any, res) => {
     try {
-      const prescriptions = await storage.getPrescriptionsByPatient(req.params.patientId);
-      res.json(prescriptions);
+        if (req.user.role !== 'nutritionist' && req.user.role !== 'admin') {
+            return res.status(403).json({ message: "Acesso negado." });
+        }
+        
+        const validatedData = insertPrescriptionSchema.parse(req.body);
+        const prescription = await storage.createPrescription({ ...validatedData, nutritionistId: req.user.id });
+        
+        logActivity({ userId: req.user.id, activityType: 'create_prescription', details: `Prescrição criada: ${prescription.title}` });
+        res.status(201).json(prescription);
     } catch (error) {
-      console.error("Erro ao buscar prescrições:", error);
-      res.status(500).json({ message: "Falha ao buscar prescrições." });
-    }
-  });
-  
-  app.get('/api/prescriptions/:id', isAuthenticated, async (req, res) => {
-    try {
-      const prescription = await storage.getPrescription(req.params.id);
-      res.json(prescription);
-    } catch (error) {
-      console.error("Erro ao buscar prescrição:", error);
-      res.status(500).json({ message: "Falha ao buscar prescrição." });
+        if (error instanceof z.ZodError) {
+            return res.status(400).json({ message: "Dados inválidos.", errors: error.errors });
+        }
+        console.error("Erro ao criar prescrição:", error);
+        res.status(500).json({ message: "Falha ao criar prescrição." });
     }
   });
 
   app.put('/api/prescriptions/:id', isAuthenticated, async (req: any, res) => {
     try {
-      // Normaliza campos de data para objetos Date (o frontend envia strings ISO)
-      const body = { ...req.body };
-      if (body.expiresAt && typeof body.expiresAt === 'string') body.expiresAt = new Date(body.expiresAt);
-      if (body.publishedAt && typeof body.publishedAt === 'string') body.publishedAt = new Date(body.publishedAt);
-      if (body.startDate && typeof body.startDate === 'string') body.startDate = new Date(body.startDate);
-      const prescriptionData = updatePrescriptionSchema.parse(body);
-      const updatedPrescription = await storage.updatePrescription(req.params.id, prescriptionData);
-      res.json(updatedPrescription);
+        const prescription = await storage.getPrescription(req.params.id);
+        if (!prescription) {
+            return res.status(404).json({ message: "Prescrição não encontrada." });
+        }
+        
+        if (req.user.role !== 'admin' && prescription.nutritionistId !== req.user.id) {
+            return res.status(403).json({ message: "Acesso negado." });
+        }
+        
+        const validatedData = updatePrescriptionSchema.parse(req.body);
+        const updatedPrescription = await storage.updatePrescription(req.params.id, validatedData);
+        
+        logActivity({ userId: req.user.id, activityType: 'update_prescription', details: `Prescrição atualizada: ${updatedPrescription.title}` });
+        res.json(updatedPrescription);
     } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Dados da prescrição inválidos.", errors: error.flatten() });
-      }
-      console.error("Erro ao atualizar prescrição:", error);
-      res.status(500).json({ message: "Falha ao atualizar prescrição." });
-    }
-  });
-  
-  app.post('/api/prescriptions/:id/publish', isAuthenticated, async (req, res) => {
-    try {
-      const prescription = await storage.publishPrescription(req.params.id);
-      res.json(prescription);
-    } catch (error) {
-      console.error("Error publishing prescription:", error);
-      res.status(500).json({ message: "Failed to publish prescription" });
+        if (error instanceof z.ZodError) {
+            return res.status(400).json({ message: "Dados inválidos.", errors: error.errors });
+        }
+        console.error("Erro ao atualizar prescrição:", error);
+        res.status(500).json({ message: "Falha ao atualizar prescrição." });
     }
   });
 
-  // Rota de ativação: muda status para "active", define startDate = now() e calcula expiresAt
-  app.post('/api/prescriptions/:id/activate', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/prescriptions/:id', isAuthenticated, async (req: any, res) => {
     try {
-      // Parâmetro opcional: duração em dias (padrão: 90 dias)
-      const durationDays: number = req.body?.durationDays ?? 90;
-      const prescription = await storage.activatePrescription(req.params.id, durationDays);
-      logActivity({
-        userId: req.user.id,
-        activityType: 'activate_prescription',
-        details: `Plano alimentar ativado: ${prescription.title} (${durationDays} dias)`,
-      });
-      res.json(prescription);
-    } catch (error: any) {
-      console.error('Error activating prescription:', error);
-      res.status(500).json({ message: 'Failed to activate prescription' });
-    }
-  });
-
-  app.post('/api/prescriptions/:id/duplicate', isAuthenticated, async (req, res) => {
-    try {
-      const { title } = req.body;
-      const prescription = await storage.duplicatePrescription(req.params.id, title);
-      res.json(prescription);
+        const prescription = await storage.getPrescription(req.params.id);
+        if (!prescription) {
+            return res.status(404).json({ message: "Prescrição não encontrada." });
+        }
+        
+        if (req.user.role !== 'admin' && prescription.nutritionistId !== req.user.id) {
+            return res.status(403).json({ message: "Acesso negado." });
+        }
+        
+        await storage.deletePrescription(req.params.id);
+        logActivity({ userId: req.user.id, activityType: 'delete_prescription', details: `Prescrição excluída: ${prescription.title}` });
+        res.status(204).send();
     } catch (error) {
-      console.error("Error duplicating prescription:", error);
-      res.status(500).json({ message: "Failed to duplicate prescription" });
-    }
-  });
-
-  app.post('/api/prescriptions/:id/duplicate-to-patient', isAuthenticated, async (req: any, res) => {
-    try {
-      const { targetPatientId, title } = req.body;
-      
-      // Verify that the source prescription belongs to the authenticated nutritionist
-      const sourcePrescription = await storage.getPrescription(req.params.id);
-      if (!sourcePrescription || sourcePrescription.nutritionistId !== req.user.id) {
-        return res.status(403).json({ message: "Source prescription not found or access denied" });
-      }
-      
-      // Verify that the target patient belongs to the authenticated nutritionist
-      const targetPatient = await storage.getPatient(targetPatientId);
-      if (!targetPatient || targetPatient.ownerId !== req.user.id) {
-        return res.status(403).json({ message: "Target patient not found or access denied" });
-      }
-      
-      const prescription = await storage.duplicatePrescriptionToPatient(req.params.id, targetPatientId, title);
-      res.json(prescription);
-    } catch (error) {
-      console.error("Error duplicating prescription to patient:", error);
-      res.status(500).json({ message: "Failed to duplicate prescription to patient" });
-    }
-  });
-
-  app.delete('/api/prescriptions/:id', isAuthenticated, async (req, res) => {
-    try {
-      await storage.deletePrescription(req.params.id);
-      res.status(204).send();
-    } catch (error: any) {
-      if (error.message.includes("403")) {
-        return res.status(403).json({ message: error.message });
-      }
-      res.status(500).json({ message: "Failed to delete prescription" });
-    }
-  });
-
-  app.get('/api/patient/my-prescriptions', isAuthenticated, async (req: any, res) => {
-    try {
-      logActivity({ userId: req.user.id, activityType: 'view_my_prescriptions_list' });
-      const prescriptions = await storage.getPublishedPrescriptionsForUser(req.user.id);
-      res.json(prescriptions);
-    } catch (error) {
-      console.error("Error fetching patient prescriptions:", error);
-      res.status(500).json({ message: "Failed to fetch prescriptions" });
+        console.error("Erro ao excluir prescrição:", error);
+        res.status(500).json({ message: "Falha ao excluir prescrição." });
     }
   });
 
   // --- INVITATION ROUTES ---
-  app.post('/api/invitations', isAuthenticated, async (req: any, res) => {
+  app.post('/api/patients/:id/invite', isAuthenticated, async (req: any, res) => {
     try {
-      const invitation = await storage.createInvitation(req.user.id);
-      res.json(invitation);
+        const patient = await storage.getPatient(req.params.id);
+        if (!patient) {
+            return res.status(404).json({ message: "Paciente não encontrado." });
+        }
+        
+        if (req.user.role !== 'admin' && patient.ownerId !== req.user.id) {
+            return res.status(403).json({ message: "Acesso negado." });
+        }
+        
+        const invitation = await storage.createInvitation(req.params.id);
+        
+        logActivity({ userId: req.user.id, activityType: 'create_invitation', details: `Convite gerado para paciente: ${patient.firstName} ${patient.lastName}` });
+        res.status(201).json(invitation);
     } catch (error) {
-      console.error("Erro ao criar convite:", error);
-      res.status(500).json({ message: "Falha ao criar convite." });
-    }
-  });
-  
-  app.get('/api/invitations/validate', async (req, res) => {
-    const { token } = req.query;
-    if (typeof token !== 'string') {
-      return res.status(400).json({ message: 'Token inválido.' });
-    }
-    const invitation = await storage.getInvitationByToken(token);
-    if (invitation && invitation.status === 'pending') {
-      res.status(200).json({ valid: true });
-    } else {
-      res.status(404).json({ message: 'Convite inválido ou expirado.' });
+        console.error("Erro ao criar convite:", error);
+        res.status(500).json({ message: "Falha ao criar convite." });
     }
   });
 
-  // --- MOOD ROUTES ---
+  app.post('/api/auth/register-patient', async (req, res) => {
+    try {
+        const { token, email, password } = req.body;
+        
+        const invitation = await storage.getInvitationByToken(token);
+        if (!invitation || invitation.used) {
+            return res.status(400).json({ message: "Convite inválido ou já utilizado." });
+        }
+        
+        const existingUser = await storage.getUserByEmail(email);
+        if (existingUser) {
+            return res.status(409).json({ message: "Este email já está cadastrado." });
+        }
+        
+        const patient = await storage.getPatient(invitation.patientId);
+        if (!patient) {
+            return res.status(404).json({ message: "Paciente não encontrado." });
+        }
+        
+        const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
+        const user = await storage.upsertUser({
+            email,
+            hashedPassword,
+            firstName: patient.firstName,
+            lastName: patient.lastName,
+            role: 'patient'
+        });
+        
+        await storage.updatePatientUserId(patient.id, user.id);
+        await storage.markInvitationAsUsed(invitation.id);
+        
+        logActivity({ userId: user.id, activityType: 'register_patient', details: `Paciente registrado via convite` });
+        
+        // Log the user in after registration
+        req.login(user, (err) => {
+            if (err) return res.status(500).json({ message: "Erro ao realizar login após registro." });
+            res.status(201).json(user);
+        });
+    } catch (error) {
+        console.error("Erro ao registrar paciente:", error);
+        res.status(500).json({ message: "Falha ao registrar paciente." });
+    }
+  });
+
+  // --- MOOD ENTRY ROUTES ---
+  app.get('/api/patients/:id/mood-entries', isAuthenticated, async (req: any, res) => {
+    try {
+        const patient = await storage.getPatient(req.params.id);
+        if (!patient) {
+            return res.status(404).json({ message: "Paciente não encontrado." });
+        }
+        
+        if (req.user.role !== 'admin' && patient.ownerId !== req.user.id && patient.userId !== req.user.id) {
+            return res.status(403).json({ message: "Acesso negado." });
+        }
+        
+        const entries = await storage.getMoodEntriesByPatient(req.params.id);
+        res.json(entries);
+    } catch (error) {
+        console.error("Erro ao buscar registros de humor:", error);
+        res.status(500).json({ message: "Falha ao buscar registros de humor." });
+    }
+  });
+
   app.post('/api/mood-entries', isAuthenticated, async (req: any, res) => {
     try {
-      const patientProfile = await storage.getPatientByUserId(req.user.id);
-      if (!patientProfile) {
-        return res.status(403).json({ message: "Perfil de paciente não encontrado." });
-      }
-      const moodData = insertMoodEntrySchema.parse({
-        ...req.body,
-        patientId: patientProfile.id,
-      });
-      const newMoodEntry = await storage.createMoodEntry(moodData);
-      res.status(201).json(newMoodEntry);
+        if (req.user.role !== 'patient') {
+            return res.status(403).json({ message: "Apenas pacientes podem registrar humor." });
+        }
+        
+        const patient = await storage.getPatientByUserId(req.user.id);
+        if (!patient) {
+            return res.status(404).json({ message: "Perfil de paciente não encontrado." });
+        }
+        
+        const validatedData = insertMoodEntrySchema.parse(req.body);
+        const entry = await storage.createMoodEntry({ ...validatedData, patientId: patient.id });
+        
+        logActivity({ userId: req.user.id, activityType: 'create_mood_entry' });
+        res.status(201).json(entry);
     } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Dados de humor inválidos.", errors: error.flatten() });
-      }
-      console.error("Erro ao criar registro de humor:", error);
-      res.status(500).json({ message: "Falha ao criar registro de humor." });
+        if (error instanceof z.ZodError) {
+            return res.status(400).json({ message: "Dados inválidos.", errors: error.errors });
+        }
+        console.error("Erro ao criar registro de humor:", error);
+        res.status(500).json({ message: "Falha ao criar registro de humor." });
     }
   });
 
-  app.put('/api/mood-entries/:id', isAuthenticated, async (req, res) => {
+  // --- ANAMNESIS RECORD ROUTES ---
+  app.get('/api/patients/:id/anamnesis', isAuthenticated, async (req: any, res) => {
     try {
-      const updateData = insertMoodEntrySchema.partial().parse(req.body);
-      const moodEntry = await storage.updateMoodEntry(req.params.id, updateData);
-      res.json(moodEntry);
+        const patient = await storage.getPatient(req.params.id);
+        if (!patient) {
+            return res.status(404).json({ message: "Paciente não encontrado." });
+        }
+        
+        if (req.user.role !== 'admin' && patient.ownerId !== req.user.id && patient.userId !== req.user.id) {
+            return res.status(403).json({ message: "Acesso negado." });
+        }
+        
+        const records = await storage.getAnamnesisRecordsByPatient(req.params.id);
+        res.json(records);
     } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid mood entry data.", errors: error.flatten() });
-      }
-      console.error("Error updating mood entry:", error);
-      res.status(500).json({ message: "Failed to update mood entry" });
+        console.error("Erro ao buscar anamneses:", error);
+        res.status(500).json({ message: "Falha ao buscar anamneses." });
     }
   });
 
-  app.get('/api/mood-entries/:prescriptionId/:mealId/:date', isAuthenticated, async (req, res) => {
+  app.post('/api/anamnesis', isAuthenticated, async (req: any, res) => {
     try {
-      const { prescriptionId, mealId, date } = req.params;
-      const moodEntry = await storage.getMoodEntry(prescriptionId, mealId, date);
-      if (moodEntry) {
-        res.json(moodEntry);
-      } else {
-        res.status(404).json({ message: 'Nenhum registro de humor encontrado para esta data.' });
-      }
-    } catch(error) {
-      console.error("Error fetching mood entry:", error);
-      res.status(500).json({ message: "Failed to fetch mood entry" });
-    }
-  });
-
-  app.get('/api/patients/:patientId/mood-entries', isAuthenticated, async (req: any, res) => {
-    try {
-      const { patientId } = req.params;
-      const { startDate, endDate } = req.query;
-      
-      const moodEntries = await storage.getMoodEntriesByPatient(
-        patientId,
-        startDate as string,
-        endDate as string
-      );
-      
-      res.json(moodEntries);
+        if (req.user.role !== 'nutritionist' && req.user.role !== 'admin') {
+            return res.status(403).json({ message: "Acesso negado." });
+        }
+        
+        const validatedData = insertAnamnesisRecordSchema.parse(req.body);
+        const record = await storage.createAnamnesisRecord({ ...validatedData, nutritionistId: req.user.id });
+        
+        logActivity({ userId: req.user.id, activityType: 'create_anamnesis', details: `Anamnese criada para paciente ID: ${record.patientId}` });
+        res.status(201).json(record);
     } catch (error) {
-      console.error("Error fetching mood entries for patient:", error);
-      res.status(500).json({ message: "Failed to fetch mood entries" });
-    }
-  });
-
-  app.get('/api/prescriptions/:prescriptionId/mood-entries', isAuthenticated, async (req: any, res) => {
-    try {
-      const { prescriptionId } = req.params;
-      const moodEntries = await storage.getMoodEntriesByPrescription(prescriptionId);
-      res.json(moodEntries);
-    } catch (error) {
-      console.error("Error fetching mood entries for prescription:", error);
-      res.status(500).json({ message: "Failed to fetch mood entries" });
+        if (error instanceof z.ZodError) {
+            return res.status(400).json({ message: "Dados inválidos.", errors: error.errors });
+        }
+        console.error("Erro ao criar anamnese:", error);
+        res.status(500).json({ message: "Falha ao criar anamnese." });
     }
   });
 
   // --- FOOD DIARY ROUTES ---
-  app.post('/api/food-diary/upload', isAuthenticated, async (req: any, res) => {
+  app.get('/api/patients/:id/food-diary', isAuthenticated, async (req: any, res) => {
     try {
-        const body = req.body as HandleUploadBody;
-    
-        const jsonResponse = await handleUpload({
-          body,
-          request: req,
-          onBeforeGenerateToken: async (pathname: string) => {
-            const blobPath = `food-diary/${req.user.id}/${pathname}`;
-            return {
-              allowedContentTypes: ['image/jpeg', 'image/png', 'image/gif', 'image/webp'],
-              pathname: blobPath,
-              tokenPayload: JSON.stringify({
-                userId: req.user.id,
-              }),
-            };
-          },
-          onUploadCompleted: async ({ blob, tokenPayload }) => {
-            console.log('blob upload completed', blob, tokenPayload);
-          },
-        });
-    
-        return res.status(200).json(jsonResponse);
-      } catch (error) {
-        console.error("Error in upload handler:", error);
-        return res.status(400).json({ error: (error as Error).message });
-      }
+        const patient = await storage.getPatient(req.params.id);
+        if (!patient) {
+            return res.status(404).json({ message: "Paciente não encontrado." });
+        }
+        
+        if (req.user.role !== 'admin' && patient.ownerId !== req.user.id && patient.userId !== req.user.id) {
+            return res.status(403).json({ message: "Acesso negado." });
+        }
+        
+        const entries = await storage.getFoodDiaryEntriesByPatient(req.params.id);
+        res.json(entries);
+    } catch (error) {
+        console.error("Erro ao buscar diário alimentar:", error);
+        res.status(500).json({ message: "Falha ao buscar diário alimentar." });
+    }
   });
 
-  // New route for optimized image upload with server-side processing
-  app.post('/api/food-diary/upload-optimized', isAuthenticated, upload.single('image'), async (req: any, res) => {
+  app.post('/api/food-diary', isAuthenticated, async (req: any, res) => {
+    try {
+        if (req.user.role !== 'patient') {
+            return res.status(403).json({ message: "Apenas pacientes podem registrar refeições." });
+        }
+        
+        const patient = await storage.getPatientByUserId(req.user.id);
+        if (!patient) {
+            return res.status(404).json({ message: "Perfil de paciente não encontrado." });
+        }
+        
+        const validatedData = insertFoodDiaryEntrySchema.parse(req.body);
+        const entry = await storage.createFoodDiaryEntry({ ...validatedData, patientId: patient.id });
+        
+        logActivity({ userId: req.user.id, activityType: 'create_food_diary_entry' });
+        res.status(201).json(entry);
+    } catch (error) {
+        if (error instanceof z.ZodError) {
+            return res.status(400).json({ message: "Dados inválidos.", errors: error.errors });
+        }
+        console.error("Erro ao criar registro no diário alimentar:", error);
+        res.status(500).json({ message: "Falha ao criar registro no diário alimentar." });
+    }
+  });
+
+  app.delete('/api/food-diary/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      
+      // Get entry to check ownership and get photo URL
+      const [entry] = await db.select().from(foodDiaryEntries).where(eq(foodDiaryEntries.id, id));
+      
+      if (!entry) {
+        return res.status(404).json({ message: "Registro não encontrado." });
+      }
+      
+      // Check ownership - either the patient who created it or their nutritionist
+      const patient = await storage.getPatient(entry.patientId);
+      if (req.user.role !== 'admin' && entry.patientId !== (await storage.getPatientByUserId(req.user.id))?.id && patient?.ownerId !== req.user.id) {
+        return res.status(403).json({ message: "Acesso negado." });
+      }
+      
+      // If there's a photo, delete it from Vercel Blob
+      if (entry.imageUrl) {
+        await deleteFoodDiaryPhoto(entry.imageUrl);
+      }
+      
+      // Delete from database
+      await db.delete(foodDiaryEntries).where(eq(foodDiaryEntries.id, id));
+      
+      logActivity({ userId: req.user.id, activityType: 'delete_food_diary_entry' });
+      res.status(204).send();
+    } catch (error) {
+      console.error("Erro ao excluir registro do diário alimentar:", error);
+      res.status(500).json({ message: "Falha ao excluir registro do diário alimentar." });
+    }
+  });
+
+  // --- ACTIVITY LOG ROUTES ---
+  app.get('/api/nutritionist/activity-log', isAuthenticated, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'nutritionist' && req.user.role !== 'admin') {
+        return res.status(403).json({ message: "Acesso negado." });
+      }
+      
+      // Get activities for all patients owned by this nutritionist
+      const patientsList = await storage.getPatientsByOwner(req.user.id);
+      const patientUserIds = patientsList.map(p => p.userId).filter(Boolean) as string[];
+      
+      if (patientUserIds.length === 0) {
+        return res.json([]);
+      }
+      
+      const logs = await db.select({
+        id: activityLog.id,
+        userId: activityLog.userId,
+        activityType: activityLog.activityType,
+        details: activityLog.details,
+        timestamp: activityLog.timestamp,
+        userName: sql<string>`${users.firstName} || ' ' || ${users.lastName}`
+      })
+      .from(activityLog)
+      .leftJoin(users, eq(activityLog.userId, users.id))
+      .where(or(
+        ...patientUserIds.map(id => eq(activityLog.userId, id))
+      ))
+      .orderBy(desc(activityLog.timestamp))
+      .limit(50);
+      
+      res.json(logs);
+    } catch (error) {
+      console.error("Erro ao buscar log de atividades:", error);
+      res.status(500).json({ message: "Falha ao buscar log de atividades." });
+    }
+  });
+
+  // --- DASHBOARD STATS ROUTES ---
+  app.get('/api/nutritionist/dashboard-stats', isAuthenticated, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'nutritionist' && req.user.role !== 'admin') {
+        return res.status(403).json({ message: "Acesso negado." });
+      }
+      
+      const patientsList = await storage.getPatientsByOwner(req.user.id);
+      const totalPatients = patientsList.length;
+      
+      const prescriptionsList = await db.select().from(prescriptions).where(eq(prescriptions.nutritionistId, req.user.id));
+      const totalPrescriptions = prescriptionsList.length;
+      
+      // Active patients (those with at least one mood or food diary entry in the last 7 days)
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      
+      const patientUserIds = patientsList.map(p => p.userId).filter(Boolean) as string[];
+      let activePatients = 0;
+      
+      if (patientUserIds.length > 0) {
+        const recentActivity = await db.select({
+          userId: activityLog.userId
+        })
+        .from(activityLog)
+        .where(and(
+          or(...patientUserIds.map(id => eq(activityLog.userId, id))),
+          gte(activityLog.timestamp, sevenDaysAgo)
+        ))
+        .groupBy(activityLog.userId);
+        
+        activePatients = recentActivity.length;
+      }
+      
+      res.json({
+        totalPatients,
+        totalPrescriptions,
+        activePatients,
+        pendingInvitations: (await db.select().from(invitations).where(and(
+          or(...patientsList.map(p => eq(invitations.patientId, p.id))),
+          eq(invitations.used, false)
+        ))).length
+      });
+    } catch (error) {
+      console.error("Erro ao buscar estatísticas do dashboard:", error);
+      res.status(500).json({ message: "Falha ao buscar estatísticas." });
+    }
+  });
+
+  // --- VERCEL BLOB STORAGE ROUTES ---
+  app.post('/api/upload', isAuthenticated, upload.single('file'), async (req: any, res) => {
     try {
       if (!req.file) {
-        return res.status(400).json({ error: 'Nenhum arquivo de imagem fornecido' });
+        return res.status(400).json({ message: 'Nenhum arquivo enviado.' });
       }
 
-      // Process the image with Sharp
+      // Process image with sharp to reduce size and ensure format
       const processedImageBuffer = await sharp(req.file.buffer)
-        .resize({ width: 1080 }) // Redimensiona para uma largura máxima de 1080px
-        .webp({ quality: 80 }) // Converte para WebP com 80% de qualidade
+        .resize(1200, 1200, { fit: 'inside', withoutEnlargement: true })
+        .jpeg({ quality: 80 })
         .toBuffer();
 
-      // Generate unique filename
-      const filename = `${Date.now()}-${Math.random().toString(36).substring(7)}.webp`;
-      const blobPath = `food-diary/${req.user.id}/${filename}`;
-
-      // Upload processed image to Vercel Blob
-      const blob = await put(blobPath, processedImageBuffer, {
+      const filename = `food-diary/${nanoid()}.jpg`;
+      const blob = await put(filename, processedImageBuffer, {
         access: 'public',
-        contentType: 'image/webp',
+        contentType: 'image/jpeg',
       });
 
-      console.log('Imagem processada e enviada:', {
-        originalSize: req.file.size,
-        processedSize: processedImageBuffer.length,
-        reduction: ((req.file.size - processedImageBuffer.length) / req.file.size * 100).toFixed(1) + '%'
-      });
-
-      return res.status(200).json({ url: blob.url });
+      res.json(blob);
     } catch (error) {
-      console.error("Error in optimized upload handler:", error);
-      return res.status(400).json({ error: (error as Error).message });
+      console.error('Erro no upload para Vercel Blob:', error);
+      res.status(500).json({ message: 'Falha no upload da imagem.' });
     }
   });
 
-  app.post('/api/food-diary/entries', isAuthenticated, async (req: any, res) => {
+  // --- SUBSCRIPTION ROUTES ---
+  app.get('/api/admin/subscriptions', isAuthenticated, isAdmin, async (req, res) => {
     try {
-      // Log activity for food diary usage
-      logActivity({ userId: req.user.id, activityType: 'create_food_diary_entry' });
-      
-      const patientProfile = await storage.getPatientByUserId(req.user.id);
-      if (!patientProfile) {
-        return res.status(403).json({ message: "Perfil de paciente não encontrado." });
-      }
-      
-      const entryData = insertFoodDiaryEntrySchema.parse({
-        ...req.body,
-        patientId: patientProfile.id,
-      });
+      const allSubscriptions = await db.select().from(subscriptions).orderBy(desc(subscriptions.createdAt));
+      res.json(allSubscriptions);
+    } catch (error) {
+      console.error("Erro ao buscar assinaturas:", error);
+      res.status(500).json({ message: "Falha ao buscar assinaturas." });
+    }
+  });
 
-      const newEntry = await storage.createFoodDiaryEntry(entryData);
-      res.status(201).json(newEntry);
+  app.post('/api/admin/subscriptions', isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const validatedData = insertSubscriptionSchema.parse(req.body);
+      const subscriptionWithId = { id: nanoid(), ...validatedData };
+      const [newSubscription] = await db.insert(subscriptions).values(subscriptionWithId).returning();
+      res.status(201).json(newSubscription);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ 
-          message: "Dados inválidos", 
-          errors: error.errors 
-        });
+        return res.status(400).json({ message: "Dados inválidos.", errors: error.errors });
       }
-      console.error("Error creating food diary entry:", error);
-      res.status(500).json({ message: "Falha ao criar entrada no diário alimentar." });
+      console.error("Erro ao criar assinatura:", error);
+      res.status(500).json({ message: "Falha ao criar assinatura." });
     }
   });
 
-  app.get('/api/patients/:patientId/food-diary/entries', isAuthenticated, async (req: any, res) => {
+  app.get('/api/my-subscription', isAuthenticated, async (req: any, res) => {
     try {
-      const { patientId } = req.params;
-      
-      // Verify that the nutritionist owns this patient
-      const patient = await storage.getPatient(patientId);
-      if (!patient || patient.ownerId !== req.user.id) {
-        return res.status(404).json({ message: "Paciente não encontrado ou acesso não autorizado." });
-      }
-
-      const entries = await storage.getFoodDiaryEntriesByPatient(patientId);
-      res.json(entries);
-    } catch (error) {
-      console.error("Error fetching food diary entries:", error);
-      res.status(500).json({ message: "Falha ao buscar entradas do diário alimentar." });
-    }
-  });
-
-  // DELETE route to remove food diary entry and photo
-  app.delete('/api/food-diary/entries/:id/photo', isAuthenticated, async (req: any, res) => {
-    try {
-      const entryId = req.params.id;
-      const nutritionistId = req.user.id;
-
-      // 1. Find the food diary entry and verify nutritionist permission
-      const entry = await db.query.foodDiaryEntries.findFirst({
-        where: eq(foodDiaryEntries.id, entryId),
-        with: {
-          patient: true,
-        },
-      });
-
-      if (!entry || entry.patient.ownerId !== nutritionistId) {
-        return res.status(404).json({ message: 'Entrada do diário não encontrada ou não autorizada.' });
-      }
-      
-      if (!entry.imageUrl) {
-        return res.status(400).json({ message: 'Esta entrada não possui foto.' });
-      }
-
-      // 2. Delete the photo from Vercel Blob
-      await deleteFoodDiaryPhoto(entry.imageUrl);
-
-      // 3. Delete the entire diary entry from the database
-      await db
-        .delete(foodDiaryEntries)
-        .where(eq(foodDiaryEntries.id, entryId));
-
-      return res.status(200).json({ message: 'Entrada do diário excluída com sucesso.' });
-    } catch (error) {
-      console.error("Error deleting food diary entry:", error);
-      res.status(500).json({ message: "Falha ao excluir a entrada do diário." });
-    }
-  });
-
-  // PATCH route to update nutritionist-specific data for anamnesis records
-  app.patch('/api/anamnesis/:anamnesisId/nutritionist-data', isAuthenticated, async (req: any, res) => {
-    try {
-      const nutritionistId = req.user.id; // Get the logged-in nutritionist's ID
-      const anamnesisId = req.params.anamnesisId;
-      const body = req.body;
-
-      // Create a validation schema for only the nutritionist fields
-      const nutritionistDataSchema = z.object({
-        tmb: z.coerce.number().min(0, "TMB deve ser um valor positivo").optional().nullable(),
-        get: z.coerce.number().min(0, "GET deve ser um valor positivo").optional().nullable(),
-        vet: z.coerce.number().min(0, "VET deve ser um valor positivo").optional().nullable(),
-        usedFormula: z.string().optional().nullable(),
-        targetCarbPercent: z.coerce.number().min(0).max(100).optional().nullable(),
-        targetProteinPercent: z.coerce.number().min(0).max(100).optional().nullable(),
-        targetFatPercent: z.coerce.number().min(0).max(100).optional().nullable(),
-        targetCarbG: z.coerce.number().min(0).optional().nullable(),
-        targetProteinG: z.coerce.number().min(0).optional().nullable(),
-        targetFatG: z.coerce.number().min(0).optional().nullable(),
-      });
-
-      // Validate the data
-      const data = nutritionistDataSchema.parse(body);
-
-      // Security check: verify that the anamnesis belongs to a patient owned by this nutritionist
-      const [targetAnamnesis] = await db
-        .select({ patientOwnerId: patients.ownerId })
-        .from(anamnesisRecords)
-        .leftJoin(patients, eq(anamnesisRecords.patientId, patients.id))
-        .where(eq(anamnesisRecords.id, anamnesisId));
-
-      if (!targetAnamnesis || targetAnamnesis.patientOwnerId !== nutritionistId) {
-        return res.status(404).json({ error: "Anamnese não encontrada ou não autorizada." });
-      }
-
-      // Update the nutritionist data in the database
-      const [updatedAnamnesis] = await db
-        .update(anamnesisRecords)
-        .set({
-          tmb: data.tmb,
-          get: data.get,
-          vet: data.vet,
-          usedFormula: data.usedFormula,
-          targetCarbPercent: data.targetCarbPercent,
-          targetProteinPercent: data.targetProteinPercent,
-          targetFatPercent: data.targetFatPercent,
-          targetCarbG: data.targetCarbG,
-          targetProteinG: data.targetProteinG,
-          targetFatG: data.targetFatG,
-        })
-        .where(eq(anamnesisRecords.id, anamnesisId))
-        .returning();
-
-      return res.json(updatedAnamnesis);
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Dados inválidos.", errors: error.flatten() });
-      }
-      console.error("Erro ao atualizar dados do nutricionista:", error);
-      res.status(500).json({ message: "Falha ao atualizar dados do nutricionista." });
-    }
-  });
-
-  // --- SUBSCRIPTION MANAGEMENT ROUTES ---
-  
-  // Get patient's current subscription
-  app.get('/api/patients/:patientId/subscription', isAuthenticated, async (req: any, res) => {
-    try {
-      const patientId = req.params.patientId;
-      const userId = req.user.id;
-      
-      // Security check: ensure user can access this patient's data
-      const [patient] = await db
-        .select()
-        .from(patients)
-        .where(eq(patients.id, patientId));
-
-      if (!patient) {
-        return res.status(404).json({ error: "Paciente não encontrado." });
-      }
-
-      // Check if user is the patient themselves or their nutritionist
-      if (req.user.role === 'patient' && patient.userId !== userId) {
-        return res.status(403).json({ error: "Acesso não autorizado." });
-      }
-      if (req.user.role === 'nutritionist' && patient.ownerId !== userId) {
-        return res.status(403).json({ error: "Acesso não autorizado." });
-      }
-
-      // Log activity when patient checks their subscription (indicates app usage)
-      if (req.user.role === 'patient') {
-        logActivity({ userId: req.user.id, activityType: 'view_subscription' });
-      }
-
-      // Get the most recent subscription
       const [subscription] = await db
         .select()
         .from(subscriptions)
-        .where(eq(subscriptions.patientId, patientId))
+        .where(eq(subscriptions.userId, req.user.id))
         .orderBy(desc(subscriptions.createdAt))
         .limit(1);
-
+      
       if (!subscription) {
-        return res.status(404).json({ error: "Nenhum plano encontrado." });
+        return res.json({ status: 'none', plan: 'free' });
       }
-
-      return res.json(subscription);
-    } catch (error) {
-      console.error("Erro ao buscar assinatura:", error);
-      res.status(500).json({ error: "Falha ao buscar plano." });
-    }
-  });
-
-  // Patient requests plan renewal
-  app.post('/api/patients/:patientId/subscription/renew', isAuthenticated, async (req: any, res) => {
-    try {
-      const patientId = req.params.patientId;
-      const userId = req.user.id;
-      const { planType } = req.body;
-
-      // Security check: ensure user is the patient themselves
-      const [patient] = await db
-        .select()
-        .from(patients)
-        .where(eq(patients.id, patientId));
-
-      if (!patient) {
-        return res.status(404).json({ error: "Paciente não encontrado." });
-      }
-
-      if (req.user.role === 'patient' && patient.userId !== userId) {
-        return res.status(403).json({ error: "Acesso não autorizado." });
-      }
-
-      // Validate plan type
-      if (!['monthly', 'quarterly'].includes(planType)) {
-        return res.status(400).json({ error: "Tipo de plano inválido." });
-      }
-
-      // Create new subscription with pending payment status
-      const subscriptionId = nanoid();
-      const [newSubscription] = await db
-        .insert(subscriptions)
-        .values({
-          id: subscriptionId,
-          patientId,
-          planType,
-          status: 'pending_payment',
-          // Temporary dates, will be updated on approval
-          startDate: new Date(),
-          expiresAt: new Date(Date.now() + (planType === 'monthly' ? 30 : 90) * 24 * 60 * 60 * 1000),
-        })
-        .returning();
-
-      return res.status(201).json(newSubscription);
-    } catch (error) {
-      console.error("Erro ao solicitar renovação:", error);
-      res.status(500).json({ error: "Falha ao solicitar renovação." });
-    }
-  });
-
-  // Nutritionist creates a subscription for a patient
-  app.post('/api/nutritionist/patients/:patientId/subscription', isAuthenticated, async (req: any, res) => {
-    try {
-      const nutritionistId = req.user.id;
-      const patientId = req.params.patientId;
-      const { planType, status = 'active', expiresAt } = req.body;
-
-      if (req.user.role !== 'nutritionist') {
-        return res.status(403).json({ error: 'Acesso negado. Apenas nutricionistas.' });
-      }
-
-      // Validate plan type
-      if (!['free', 'monthly', 'quarterly'].includes(planType)) {
-        return res.status(400).json({ error: 'Tipo de plano inválido' });
-      }
-
-      // Validate status
-      if (!['active', 'pending_payment', 'pending_approval'].includes(status)) {
-        return res.status(400).json({ error: 'Status inválido' });
-      }
-
-      // Security check: ensure patient belongs to this nutritionist
-      const [patient] = await db
-        .select()
-        .from(patients)
-        .where(and(eq(patients.id, patientId), eq(patients.ownerId, nutritionistId)));
-
-      if (!patient) {
-        return res.status(404).json({ error: 'Paciente não encontrado ou acesso negado' });
-      }
-
-      // Calculate dates based on plan type and status
-      const now = new Date();
-      let startDate = now;
-      let expirationDate = null;
-
-      if (status === 'active') {
-        if (planType === 'free') {
-          // Free plans don't expire
-          expirationDate = null;
-        } else if (expiresAt) {
-          // Use custom expiration date if provided
-          // Handle date input strings properly to avoid timezone issues
-          if (typeof expiresAt === 'string' && expiresAt.match(/^\d{4}-\d{2}-\d{2}$/)) {
-            // This is a date string from HTML date input (YYYY-MM-DD)
-            // Create date at noon UTC to avoid timezone shifts
-            const [year, month, day] = expiresAt.split('-').map(Number);
-            expirationDate = new Date(year, month - 1, day, 12, 0, 0, 0);
-          } else {
-            expirationDate = new Date(expiresAt);
-          }
-          // Validate that the custom date is in the future
-          const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-          if (expirationDate <= todayStart) {
-            return res.status(400).json({ error: 'Data de expiração deve ser no futuro' });
-          }
-        } else {
-          // Auto-calculate expiration based on plan type
-          if (planType === 'monthly') {
-            expirationDate = new Date(now);
-            expirationDate.setMonth(expirationDate.getMonth() + 1);
-          } else if (planType === 'quarterly') {
-            expirationDate = new Date(now);
-            expirationDate.setMonth(expirationDate.getMonth() + 3);
-          }
-        }
-      }
-
-      // Create new subscription
-      const subscriptionId = nanoid();
-      await db
-        .insert(subscriptions)
-        .values({
-          id: subscriptionId,
-          patientId: patientId,
-          planType: planType,
-          status: status,
-          startDate: startDate,
-          expiresAt: expirationDate,
-          createdAt: now,
-          updatedAt: now
-        });
-
-      const [newSubscription] = await db
-        .select()
-        .from(subscriptions)
-        .where(eq(subscriptions.id, subscriptionId));
-
-      return res.json(newSubscription);
-    } catch (error) {
-      console.error('Erro ao criar assinatura:', error);
-      return res.status(500).json({ error: 'Falha ao criar assinatura' });
-    }
-  });
-
-  // Nutritionist gets all pending subscriptions for their patients
-  app.get('/api/nutritionist/subscriptions/pending', isAuthenticated, async (req: any, res) => {
-    try {
-      const nutritionistId = req.user.id;
-
-      if (req.user.role !== 'nutritionist') {
-        return res.status(403).json({ error: "Acesso negado. Apenas nutricionistas." });
-      }
-
-      // Get pending subscriptions for nutritionist's patients
-      const pendingSubscriptions = await db
-        .select({
-          subscription: subscriptions,
-          patient: { id: patients.id, name: patients.name, email: patients.email },
-        })
-        .from(subscriptions)
-        .leftJoin(patients, eq(subscriptions.patientId, patients.id))
-        .where(
-          and(
-            eq(patients.ownerId, nutritionistId),
-            or(
-              eq(subscriptions.status, 'pending_payment'),
-              eq(subscriptions.status, 'pending_approval')
-            )
-          )
-        )
-        .orderBy(desc(subscriptions.updatedAt));
-
-      return res.json(pendingSubscriptions);
-    } catch (error) {
-      console.error("Erro ao buscar assinaturas pendentes:", error);
-      res.status(500).json({ error: "Falha ao buscar assinaturas pendentes." });
-    }
-  });
-
-  // Nutritionist manages a subscription (approve, reject, etc.)
-  app.patch('/api/subscriptions/:subscriptionId/manage', isAuthenticated, async (req: any, res) => {
-    try {
-      const subscriptionId = req.params.subscriptionId;
-      const nutritionistId = req.user.id;
-      const { planType, status, expiresAt, ...otherData } = req.body;
-
-      if (req.user.role !== 'nutritionist') {
-        return res.status(403).json({ error: "Acesso negado. Apenas nutricionistas." });
-      }
-
-      // Security check: ensure subscription belongs to nutritionist's patient
-      const [subscriptionWithPatient] = await db
-        .select({
-          subscription: subscriptions,
-          patient: patients,
-        })
-        .from(subscriptions)
-        .leftJoin(patients, eq(subscriptions.patientId, patients.id))
-        .where(eq(subscriptions.id, subscriptionId));
-
-      if (!subscriptionWithPatient || subscriptionWithPatient.patient?.ownerId !== nutritionistId) {
-        return res.status(404).json({ error: "Assinatura não encontrada ou não autorizada." });
-      }
-
-      // Prepare update data with proper type handling
-      const updateData: any = {
-        ...otherData,
-        updatedAt: new Date(),
-      };
-
-      // Handle planType if provided
-      if (planType !== undefined) {
-        updateData.planType = planType;
-      }
-
-      // Handle status if provided  
-      if (status !== undefined) {
-        updateData.status = status;
-      }
-
-      // Handle expiresAt with proper validation and conversion
-      if (expiresAt !== undefined) {
-        if (expiresAt === '' || expiresAt === null) {
-          // Empty string or null means no expiration (for free plans)
-          updateData.expiresAt = null;
-        } else {
-          // Convert string to Date and validate it's in the future
-          let expirationDate;
-          
-          if (typeof expiresAt === 'string' && expiresAt.match(/^\d{4}-\d{2}-\d{2}$/)) {
-            // This is a date string from HTML date input (YYYY-MM-DD)
-            // Create date at noon UTC to avoid timezone shifts
-            const [year, month, day] = expiresAt.split('-').map(Number);
-            expirationDate = new Date(year, month - 1, day, 12, 0, 0, 0);
-          } else {
-            expirationDate = new Date(expiresAt);
-          }
-          
-          if (isNaN(expirationDate.getTime())) {
-            return res.status(400).json({ error: "Data de expiração inválida." });
-          }
-          
-          const todayStart = new Date();
-          todayStart.setHours(0, 0, 0, 0);
-          if (expirationDate < todayStart) {
-            return res.status(400).json({ error: "Data de expiração deve ser no futuro." });
-          }
-          updateData.expiresAt = expirationDate;
-        }
-      }
-
-      // Update subscription
-      const [updatedSubscription] = await db
-        .update(subscriptions)
-        .set(updateData)
-        .where(eq(subscriptions.id, subscriptionId))
-        .returning();
-
-      return res.json(updatedSubscription);
-    } catch (error) {
-      console.error("Erro ao gerenciar assinatura:", error);
-      res.status(500).json({ error: "Falha ao gerenciar assinatura." });
-    }
-  });
-
-  // Upload proof of payment (simplified - associates URL with subscription)
-  app.post('/api/subscriptions/:subscriptionId/upload-proof', isAuthenticated, async (req: any, res) => {
-    try {
-      const subscriptionId = req.params.subscriptionId;
-      const userId = req.user.id;
-      const { proofUrl } = req.body;
-
-      // Security check: ensure user owns this subscription
-      const [subscriptionWithPatient] = await db
-        .select({
-          subscription: subscriptions,
-          patient: patients,
-        })
-        .from(subscriptions)
-        .leftJoin(patients, eq(subscriptions.patientId, patients.id))
-        .where(eq(subscriptions.id, subscriptionId));
-
-      if (!subscriptionWithPatient) {
-        return res.status(404).json({ error: "Assinatura não encontrada." });
-      }
-
-      // Check if user is the patient or their nutritionist
-      if (req.user.role === 'patient' && subscriptionWithPatient.patient?.userId !== userId) {
-        return res.status(403).json({ error: "Acesso não autorizado." });
-      }
-      if (req.user.role === 'nutritionist' && subscriptionWithPatient.patient?.ownerId !== userId) {
-        return res.status(403).json({ error: "Acesso não autorizado." });
-      }
-
-      // Update subscription with proof of payment
-      const [updatedSubscription] = await db
-        .update(subscriptions)
-        .set({
-          proofOfPaymentUrl: proofUrl,
-          status: 'pending_approval',
-          updatedAt: new Date(),
-        })
-        .where(eq(subscriptions.id, subscriptionId))
-        .returning();
-
-      return res.json(updatedSubscription);
-    } catch (error) {
-      console.error("Erro ao enviar comprovante:", error);
-      res.status(500).json({ error: "Falha ao enviar comprovante." });
-    }
-  });
-
-  // Delete/Cancel subscription (nutritionist only)
-  app.delete('/api/subscriptions/:subscriptionId', isAuthenticated, async (req: any, res) => {
-    try {
-      const subscriptionId = req.params.subscriptionId;
-      const nutritionistId = req.user.id;
-
-      if (req.user.role !== 'nutritionist') {
-        return res.status(403).json({ error: "Acesso negado. Apenas nutricionistas." });
-      }
-
-      // Security check: ensure subscription belongs to nutritionist's patient
-      const [subscriptionWithPatient] = await db
-        .select({
-          subscription: subscriptions,
-          patient: patients,
-        })
-        .from(subscriptions)
-        .leftJoin(patients, eq(subscriptions.patientId, patients.id))
-        .where(eq(subscriptions.id, subscriptionId));
-
-      if (!subscriptionWithPatient || subscriptionWithPatient.patient?.ownerId !== nutritionistId) {
-        return res.status(404).json({ error: "Assinatura não encontrada ou não autorizada." });
-      }
-
-      // Delete subscription
-      await db
-        .delete(subscriptions)
-        .where(eq(subscriptions.id, subscriptionId));
-
-      return res.status(204).send();
-    } catch (error) {
-      console.error("Erro ao excluir assinatura:", error);
-      res.status(500).json({ error: "Falha ao excluir assinatura." });
-    }
-  });
-
-  // --- REPORTS ROUTES ---
-  app.get('/api/nutritionist/reports/access-log', isAuthenticated, async (req: any, res) => {
-    try {
-      if (req.user.role !== 'nutritionist') {
-        return res.status(403).json({ error: "Acesso negado. Apenas nutricionistas." });
-      }
-
-      const nutritionistId = req.user.id;
-
-      // 1. Busca todos os pacientes do nutricionista usando uma abordagem mais simples
-      const patientsOfNutritionist = await db
-        .select({
-          id: patients.id,
-          name: patients.name,
-          userId: patients.userId,
-          userEmail: users.email
-        })
-        .from(patients)
-        .leftJoin(users, eq(patients.userId, users.id))
-        .where(eq(patients.ownerId, nutritionistId));
-
-      // 2. Prepara os dados para o relatório de forma iterativa e segura
-      const reportData = [];
-      for (const patient of patientsOfNutritionist) {
-        // Pula para o próximo paciente se não houver dados básicos
-        if (!patient.id || !patient.name) {
-          continue;
-        }
-
-        // Para cada paciente, busca a assinatura mais recente de forma segura
-        let latestSubscription = null;
-        try {
-          const subscriptionResult = await db
-            .select()
-            .from(subscriptions)
-            .where(eq(subscriptions.patientId, patient.id))
-            .orderBy(desc(subscriptions.createdAt))
-            .limit(1);
-          
-          latestSubscription = subscriptionResult[0] || null;
-        } catch (error) {
-          console.error(`Erro ao buscar assinatura para paciente ${patient.id}:`, error);
-        }
-
-        // Para cada paciente, busca a última atividade registrada de forma segura
-        let latestActivity = null;
-        try {
-          if (patient.userId) {
-            const activityResult = await db
-              .select()
-              .from(activityLog)
-              .where(eq(activityLog.userId, patient.userId))
-              .orderBy(desc(activityLog.createdAt))
-              .limit(1);
-            
-            latestActivity = activityResult[0] || null;
-          }
-        } catch (error) {
-          console.error(`Erro ao buscar atividade para paciente ${patient.id}:`, error);
-        }
-
-        reportData.push({
-          patientId: patient.id,
-          patientName: patient.name || 'N/A',
-          patientEmail: patient.userEmail || 'N/A',
-          planType: latestSubscription?.planType || 'Nenhum',
-          planStatus: latestSubscription?.status || 'Nenhum',
-          planExpiresAt: latestSubscription?.expiresAt || null,
-          lastActivityTimestamp: latestActivity?.createdAt || null,
-          lastActivityType: latestActivity?.activityType || 'Nenhuma atividade',
-        });
-      }
-
-      // 3. Criação do arquivo Excel (lógica existente, sem alterações)
-      const workbook = new ExcelJS.Workbook();
-      const worksheet = workbook.addWorksheet('Relatório de Acesso');
-
-      worksheet.columns = [
-        { header: 'ID do Paciente', key: 'patientId', width: 25 },
-        { header: 'Nome do Paciente', key: 'patientName', width: 30 },
-        { header: 'Email', key: 'patientEmail', width: 30 },
-        { header: 'Plano', key: 'planType', width: 15 },
-        { header: 'Status do Plano', key: 'planStatus', width: 20 },
-        { header: 'Vencimento', key: 'planExpiresAt', width: 20 },
-        { header: 'Último Acesso', key: 'lastActivityTimestamp', width: 25 },
-        { header: 'Última Atividade', key: 'lastActivityType', width: 40 },
-      ];
       
-      worksheet.getRow(1).font = { bold: true };
-
-      reportData.forEach(data => {
-        worksheet.addRow({
-          ...data,
-          planExpiresAt: data.planExpiresAt ? format(new Date(data.planExpiresAt), 'dd/MM/yyyy') : 'N/A',
-          lastActivityTimestamp: data.lastActivityTimestamp ? format(new Date(data.lastActivityTimestamp), 'dd/MM/yyyy HH:mm:ss') : 'Nenhum acesso',
-        });
-      });
-      
-      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-      res.setHeader('Content-Disposition', 'attachment; filename="relatorio_de_acesso.xlsx"');
-
-      const buffer = await workbook.xlsx.writeBuffer();
-      res.send(buffer);
-
+      res.json(subscription);
     } catch (error) {
-      console.error("Erro ao gerar relatório de acesso:", error);
-      res.status(500).json({ message: "Falha ao gerar relatório." });
+      console.error("Erro ao buscar minha assinatura:", error);
+      res.status(500).json({ message: "Falha ao buscar assinatura." });
     }
   });
 
-  // --- PATIENT DOCUMENT (ASSESSMENT) ROUTES ---
-
-  // POST: Nutritionist uploads an assessment document for a patient
-  app.post('/api/patients/:patientId/assessments', isAuthenticated, uploadDocument.single('file'), async (req: any, res) => {
+  // --- PATIENT DOCUMENTS ROUTES ---
+  app.get('/api/patients/:id/documents', isAuthenticated, async (req: any, res) => {
     try {
-      console.log(`[Upload] POST /api/patients/${req.params.patientId}/assessments - user: ${req.user?.id}, role: ${req.user?.role}`);
-      if (req.user.role !== 'nutritionist') {
-        return res.status(403).json({ message: "Acesso negado. Apenas nutricionistas." });
+      const patient = await storage.getPatient(req.params.id);
+      if (!patient) {
+        return res.status(404).json({ message: "Paciente não encontrado." });
       }
+      
+      if (req.user.role !== 'admin' && patient.ownerId !== req.user.id && patient.userId !== req.user.id) {
+        return res.status(403).json({ message: "Acesso negado." });
+      }
+      
+      const docs = await db.select().from(patientDocuments).where(eq(patientDocuments.patientId, req.params.id)).orderBy(desc(patientDocuments.createdAt));
+      res.json(docs);
+    } catch (error) {
+      console.error("Erro ao buscar documentos:", error);
+      res.status(500).json({ message: "Falha ao buscar documentos." });
+    }
+  });
+
+  app.post('/api/patients/:id/documents', isAuthenticated, uploadDocument.single('file'), async (req: any, res) => {
+    try {
+      if (req.user.role !== 'nutritionist' && req.user.role !== 'admin') {
+        return res.status(403).json({ message: "Acesso negado." });
+      }
+
       if (!req.file) {
-        console.error("[Upload] req.file is undefined — multer did not receive a file. Check Content-Type header and FormData key.");
-        return res.status(400).json({ message: "Nenhum arquivo enviado." });
-      }
-      const safeFileName = Buffer.from(req.file.originalname, 'latin1').toString('utf8');
-      console.log(`[Upload] File received: name=${safeFileName}, size=${req.file.size}, mimetype=${req.file.mimetype}`);
-
-      const patientId = req.params.patientId;
-      const patient = await storage.getPatient(patientId);
-      if (!patient || patient.ownerId !== req.user.id) {
-        console.error(`[Upload] Patient not found or access denied: patientId=${patientId}, ownerId=${patient?.ownerId}, userId=${req.user.id}`);
-        return res.status(404).json({ message: "Paciente não encontrado ou acesso não autorizado." });
+        return res.status(400).json({ message: 'Nenhum arquivo enviado.' });
       }
 
-      // Upload to Vercel Blob
-      const ext = safeFileName.split('.').pop() || 'bin';
-      const blobPath = `assessments/${patientId}/${nanoid()}.${ext}`;
-      console.log(`[Upload] Uploading to Vercel Blob: ${blobPath}`);
-      const blob = await put(blobPath, req.file.buffer, {
+      const patient = await storage.getPatient(req.params.id);
+      if (!patient) {
+        return res.status(404).json({ message: "Paciente não encontrado." });
+      }
+
+      const fileExtension = path.extname(req.file.originalname);
+      const filename = `documents/${req.params.id}/${nanoid()}${fileExtension}`;
+      
+      const blob = await put(filename, req.file.buffer, {
         access: 'public',
         contentType: req.file.mimetype,
       });
-      console.log(`[Upload] Blob upload successful: ${blob.url}`);
 
-      // Save record to database
       const docId = nanoid();
-      console.log(`[Upload] Inserting into patient_documents: id=${docId}`);
       const [newDoc] = await db.insert(patientDocuments).values({
         id: docId,
-        patientId,
+        patientId: req.params.id,
         nutritionistId: req.user.id,
-        fileName: safeFileName,
+        fileName: req.file.originalname,
         fileUrl: blob.url,
       }).returning();
-      console.log(`[Upload] Document saved successfully: ${newDoc.id}`);
 
-      return res.status(201).json(newDoc);
+      logActivity({ userId: req.user.id, activityType: 'upload_document', details: `Documento enviado para paciente: ${patient.firstName} - ${req.file.originalname}` });
+      res.status(201).json(newDoc);
     } catch (error) {
-      console.error("[Upload] Erro ao enviar avaliação:", error);
-      res.status(500).json({ message: "Falha ao enviar avaliação." });
+      console.error('Erro no upload de documento:', error);
+      res.status(500).json({ message: 'Falha no upload do documento.' });
     }
   });
 
-  // GET: Nutritionist lists assessments for a specific patient
-  app.get('/api/patients/:patientId/assessments', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/documents/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const patientId = req.params.patientId;
-      const patient = await storage.getPatient(patientId);
-      if (!patient || patient.ownerId !== req.user.id) {
-        return res.status(404).json({ message: "Paciente não encontrado ou acesso não autorizado." });
-      }
-
-      const docs = await db
-        .select()
-        .from(patientDocuments)
-        .where(eq(patientDocuments.patientId, patientId))
-        .orderBy(desc(patientDocuments.createdAt));
-
-      return res.json(docs);
-    } catch (error) {
-      console.error("Erro ao buscar avaliações:", error);
-      res.status(500).json({ message: "Falha ao buscar avaliações." });
-    }
-  });
-
-  // GET: Patient lists their own assessments
-  app.get('/api/my-assessments', isAuthenticated, async (req: any, res) => {
-    try {
-      const patientProfile = await storage.getPatientByUserId(req.user.id);
-      if (!patientProfile) {
-        return res.status(404).json({ message: "Perfil de paciente não encontrado." });
-      }
-
-      const docs = await db
-        .select()
-        .from(patientDocuments)
-        .where(eq(patientDocuments.patientId, patientProfile.id))
-        .orderBy(desc(patientDocuments.createdAt));
-
-      return res.json(docs);
-    } catch (error) {
-      console.error("Erro ao buscar avaliações do paciente:", error);
-      res.status(500).json({ message: "Falha ao buscar avaliações." });
-    }
-  });
-
-  // DELETE: Nutritionist deletes an assessment document
-  app.delete('/api/assessments/:documentId', isAuthenticated, async (req: any, res) => {
-    try {
-      if (req.user.role !== 'nutritionist') {
-        return res.status(403).json({ message: "Acesso negado. Apenas nutricionistas." });
-      }
-
-      const [doc] = await db
-        .select()
-        .from(patientDocuments)
-        .where(and(eq(patientDocuments.id, req.params.documentId), eq(patientDocuments.nutritionistId, req.user.id)));
-
+      const [doc] = await db.select().from(patientDocuments).where(eq(patientDocuments.id, req.params.id));
       if (!doc) {
-        return res.status(404).json({ message: "Documento não encontrado ou acesso não autorizado." });
+        return res.status(404).json({ message: "Documento não encontrado." });
       }
 
-      await db.delete(patientDocuments).where(eq(patientDocuments.id, req.params.documentId));
-      return res.status(204).send();
+      if (req.user.role !== 'admin' && doc.nutritionistId !== req.user.id) {
+        return res.status(403).json({ message: "Acesso negado." });
+      }
+
+      // Delete from Vercel Blob
+      await deleteFoodDiaryPhoto(doc.fileUrl);
+      
+      // Delete from database
+      await db.delete(patientDocuments).where(eq(patientDocuments.id, req.params.id));
+
+      logActivity({ userId: req.user.id, activityType: 'delete_document', details: `Documento excluído: ${doc.fileName}` });
+      res.status(204).send();
     } catch (error) {
-      console.error("Erro ao excluir avaliação:", error);
-      res.status(500).json({ message: "Falha ao excluir avaliação." });
+      console.error("Erro ao excluir documento:", error);
+      res.status(500).json({ message: "Falha ao excluir documento." });
     }
   });
 
-  // --- ANTHROPOMETRIC ASSESSMENTS ROUTES ---
-
-  // GET: List all anthropometric assessments for a patient
-  app.get('/api/patients/:patientId/anthropometry', isAuthenticated, async (req: any, res) => {
+  // --- ANTHROPOMETRIC ASSESSMENT ROUTES ---
+  app.get('/api/patients/:id/anthropometry', isAuthenticated, async (req: any, res) => {
     try {
-      const { patientId } = req.params;
-      const patient = await storage.getPatient(patientId);
-      if (!patient || (req.user.role === 'nutritionist' && patient.ownerId !== req.user.id)) {
-        return res.status(404).json({ message: "Paciente não encontrado ou acesso não autorizado." });
+      const patient = await storage.getPatient(req.params.id);
+      if (!patient) {
+        return res.status(404).json({ message: "Paciente não encontrado." });
+      }
+      if (req.user.role !== 'admin' && patient.ownerId !== req.user.id && patient.userId !== req.user.id) {
+        return res.status(403).json({ message: "Acesso negado." });
       }
       const assessments = await db
         .select()
         .from(anthropometricAssessments)
-        .where(eq(anthropometricAssessments.patientId, patientId))
+        .where(eq(anthropometricAssessments.patientId, req.params.id))
         .orderBy(desc(anthropometricAssessments.createdAt));
-      return res.json(assessments);
+      res.json(assessments);
     } catch (error) {
       console.error("Erro ao buscar avaliações antropométricas:", error);
       res.status(500).json({ message: "Falha ao buscar avaliações antropométricas." });
     }
   });
 
-  // POST: Create a new anthropometric assessment
-  app.post('/api/patients/:patientId/anthropometry', isAuthenticated, async (req: any, res) => {
+  app.post('/api/anthropometry', isAuthenticated, async (req: any, res) => {
     try {
-      if (req.user.role !== 'nutritionist') {
+      if (req.user.role !== 'nutritionist' && req.user.role !== 'admin') {
         return res.status(403).json({ message: "Acesso negado. Apenas nutricionistas." });
       }
-      const { patientId } = req.params;
-      const patient = await storage.getPatient(patientId);
-      if (!patient || patient.ownerId !== req.user.id) {
-        return res.status(404).json({ message: "Paciente não encontrado ou acesso não autorizado." });
-      }
-      const parsed = insertAnthropometricAssessmentSchema.safeParse({ ...req.body, patientId, nutritionistId: req.user.id });
-      if (!parsed.success) {
-        return res.status(400).json({ message: "Dados inválidos.", errors: parsed.error.errors });
-      }
-      const [assessment] = await db
-        .insert(anthropometricAssessments)
-        .values({ id: nanoid(), ...parsed.data })
-        .returning();
-      return res.status(201).json(assessment);
+      const validatedData = insertAnthropometricAssessmentSchema.parse(req.body);
+      const assessmentWithId = {
+        id: nanoid(),
+        nutritionistId: req.user.id,
+        ...validatedData,
+      };
+      const [newAssessment] = await db.insert(anthropometricAssessments).values(assessmentWithId).returning();
+      logActivity({
+        userId: req.user.id,
+        activityType: 'create_anthropometry',
+        details: `Avaliação antropométrica criada para paciente ID: ${newAssessment.patientId}`,
+      });
+      res.status(201).json(newAssessment);
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Dados inválidos.", errors: error.errors });
+      }
       console.error("Erro ao criar avaliação antropométrica:", error);
       res.status(500).json({ message: "Falha ao criar avaliação antropométrica." });
     }
   });
 
-  // PUT: Update an anthropometric assessment
   app.put('/api/anthropometry/:id', isAuthenticated, async (req: any, res) => {
     try {
-      if (req.user.role !== 'nutritionist') {
-        return res.status(403).json({ message: "Acesso negado. Apenas nutricionistas." });
-      }
       const [existing] = await db
         .select()
         .from(anthropometricAssessments)
@@ -1677,27 +1024,31 @@ export async function setupRoutes(app: Express): Promise<void> {
       if (!existing) {
         return res.status(404).json({ message: "Avaliação não encontrada ou acesso não autorizado." });
       }
-      const parsed = updateAnthropometricAssessmentSchema.safeParse(req.body);
-      if (!parsed.success) {
-        return res.status(400).json({ message: "Dados inválidos.", errors: parsed.error.errors });
-      }
+      const validatedData = updateAnthropometricAssessmentSchema.parse(req.body);
       const [updated] = await db
         .update(anthropometricAssessments)
-        .set({ ...parsed.data, updatedAt: new Date() })
+        .set(validatedData)
         .where(eq(anthropometricAssessments.id, req.params.id))
         .returning();
-      return res.json(updated);
+      logActivity({
+        userId: req.user.id,
+        activityType: 'update_anthropometry',
+        details: `Avaliação antropométrica atualizada para paciente ID: ${updated.patientId}`,
+      });
+      res.json(updated);
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Dados inválidos.", errors: error.errors });
+      }
       console.error("Erro ao atualizar avaliação antropométrica:", error);
       res.status(500).json({ message: "Falha ao atualizar avaliação antropométrica." });
     }
   });
 
-  // DELETE: Delete an anthropometric assessment
   app.delete('/api/anthropometry/:id', isAuthenticated, async (req: any, res) => {
     try {
-      if (req.user.role !== 'nutritionist') {
-        return res.status(403).json({ message: "Acesso negado. Apenas nutricionistas." });
+      if (req.user.role !== 'nutritionist' && req.user.role !== 'admin') {
+        return res.status(403).json({ message: "Acesso negado." });
       }
       const [existing] = await db
         .select()
@@ -1734,132 +1085,6 @@ export async function setupRoutes(app: Express): Promise<void> {
     } catch (error) {
       console.error("Erro ao buscar última avaliação antropométrica:", error);
       res.status(500).json({ message: "Falha ao buscar avaliação antropométrica." });
-    }
-  });
-
-  // ─── Importação de Prescrição via PDF ────────────────────────────────────────
-  // POST /api/prescriptions/:id/import-pdf
-  // Recebe um arquivo PDF de plano alimentar, extrai o texto com pdf-parse,
-  // envia para a OpenAI interpretar e retorna as refeições estruturadas.
-  app.post('/api/prescriptions/:id/import-pdf', isAuthenticated, uploadPrescriptionPdf.single('pdf'), async (req: any, res) => {
-    try {
-      if (req.user.role !== 'nutritionist') {
-        return res.status(403).json({ message: 'Acesso negado. Apenas nutricionistas.' });
-      }
-      if (!req.file) {
-        return res.status(400).json({ message: 'Nenhum arquivo PDF enviado.' });
-      }
-
-      // Verificar se a prescrição pertence ao nutricionista autenticado
-      const prescription = await storage.getPrescription(req.params.id);
-      if (!prescription || prescription.nutritionistId !== req.user.id) {
-        return res.status(403).json({ message: 'Prescrição não encontrada ou acesso negado.' });
-      }
-
-      // Extrair texto do PDF usando pdf-parse
-      let pdfText = '';
-      try {
-        const { PDFParse } = await import('pdf-parse');
-        const parser = new PDFParse({ data: req.file.buffer });
-        const result = await parser.getText();
-        await parser.destroy();
-        pdfText = result.text;
-      } catch (pdfError) {
-        console.error('[PDF Import] Erro ao extrair texto do PDF:', pdfError);
-        return res.status(422).json({ message: 'Não foi possível extrair texto do PDF. Verifique se o arquivo não está corrompido.' });
-      }
-
-      if (!pdfText || pdfText.trim().length < 50) {
-        return res.status(422).json({ message: 'O PDF não contém texto legível suficiente para importação.' });
-      }
-
-      // Usar OpenAI para interpretar o conteúdo do PDF
-      const prompt = `Você é um assistente especializado em nutrição. Analise o texto extraído de um PDF de plano alimentar e extraia os dados estruturados.
-
-O PDF tem um layout de tabela com 2 colunas:
-- Coluna esquerda: "Opção principal" (o alimento principal da refeição)
-- Coluna direita: "Opção de substituição" (alternativas para o alimento principal)
-
-Cada refeição tem um título (ex: "Café da manhã", "Almoço", "Lanche", "Jantar", "Ceia", etc.).
-Cada item principal pode ter várias opções de substituição.
-Pode haver uma seção "Observações:" com texto livre.
-
-Retorne um JSON com a seguinte estrutura:
-{
-  "meals": [
-    {
-      "name": "nome da refeição",
-      "items": [
-        {
-          "description": "nome do alimento",
-          "amount": "quantidade e unidade (ex: 4 Unidade(s) média(s) (200g))",
-          "substitutes": ["substituto 1 completo com quantidade", "substituto 2 completo com quantidade", ...]
-        }
-      ],
-      "notes": "observações da refeição (se houver, caso contrário string vazia)"
-    }
-  ]
-}
-
-IMPORTANTE:
-- Cada item principal deve ser separado dos seus substitutos
-- O campo "amount" deve conter APENAS a quantidade/medida do item PRINCIPAL
-- Os substitutos devem ser strings completas com nome e quantidade
-- Linhas como "Ou escolha X porções do grupo Y da lista de substituição." são substitutos
-- Ignore marcas d'água, rodapés e cabeçalhos de página
-- Retorne APENAS o JSON, sem texto adicional
-
-Texto do PDF:
-${pdfText}`;
-
-      let parsedMeals: Array<{ name: string; items: Array<{ description: string; amount: string; substitutes: string[] }>; notes: string }>;
-
-      try {
-        const aiResponse = await openaiClient.chat.completions.create({
-          model: 'gpt-4.1-mini',
-          messages: [{ role: 'user', content: prompt }],
-          response_format: { type: 'json_object' },
-          temperature: 0.1,
-        });
-
-        const aiResult = JSON.parse(aiResponse.choices[0].message.content || '{}');
-        parsedMeals = aiResult.meals || [];
-      } catch (aiError) {
-        console.error('[PDF Import] Erro na API OpenAI:', aiError);
-        return res.status(502).json({ message: 'Erro ao processar o PDF com IA. Tente novamente.' });
-      }
-
-      if (!parsedMeals || parsedMeals.length === 0) {
-        return res.status(422).json({ message: 'Não foi possível identificar refeições no PDF. Verifique se o arquivo é um plano alimentar válido.' });
-      }
-
-      // Converter para o formato MealData do sistema
-      const mealData = parsedMeals.map((meal) => ({
-        id: nanoid(),
-        name: meal.name,
-        items: meal.items.map((item) => ({
-          id: nanoid(),
-          description: item.description,
-          amount: item.amount,
-          substitutes: item.substitutes || [],
-        })),
-        notes: meal.notes || '',
-      }));
-
-      logActivity({
-        userId: req.user.id,
-        activityType: 'import_prescription_pdf',
-        details: `PDF importado para prescrição: ${prescription.title} (${mealData.length} refeições)`,
-      });
-
-      return res.json({
-        meals: mealData,
-        mealsCount: mealData.length,
-        message: `${mealData.length} refeição(ões) importada(s) com sucesso do PDF.`,
-      });
-    } catch (error) {
-      console.error('[PDF Import] Erro inesperado:', error);
-      res.status(500).json({ message: 'Falha ao importar PDF.' });
     }
   });
 }
