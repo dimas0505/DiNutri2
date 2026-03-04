@@ -1,10 +1,12 @@
 import { Bell, ClipboardList, Cross, ShieldCheck, TrendingUp, User, UtensilsCrossed, ChefHat, BookOpen } from "lucide-react";
+import { useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { MobileLayout } from "@/components/layout/mobile-layout";
 import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { useInvalidatePatientData } from "@/hooks/useInvalidatePatientData";
 import type { Patient, Prescription, Subscription } from "@shared/schema";
 
 interface DashboardCard {
@@ -147,6 +149,23 @@ function getPlanStatus(subscription: Subscription | null | undefined): {
 export default function PatientDashboard() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
+  const invalidatePatientData = useInvalidatePatientData();
+
+  // Invalida o cache ao montar o dashboard (ex: ao retornar via barra de navegação
+  // inferior ou acessar diretamente pela URL)
+  useEffect(() => {
+    invalidatePatientData();
+  }, [invalidatePatientData]);
+
+  /**
+   * Navega para uma tela do paciente garantindo dados sempre frescos.
+   * Invalida o cache antes de navegar para que o React Query
+   * busque dados atualizados do servidor ao montar a nova tela.
+   */
+  const handleNavigate = (href: string) => {
+    invalidatePatientData();
+    setLocation(href);
+  };
 
   const { data: patientProfile } = useQuery<Patient>({
     queryKey: ["/api/patient/my-profile"],
@@ -210,7 +229,7 @@ export default function PatientDashboard() {
             <button
               type="button"
               className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center"
-              onClick={() => setLocation("/profile")}
+              onClick={() => handleNavigate("/profile")}
             >
               <Bell className="w-5 h-5 text-white" />
             </button>
@@ -237,7 +256,7 @@ export default function PatientDashboard() {
               <button
                 key={plan.id}
                 type="button"
-                onClick={() => setLocation("/patient/prescriptions")}
+                onClick={() => handleNavigate("/patient/prescriptions")}
                 className="w-full text-left rounded-2xl border-2 border-orange-300 bg-gradient-to-br from-orange-50 via-amber-50 to-orange-50 shadow-md p-4 flex items-start gap-3"
                 data-testid={`banner-preparing-plan-${plan.id}`}
               >
@@ -270,7 +289,7 @@ export default function PatientDashboard() {
                 <button
                   key={card.title}
                   type="button"
-                  onClick={() => setLocation(card.href)}
+                  onClick={() => handleNavigate(card.href)}
                   className="bg-white rounded-2xl px-3 py-5 min-h-[160px] border border-[#E9E9EF] shadow-[0_2px_8px_rgba(12,12,13,0.04)] flex flex-col items-center justify-center text-center"
                 >
                   <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center", card.iconBg)}>
@@ -291,7 +310,7 @@ export default function PatientDashboard() {
                 <button
                   key={card.title}
                   type="button"
-                  onClick={() => setLocation(card.href)}
+                  onClick={() => handleNavigate(card.href)}
                   className="bg-white rounded-2xl px-3 py-3 min-h-[130px] border border-[#E9E9EF] shadow-[0_2px_8px_rgba(12,12,13,0.04)] flex flex-col items-center justify-center text-center"
                 >
                   <div className={cn("w-11 h-11 rounded-2xl flex items-center justify-center", card.iconBg)}>

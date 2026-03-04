@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
+import { useInvalidatePatientData } from "@/hooks/useInvalidatePatientData";
 import { Download, ArrowLeft, Utensils, Info, Clock, AlertTriangle } from "lucide-react";
 import { format, isAfter, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -29,6 +30,12 @@ export default function PatientPrescriptionView() {
   const { user, isAuthenticated, isLoading } = useAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const invalidatePatientData = useInvalidatePatientData();
+
+  // Invalida o cache ao montar a tela para garantir dados frescos
+  useEffect(() => {
+    invalidatePatientData();
+  }, [invalidatePatientData]);
   const isMobile = useIsMobile();
   
   const [selectedPrescription, setSelectedPrescription] = useState<Prescription | null>(null);

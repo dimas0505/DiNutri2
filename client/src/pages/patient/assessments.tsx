@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useInvalidatePatientData } from "@/hooks/useInvalidatePatientData";
 import { Download, FileText, ClipboardList } from "lucide-react";
 import { MobileLayout } from "@/components/layout/mobile-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,11 +10,18 @@ import { useToast } from "@/hooks/use-toast";
 import type { PatientDocument } from "@shared/schema";
 
 export default function AssessmentsPage() {
+  const invalidatePatientData = useInvalidatePatientData();
+  const { toast } = useToast();
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+
+  // Invalida o cache ao montar a tela para garantir dados frescos
+  useEffect(() => {
+    invalidatePatientData();
+  }, [invalidatePatientData]);
+
   const { data: documents, isLoading } = useQuery<PatientDocument[]>({
     queryKey: ["/api/my-assessments"],
   });
-  const { toast } = useToast();
-  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   const handleDownload = async (url: string, filename: string, id: string) => {
     setDownloadingId(id);
