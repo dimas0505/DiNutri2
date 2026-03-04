@@ -153,13 +153,13 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
 
   /**
    * Mutation de ativação: salva o rascunho atual e depois ativa o plano.
-   * Define status = "active", startDate = agora, expiresAt = agora + 90 dias.
+   * Define status = "active" e startDate = agora. O expiresAt definido pelo nutricionista é preservado.
    */
   const activatePrescriptionMutation = useMutation({
     mutationFn: async () => {
-      // Salva o conteúdo atual antes de ativar
+      // Salva o conteúdo atual (incluindo expiresAt) antes de ativar
       await updatePrescriptionMutation.mutateAsync({ title, meals, generalNotes, expiresAt });
-      return await apiRequest("POST", `/api/prescriptions/${params.id}/activate`, { durationDays: 90 });
+      return await apiRequest("POST", `/api/prescriptions/${params.id}/activate`, {});
     },
     onSuccess: () => {
       toast({
@@ -175,6 +175,26 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
       toast({
         title: "Erro",
         description: "Falha ao ativar o plano alimentar.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deactivatePrescriptionMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest("POST", `/api/prescriptions/${params.id}/deactivate`, {});
+    },
+    onSuccess: () => {
+      toast({
+        title: "Plano Desativado",
+        description: "O plano alimentar foi desativado. O paciente não terá mais acesso.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/prescriptions", params.id] });
+    },
+    onError: () => {
+      toast({
+        title: "Erro",
+        description: "Falha ao desativar o plano alimentar.",
         variant: "destructive",
       });
     },
@@ -438,7 +458,7 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
     );
   }
 
-  const isSaving = updatePrescriptionMutation.isPending || publishPrescriptionMutation.isPending || activatePrescriptionMutation.isPending;
+  const isSaving = updatePrescriptionMutation.isPending || publishPrescriptionMutation.isPending || activatePrescriptionMutation.isPending || deactivatePrescriptionMutation.isPending;
   const statusBadge = getPrescriptionStatusBadge(prescription.status as Prescription["status"]);
 
   // Prescrição pode ser ativada se estiver em "preparing" ou "draft"
@@ -492,8 +512,7 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
                 >
                   Fechar
                 </Button>
-                {!isAlreadyActive && (
-                  <Button
+                <Button
                     variant="secondary"
                     onClick={handleSaveDraft}
                     disabled={isSaving}
@@ -502,7 +521,6 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
                   >
                     {updatePrescriptionMutation.isPending ? "Salvando..." : "Salvar"}
                   </Button>
-                )}
                 {canActivate && (
                   <Button
                     onClick={handleOpenActivateDialog}
@@ -637,9 +655,8 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
           </CardContent>
         </Card>
 
-        {/* Data de Validade — visível apenas para planos ainda não ativados */}
-        {!isAlreadyActive && (
-          <Card className="mt-6 shadow-xl bg-gradient-to-br from-rose-50 via-card to-pink-50 dark:from-rose-950/20 dark:via-card dark:to-pink-950/20 border-2 border-rose-100 dark:border-rose-900/30">
+        {/* Data de Validade — editável em qualquer estado do plano */}
+        <Card className="mt-6 shadow-xl bg-gradient-to-br from-rose-50 via-card to-pink-50 dark:from-rose-950/20 dark:via-card dark:to-pink-950/20 border-2 border-rose-100 dark:border-rose-900/30">
             <CardContent className="p-6 sm:p-8">
               <div className="space-y-4">
                 <div className="space-y-2">
@@ -647,7 +664,7 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
                     Data de Validade (Opcional)
                   </Label>
                   <p className="text-sm text-muted-foreground">
-                    Defina até quando esta prescrição será válida para o paciente. Ao ativar o plano, a validade será calculada automaticamente (90 dias a partir da ativação).
+                    Defina até quando esta prescrição será válida para o paciente. Esta data pode ser editada mesmo após a ativação do plano.
                   </p>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
@@ -695,7 +712,6 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
               </div>
             </CardContent>
           </Card>
-        )}
 
         {/* Informações do plano ativo */}
         {isAlreadyActive && prescription.startDate && (
@@ -711,6 +727,20 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
                     Validade: {format(new Date(prescription.expiresAt), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
                   </p>
                 )}
+                <div className="pt-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => deactivatePrescriptionMutation.mutate()}
+                    disabled={deactivatePrescriptionMutation.isPending}
+                    className="border-red-300 text-red-700 hover:bg-red-50 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-950/20"
+                  >
+                    {deactivatePrescriptionMutation.isPending ? "Desativando..." : "Inativar Plano"}
+                  </Button>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Ao inativar, o paciente perderá o acesso ao plano até que seja reativado.
+                  </p>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -735,11 +765,11 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
                   <ul className="list-disc list-inside space-y-1 text-orange-700 dark:text-orange-300">
                     <li>Status mudará para <strong>Ativo</strong></li>
                     <li>Data de início será definida como <strong>hoje</strong></li>
-                    <li>Validade calculada automaticamente: <strong>90 dias</strong></li>
+                    {expiresAt && <li>Validade definida para: <strong>{format(expiresAt, "dd/MM/yyyy", { locale: ptBR })}</strong></li>}
                     <li>O paciente terá acesso imediato ao plano</li>
                   </ul>
                 </div>
-                <p>Esta ação não pode ser desfeita. Deseja continuar?</p>
+                <p>Deseja continuar?</p>
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
