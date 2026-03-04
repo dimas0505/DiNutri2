@@ -1,5 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { apiRequest } from "@/lib/queryClient";
+import { useInvalidatePatientData } from "@/hooks/useInvalidatePatientData";
 import type { Subscription, Patient } from "@shared/schema";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,6 +17,12 @@ import { MobileLayout } from "@/components/layout/mobile-layout";
 export default function MyPlanPage() {
   const { user, isAuthenticated, isLoading } = useAuth();
   const isMobile = useIsMobile();
+  const invalidatePatientData = useInvalidatePatientData();
+
+  // Invalida o cache ao montar a tela para garantir dados frescos
+  useEffect(() => {
+    invalidatePatientData();
+  }, [invalidatePatientData]);
 
   // Get current patient data
   const { data: currentPatient } = useQuery<Patient>({

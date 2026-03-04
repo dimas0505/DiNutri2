@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
+import { useInvalidatePatientData } from "@/hooks/useInvalidatePatientData";
 import { Download, Clock, AlertTriangle, FileText, Calendar, ChefHat } from "lucide-react";
 import { format, isAfter, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -25,6 +26,12 @@ export default function PatientPrescriptionsList() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const isMobile = useIsMobile();
+  const invalidatePatientData = useInvalidatePatientData();
+
+  // Invalida o cache ao montar a tela para garantir dados frescos
+  useEffect(() => {
+    invalidatePatientData();
+  }, [invalidatePatientData]);
   
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);

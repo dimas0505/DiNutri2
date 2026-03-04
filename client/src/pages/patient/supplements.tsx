@@ -1,5 +1,7 @@
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
+import { useInvalidatePatientData } from "@/hooks/useInvalidatePatientData";
 import { ArrowLeft, Pill, Sparkles, AlertCircle, ChevronRight } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import type { Patient } from "@shared/schema";
@@ -14,6 +16,12 @@ function parseSupplementLines(text: string): string[] {
 
 export default function PatientSupplementsPage() {
   const [, setLocation] = useLocation();
+  const invalidatePatientData = useInvalidatePatientData();
+
+  // Invalida o cache ao montar a tela para garantir dados frescos
+  useEffect(() => {
+    invalidatePatientData();
+  }, [invalidatePatientData]);
 
   const { data: patient, isLoading } = useQuery<Patient>({
     queryKey: ["/api/patient/my-profile"],

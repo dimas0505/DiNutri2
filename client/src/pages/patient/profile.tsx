@@ -1,4 +1,6 @@
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useInvalidatePatientData } from "@/hooks/useInvalidatePatientData";
 import { apiRequest } from "@/lib/queryClient";
 import { MobileLayout } from "@/components/layout/mobile-layout";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +16,13 @@ import type { Patient, AnthropometricAssessment } from "@shared/schema";
 import { calculateDurninBodyFat, calculateAgeFromBirthDate } from "@/utils/durnin-body-fat";
 
 export default function PatientProfilePage() {
+  const invalidatePatientData = useInvalidatePatientData();
+
+  // Invalida o cache ao montar a tela para garantir dados frescos
+  useEffect(() => {
+    invalidatePatientData();
+  }, [invalidatePatientData]);
+
   const { data: patient, isLoading: patientLoading } = useQuery<Patient>({
     queryKey: ["/api/patient/my-profile"],
     queryFn: async () => {
