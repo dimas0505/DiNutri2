@@ -68,7 +68,8 @@ export interface IStorage {
   createPrescription(prescription: InsertPrescription): Promise<Prescription>;
   updatePrescription(id: string, prescription: UpdatePrescription): Promise<Prescription>;
   publishPrescription(id: string): Promise<Prescription>;
-  activatePrescription(id: string, durationDays?: number): Promise<Prescription>;
+  activatePrescription(id: string): Promise<Prescription>;
+  deactivatePrescription(id: string): Promise<Prescription>;
   duplicatePrescription(id: string, title: string): Promise<Prescription>;
   duplicatePrescriptionToPatient(sourcePrescriptionId: string, targetPatientId: string, title: string): Promise<Prescription>;
   deletePrescription(id: string): Promise<void>;
@@ -432,7 +433,9 @@ export class DatabaseStorage implements IStorage {
     if (!patient) {
       return [];
     }
-    // Retorna prescrições com status 'active' (novo fluxo) ou 'published' (legado)
+    // Retorna apenas prescrições com status 'active' ou 'published' (legado)
+    // 'preparing' não é visível ao paciente — é usado tanto para planos em elaboração
+    // quanto para planos desativados pelo nutricionista
     return await db
       .select()
       .from(prescriptions)
@@ -442,7 +445,6 @@ export class DatabaseStorage implements IStorage {
           or(
             eq(prescriptions.status, "active"),
             eq(prescriptions.status, "published"),
-            eq(prescriptions.status, "preparing"),
           )
         )
       )
@@ -477,23 +479,32 @@ export class DatabaseStorage implements IStorage {
     return publishedPrescription;
   }
 
-  async activatePrescription(id: string, durationDays: number = 90): Promise<Prescription> {
+  async activatePrescription(id: string): Promise<Prescription> {
     const now = new Date();
-    const expiresAt = new Date(now);
-    expiresAt.setDate(expiresAt.getDate() + durationDays);
-
+    // Ativa o plano sem sobrescrever a data de validade (expiresAt) definida pelo nutricionista.
+    // O expiresAt já foi salvo anteriormente via updatePrescription.
     const [activatedPrescription] = await db
       .update(prescriptions)
       .set({
         status: "active",
         startDate: now,
-        expiresAt,
         publishedAt: now, // mantém publishedAt para compatibilidade com código legado
         updatedAt: now,
       })
       .where(eq(prescriptions.id, id))
       .returning();
+    if (!activatedPrescription) throw new Error("Prescription not found");
     return activatedPrescription;
+  }
+
+  async deactivatePrescription(id: string): Promise<Prescription> {
+    const [deactivatedPrescription] = await db
+      .update(prescriptions)
+      .set({ status: "preparing", updatedAt: new Date() })
+      .where(eq(prescriptions.id, id))
+      .returning();
+    if (!deactivatedPrescription) throw new Error("Prescription not found");
+    return deactivatedPrescription;
   }
 
   async duplicatePrescription(id: string, title: string): Promise<Prescription> {

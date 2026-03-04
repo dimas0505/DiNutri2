@@ -574,21 +574,36 @@ export async function setupRoutes(app: Express): Promise<void> {
     }
   });
 
-  // Rota de ativação: muda status para "active", define startDate = now() e calcula expiresAt
+  // Rota de ativação: muda status para "active" e define startDate = agora.
+  // O expiresAt não é recalculado — usa o valor já definido pelo nutricionista via updatePrescription.
   app.post('/api/prescriptions/:id/activate', isAuthenticated, async (req: any, res) => {
     try {
-      // Parâmetro opcional: duração em dias (padrão: 90 dias)
-      const durationDays: number = req.body?.durationDays ?? 90;
-      const prescription = await storage.activatePrescription(req.params.id, durationDays);
+      const prescription = await storage.activatePrescription(req.params.id);
       logActivity({
         userId: req.user.id,
         activityType: 'activate_prescription',
-        details: `Plano alimentar ativado: ${prescription.title} (${durationDays} dias)`,
+        details: `Plano alimentar ativado: ${prescription.title}`,
       });
       res.json(prescription);
     } catch (error: any) {
       console.error('Error activating prescription:', error);
       res.status(500).json({ message: 'Failed to activate prescription' });
+    }
+  });
+
+  // Rota de desativação: muda status para "preparing", removendo o acesso do paciente ao plano.
+  app.post('/api/prescriptions/:id/deactivate', isAuthenticated, async (req: any, res) => {
+    try {
+      const prescription = await storage.deactivatePrescription(req.params.id);
+      logActivity({
+        userId: req.user.id,
+        activityType: 'deactivate_prescription',
+        details: `Plano alimentar desativado: ${prescription.title}`,
+      });
+      res.json(prescription);
+    } catch (error: any) {
+      console.error('Error deactivating prescription:', error);
+      res.status(500).json({ message: 'Failed to deactivate prescription' });
     }
   });
 
@@ -642,8 +657,29 @@ export async function setupRoutes(app: Express): Promise<void> {
   app.get('/api/patient/my-prescriptions', isAuthenticated, async (req: any, res) => {
     try {
       logActivity({ userId: req.user.id, activityType: 'view_my_prescriptions_list' });
-      const prescriptions = await storage.getPublishedPrescriptionsForUser(req.user.id);
-      res.json(prescriptions);
+
+      // Regra de negócio: a assinatura é a regra absoluta de acesso.
+      // Se a assinatura estiver expirada ou inativa, o paciente não tem acesso ao plano alimentar.
+      const patient = await storage.getPatientByUserId(req.user.id);
+      if (patient) {
+        const [subscription] = await db
+          .select()
+          .from(subscriptions)
+          .where(eq(subscriptions.patientId, patient.id))
+          .orderBy(desc(subscriptions.createdAt))
+          .limit(1);
+
+        const hasActiveSubscription = subscription &&
+          subscription.status === 'active' &&
+          (!subscription.expiresAt || new Date(subscription.expiresAt) > new Date());
+
+        if (!hasActiveSubscription) {
+          return res.json([]);
+        }
+      }
+
+      const prescriptionList = await storage.getPublishedPrescriptionsForUser(req.user.id);
+      res.json(prescriptionList);
     } catch (error) {
       console.error("Error fetching patient prescriptions:", error);
       res.status(500).json({ message: "Failed to fetch prescriptions" });
