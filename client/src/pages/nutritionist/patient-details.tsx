@@ -1,11 +1,11 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   CheckCircle, Eye, FileText, Plus, Users, XCircle,
   Copy, History, User, Calendar, Ruler, Weight, Target, Activity,
   Heart, Stethoscope, Pill, Camera, Image, Smile, Trash2, FileDown,
   CreditCard, Upload, Download, ClipboardList, Pencil,
-  Dumbbell, BookOpen, ChevronRight, Percent, Zap,
+  Dumbbell, BookOpen, ChevronRight, Percent, Zap, FlaskConical, Save,
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
@@ -14,6 +14,7 @@ import Header from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -39,7 +40,8 @@ type SidebarSection =
   | "prescricoes"
   | "assinatura"
   | "avaliacoes"
-  | "diario";
+  | "diario"
+  | "suplementos";
 
 interface NavItem {
   id: SidebarSection;
@@ -57,6 +59,7 @@ const NAV_ITEMS: NavItem[] = [
   { id: "assinatura",    label: "Assinatura / Plano",      icon: CreditCard,    description: "Gerenciar plano" },
   { id: "avaliacoes",    label: "Avaliações",              icon: ClipboardList, description: "Documentos anexados" },
   { id: "diario",        label: "Diário Alimentar",        icon: BookOpen,      description: "Fotos e registros" },
+  { id: "suplementos",   label: "Suplementos",             icon: FlaskConical,  description: "Recomendações e rotina" },
 ];
 
 // ─── Main Component ───────────────────────────────────────────────────────────
@@ -83,6 +86,7 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
   const [subscriptionToDelete, setSubscriptionToDelete] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [supplementsText, setSupplementsText] = useState<string>("");
   const [isAnthroDialogOpen, setIsAnthroDialogOpen] = useState(false);
   const [anthroToEdit, setAnthroToEdit] = useState<AnthropometricAssessment | null>(null);
   const [anthroToDelete, setAnthroToDelete] = useState<string | null>(null);
@@ -160,6 +164,13 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
     : null;
 
   const hasAccountLinked = !!patient?.userId;
+
+  // Sync supplementsText with patient data when it loads
+  useEffect(() => {
+    if (patient) {
+      setSupplementsText(patient.supplements ?? "");
+    }
+  }, [patient]);
 
   // ─── Mutations ────────────────────────────────────────────────────────────
 
@@ -412,6 +423,19 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
       toast({ title: "Sucesso", description: "Avaliação excluída." });
     },
     onError: () => toast({ title: "Erro", description: "Falha ao excluir avaliação.", variant: "destructive" }),
+  });
+
+  const saveSupplementsMutation = useMutation({
+    mutationFn: async (supplements: string) => {
+      const res = await apiRequest("PUT", `/api/patients/${params.id}`, { supplements });
+      if (!res.ok) throw new Error("Failed to save supplements");
+      return res;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/patients", params.id] });
+      toast({ title: "Salvo!", description: "Recomendações de suplementos atualizadas." });
+    },
+    onError: () => toast({ title: "Erro", description: "Falha ao salvar suplementos.", variant: "destructive" }),
   });
 
   // ─── Helpers ──────────────────────────────────────────────────────────────
@@ -1264,6 +1288,79 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
     );
   }
 
+  function renderSupplementos() {
+    const lines = supplementsText
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter(Boolean);
+
+    return (
+      <div className="space-y-5">
+        {/* Editor card */}
+        <div className="rounded-2xl border border-border/60 bg-card shadow-sm overflow-hidden">
+          <div className="flex items-center gap-3 px-6 py-4 border-b border-border/50 bg-muted/20">
+            <div className="p-2 bg-red-100 rounded-lg">
+              <FlaskConical className="h-5 w-5 text-red-600" />
+            </div>
+            <div>
+              <h3 className="font-bold text-foreground">Recomendações de Suplementação</h3>
+              <p className="text-xs text-muted-foreground">Insira cada suplemento em uma linha separada</p>
+            </div>
+          </div>
+          <div className="p-6 space-y-4">
+            <Textarea
+              value={supplementsText}
+              onChange={(e) => setSupplementsText(e.target.value)}
+              placeholder={`Whey Protein — 30g após o treino
+Creatina — 5g ao dia
+Multivitamínico — 1 cápsula pela manhã`}
+              rows={8}
+              className="resize-none text-sm font-mono leading-relaxed"
+            />
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xs text-muted-foreground">
+                {lines.length > 0
+                  ? `${lines.length} item${lines.length !== 1 ? "s" : ""} cadastrado${lines.length !== 1 ? "s" : ""}`
+                  : "Nenhum item ainda"}
+              </p>
+              <Button
+                onClick={() => saveSupplementsMutation.mutate(supplementsText)}
+                disabled={saveSupplementsMutation.isPending}
+                className="bg-red-600 hover:bg-red-700 text-white gap-2"
+              >
+                <Save className="h-4 w-4" />
+                {saveSupplementsMutation.isPending ? "Salvando..." : "Salvar Recomendações"}
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Preview card */}
+        {lines.length > 0 && (
+          <div className="rounded-2xl border border-border/60 bg-card shadow-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-border/50 bg-gradient-to-r from-red-50 to-orange-50">
+              <h3 className="font-bold text-red-700 flex items-center gap-2">
+                <Pill className="h-4 w-4" />
+                Pré-visualização (visão do paciente)
+              </h3>
+              <p className="text-xs text-red-600/70 mt-0.5">Como o paciente verá as recomendações</p>
+            </div>
+            <div className="divide-y divide-[#F3F4F6]">
+              {lines.map((line, index) => (
+                <div key={index} className="flex items-center gap-4 px-6 py-3">
+                  <div className="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center flex-shrink-0">
+                    <span className="text-xs font-bold text-red-500">{index + 1}</span>
+                  </div>
+                  <p className="text-sm text-foreground leading-snug">{line}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   const sectionMap: Record<SidebarSection, () => React.ReactNode> = {
     perfil: renderPerfil,
     anamnese: renderAnamnese,
@@ -1273,6 +1370,7 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
     assinatura: renderAssinatura,
     avaliacoes: renderAvaliacoes,
     diario: renderDiario,
+    suplementos: renderSupplementos,
   };
 
   // ─── Render ───────────────────────────────────────────────────────────────
