@@ -137,6 +137,20 @@ export default function PatientsPage() {
     queryKey: ["/api/patients"],
   });
 
+  /**
+   * Abre o card de um paciente garantindo dados sempre frescos.
+   *
+   * Invalida todo o cache relacionado ao paciente antes de navegar.
+   * Como todas as queries do patient-details usam a chave
+   * ["/api/patients", id, ...], a invalidação por prefixo cobre:
+   * perfil, assinatura, prescrições, anamnese, antropometria,
+   * diário alimentar, avaliações e suplementos.
+   */
+  const handleOpenPatient = (patientId: string) => {
+    queryClient.invalidateQueries({ queryKey: ["/api/patients", patientId] });
+    setLocation(`/patients/${patientId}`);
+  };
+
   const createInvitationMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest("POST", "/api/invitations");
@@ -283,8 +297,8 @@ export default function PatientsPage() {
               <PatientCard
                 key={patient.id}
                 patient={patient}
-                onViewDetails={() => setLocation(`/patients/${patient.id}`)}
-                onNewPrescription={() => setLocation(`/patients/${patient.id}`)}
+                onViewDetails={() => handleOpenPatient(patient.id)}
+                onNewPrescription={() => handleOpenPatient(patient.id)}
                 onDeletePatient={() => setPatientToDelete(patient)}
               />
             ))
@@ -445,7 +459,7 @@ export default function PatientsPage() {
                     </tr>
                   ) : (
                     filteredPatients.map((patient) => (
-                      <tr key={patient.id} className="hover:bg-gradient-to-r hover:from-blue-50/50 hover:to-purple-50/50 transition-all duration-200 cursor-pointer group" onClick={() => setLocation(`/patients/${patient.id}`)}>
+                      <tr key={patient.id} className="hover:bg-gradient-to-r hover:from-blue-50/50 hover:to-purple-50/50 transition-all duration-200 cursor-pointer group" onClick={() => handleOpenPatient(patient.id)}>
                         <td className="p-6">
                           <div className="flex items-center gap-3">
                             <div className="p-2 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg opacity-80 group-hover:opacity-100 transition-opacity">
@@ -482,7 +496,7 @@ export default function PatientsPage() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={(e) => { e.stopPropagation(); setLocation(`/patients/${patient.id}`); }}
+                              onClick={(e) => { e.stopPropagation(); handleOpenPatient(patient.id); }}
                               title="Ver detalhes"
                               className="h-9 w-9 p-0 hover:bg-blue-100 hover:text-blue-600 transition-all duration-200"
                               data-testid={`button-view-patient-${patient.id}`}
@@ -494,7 +508,7 @@ export default function PatientsPage() {
                               size="sm"
                               disabled={!patient.userId}
                               title={!patient.userId ? "Paciente precisa ter um login" : "Nova prescrição"}
-                              onClick={(e) => { e.stopPropagation(); setLocation(`/patients/${patient.id}`); }}
+                              onClick={(e) => { e.stopPropagation(); handleOpenPatient(patient.id); }}
                               className="h-9 w-9 p-0 hover:bg-purple-100 hover:text-purple-600 transition-all duration-200 disabled:opacity-50"
                               data-testid={`button-new-prescription-${patient.id}`}
                             >
