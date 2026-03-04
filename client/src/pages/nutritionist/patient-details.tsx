@@ -598,8 +598,6 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
     }
   };
 
-  };
-
   const handleOpenCopyDialog = (prescription: Prescription) => {
     setPrescriptionToCopy(prescription);
     setCopyTitle(`${prescription.title} (cópia)`);
