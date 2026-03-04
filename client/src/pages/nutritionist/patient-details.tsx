@@ -76,6 +76,9 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
   // ── Feature State ──
   const [prescriptionToDelete, setPrescriptionToDelete] = useState<string | null>(null);
   const [prescriptionToActivate, setPrescriptionToActivate] = useState<Prescription | null>(null);
+  const [prescriptionToCopy, setPrescriptionToCopy] = useState<Prescription | null>(null);
+  const [copyTargetPatientId, setCopyTargetPatientId] = useState<string>("");
+  const [copyTitle, setCopyTitle] = useState<string>("");
   const [followUpLink, setFollowUpLink] = useState<string | null>(null);
   const [entryToDelete, setEntryToDelete] = useState<string | null>(null);
   const [isCreateSubscriptionDialogOpen, setIsCreateSubscriptionDialogOpen] = useState(false);
@@ -155,6 +158,11 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
       const response = await apiRequest("GET", "/api/nutritionist/settings");
       return response.json();
     },
+  });
+
+  const { data: allPatients } = useQuery<Patient[]>({
+    queryKey: ["/api/patients"],
+    enabled: !!prescriptionToCopy,
   });
 
   // ─── Derived State ────────────────────────────────────────────────────────
@@ -285,6 +293,20 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
       setLocation(`/prescriptions/${prescription.id}/edit`);
     },
     onError: () => toast({ title: "Erro", description: "Falha ao duplicar prescrição.", variant: "destructive" }),
+  });
+
+  const copyPrescriptionToPatientMutation = useMutation({
+    mutationFn: async ({ prescriptionId, targetPatientId, title }: { prescriptionId: string; targetPatientId: string; title: string }) => {
+      const response = await apiRequest("POST", `/api/prescriptions/${prescriptionId}/duplicate-to-patient`, { targetPatientId, title });
+      return await response.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Prescrição copiada com sucesso!", description: "A prescrição foi copiada para o paciente selecionado." });
+      setPrescriptionToCopy(null);
+      setCopyTargetPatientId("");
+      setCopyTitle("");
+    },
+    onError: () => toast({ title: "Erro", description: "Falha ao copiar prescrição para o paciente.", variant: "destructive" }),
   });
 
   const deletePrescriptionMutation = useMutation({
@@ -574,6 +596,18 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
     } else {
       toast({ title: "Erro", description: "Não foi possível encontrar os dados da prescrição.", variant: "destructive" });
     }
+  };
+
+  const handleOpenCopyDialog = (prescription: Prescription) => {
+    setPrescriptionToCopy(prescription);
+    setCopyTitle(`${prescription.title} (cópia)`);
+    setCopyTargetPatientId("");
+  };
+
+  const handleCloseCopyDialog = () => {
+    setPrescriptionToCopy(null);
+    setCopyTargetPatientId("");
+    setCopyTitle("");
   };
 
   // ─── Loading / Not Found ──────────────────────────────────────────────────
@@ -1032,6 +1066,9 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                     )}
                     <Button variant="ghost" size="sm" onClick={() => duplicatePrescriptionMutation.mutate(prescription.id)} disabled={duplicatePrescriptionMutation.isPending} data-testid={`button-duplicate-prescription-${prescription.id}`} className="bg-purple-100 hover:bg-purple-200 text-purple-700 border border-purple-200 rounded-lg">
                       <FileText className="h-4 w-4 mr-1" />{duplicatePrescriptionMutation.isPending ? "Duplicando..." : "Duplicar"}
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => handleOpenCopyDialog(prescription)} data-testid={`button-copy-prescription-${prescription.id}`} className="bg-teal-100 hover:bg-teal-200 text-teal-700 border border-teal-200 rounded-lg">
+                      <Copy className="h-4 w-4 mr-1" />Copiar para Paciente
                     </Button>
                     <Button variant="ghost" size="sm" onClick={() => handleDownloadPrescription(prescription.id)} data-testid={`button-download-prescription-${prescription.id}`} className="bg-green-100 hover:bg-green-200 text-green-700 border border-green-200 rounded-lg">
                       <FileDown className="h-4 w-4 mr-1" />Baixar
@@ -2105,6 +2142,60 @@ Multivitamínico — 1 cápsula pela manhã`}
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Dialog: Copiar prescrição para outro paciente */}
+      <Dialog open={!!prescriptionToCopy} onOpenChange={(open) => { if (!open) handleCloseCopyDialog(); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Copy className="h-5 w-5 text-teal-600" />
+              Copiar Prescrição para Outro Paciente
+            </DialogTitle>
+            <DialogDescription>
+              Selecione o paciente de destino e defina o título da nova prescrição.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1">
+              <Label htmlFor="copy-prescription-title">Título da prescrição</Label>
+              <Input
+                id="copy-prescription-title"
+                value={copyTitle}
+                onChange={(e) => setCopyTitle(e.target.value)}
+                placeholder="Título da nova prescrição"
+                data-testid="input-copy-prescription-title"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="copy-target-patient">Paciente de destino</Label>
+              <Select value={copyTargetPatientId} onValueChange={setCopyTargetPatientId}>
+                <SelectTrigger id="copy-target-patient" data-testid="select-copy-target-patient">
+                  <SelectValue placeholder="Selecione um paciente..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {allPatients?.filter((p) => p.id !== params.id).map((p) => (
+                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={handleCloseCopyDialog}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={() => prescriptionToCopy && copyPrescriptionToPatientMutation.mutate({ prescriptionId: prescriptionToCopy.id, targetPatientId: copyTargetPatientId, title: copyTitle })}
+              disabled={!copyTargetPatientId || !copyTitle.trim() || copyPrescriptionToPatientMutation.isPending}
+              className="bg-teal-600 hover:bg-teal-700 text-white"
+              data-testid="button-confirm-copy-prescription"
+            >
+              <Copy className="h-4 w-4 mr-2" />
+              {copyPrescriptionToPatientMutation.isPending ? "Copiando..." : "Copiar Prescrição"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
