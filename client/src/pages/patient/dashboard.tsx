@@ -60,7 +60,7 @@ const dashboardCards: DashboardCard[] = [
   {
     title: "Suplementos",
     subtitle: "Rotina e recomendações",
-    href: "/goals",
+    href: "/patient/supplements",
     icon: Cross,
     iconBg: "bg-[#FDEBEC]",
     iconColor: "text-[#EF4444]",
