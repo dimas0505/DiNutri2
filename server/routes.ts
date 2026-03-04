@@ -18,7 +18,7 @@ import { nanoid } from 'nanoid';
 import { logActivity } from './activity-logger.js';
 import ExcelJS from 'exceljs';
 import { format } from 'date-fns';
-import { PDFParse } from 'pdf-parse';
+// Importação movida para dentro da rota para evitar erros de polyfill no Vercel durante o boot
 import OpenAI from 'openai';
 
 const SALT_ROUNDS = 10;
@@ -1759,6 +1759,7 @@ export async function setupRoutes(app: Express): Promise<void> {
       // Extrair texto do PDF usando pdf-parse
       let pdfText = '';
       try {
+        const { PDFParse } = await import('pdf-parse');
         const parser = new PDFParse({ data: req.file.buffer });
         const result = await parser.getText();
         await parser.destroy();
