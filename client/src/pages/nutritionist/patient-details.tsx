@@ -108,6 +108,14 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
     manualBodyFatClassification: "",
   });
 
+  // ─── Efeito: garante dados frescos ao abrir o card ─────────────────────
+  // Invalida o cache de todos os dados do paciente ao montar o componente.
+  // Isso cobre o caso de acesso direto pela URL (ex: link compartilhado),
+  // complementando a invalidação feita no clique do card na lista de pacientes.
+  useEffect(() => {
+    queryClient.invalidateQueries({ queryKey: ["/api/patients", params.id] });
+  }, [params.id, queryClient]);
+
   // ─── Queries ─────────────────────────────────────────────────────────────
 
   const { data: patient, isLoading: patientLoading } = useQuery<Patient>({
