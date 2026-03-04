@@ -512,8 +512,7 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
                 >
                   Fechar
                 </Button>
-                {!isAlreadyActive && (
-                  <Button
+                <Button
                     variant="secondary"
                     onClick={handleSaveDraft}
                     disabled={isSaving}
@@ -522,7 +521,6 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
                   >
                     {updatePrescriptionMutation.isPending ? "Salvando..." : "Salvar"}
                   </Button>
-                )}
                 {canActivate && (
                   <Button
                     onClick={handleOpenActivateDialog}
