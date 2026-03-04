@@ -889,10 +889,19 @@ export async function setupRoutes(app: Express): Promise<void> {
     try {
       const { patientId } = req.params;
       
-      // Verify that the nutritionist owns this patient
+      // Se for nutricionista, verifica se ele é dono do paciente
+      // Se for o próprio paciente, permite o acesso
       const patient = await storage.getPatient(patientId);
-      if (!patient || patient.ownerId !== req.user.id) {
-        return res.status(404).json({ message: "Paciente não encontrado ou acesso não autorizado." });
+      
+      if (!patient) {
+        return res.status(404).json({ message: "Paciente não encontrado." });
+      }
+
+      const isOwner = patient.ownerId === req.user.id;
+      const isSelf = patient.userId === req.user.id;
+
+      if (!isOwner && !isSelf) {
+        return res.status(403).json({ message: "Acesso não autorizado." });
       }
 
       const entries = await storage.getFoodDiaryEntriesByPatient(patientId);
@@ -907,9 +916,9 @@ export async function setupRoutes(app: Express): Promise<void> {
   app.delete('/api/food-diary/entries/:id/photo', isAuthenticated, async (req: any, res) => {
     try {
       const entryId = req.params.id;
-      const nutritionistId = req.user.id;
+      const userId = req.user.id;
 
-      // 1. Find the food diary entry and verify nutritionist permission
+      // 1. Find the food diary entry and verify permission (nutritionist or patient)
       const entry = await db.query.foodDiaryEntries.findFirst({
         where: eq(foodDiaryEntries.id, entryId),
         with: {
@@ -917,8 +926,15 @@ export async function setupRoutes(app: Express): Promise<void> {
         },
       });
 
-      if (!entry || entry.patient.ownerId !== nutritionistId) {
-        return res.status(404).json({ message: 'Entrada do diário não encontrada ou não autorizada.' });
+      if (!entry) {
+        return res.status(404).json({ message: 'Entrada do diário não encontrada.' });
+      }
+
+      const isOwner = entry.patient.ownerId === userId;
+      const isSelf = entry.patient.userId === userId;
+
+      if (!isOwner && !isSelf) {
+        return res.status(403).json({ message: 'Acesso não autorizado.' });
       }
       
       if (!entry.imageUrl) {

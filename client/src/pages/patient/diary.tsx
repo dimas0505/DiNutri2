@@ -113,7 +113,10 @@ export default function PatientDiaryPage() {
           ) : filteredEntries.length > 0 ? (
             <div className="space-y-6">
               {filteredEntries.map((entry) => {
-                const mealName = (entry as any).mealData?.name || "Refeição";
+                // No storage.ts, o campo é retornado como prescriptionMeals e processado no front
+                const meals = (entry as any).prescriptionMeals as any[] | undefined;
+                const meal = meals?.find(m => m.id === entry.mealId);
+                const mealName = meal?.name || "Refeição";
                 const moodBefore = getMoodInfo(entry.moodBefore);
                 const moodAfter = getMoodInfo(entry.moodAfter);
 
