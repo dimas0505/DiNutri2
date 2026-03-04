@@ -52,6 +52,7 @@ export const patients = pgTable("patients", {
   mealsPerDayWilling: integer("meals_per_day_willing"),
   alcoholConsumption: varchar("alcohol_consumption", { enum: ["yes", "no", "moderate"] }),
   supplements: text("supplements"),
+  supplementRecommendations: text("supplement_recommendations"),
   diseases: text("diseases"),
   medications: text("medications"),
   biotype: varchar("biotype", { enum: ["gain_weight_easily", "hard_to_gain", "gain_muscle_easily"] }),

@@ -411,6 +411,23 @@ export async function setupRoutes(app: Express): Promise<void> {
       res.status(500).json({ message: "Falha ao excluir paciente." });
     }
   });
+
+  app.patch('/api/patients/:id/supplement-recommendations', isAuthenticated, async (req: any, res) => {
+    try {
+      const { supplementRecommendations } = req.body;
+      const patient = await storage.getPatient(req.params.id);
+
+      if (!patient || patient.ownerId !== req.user.id) {
+        return res.status(404).json({ message: "Paciente não encontrado ou acesso não autorizado." });
+      }
+
+      const updated = await storage.updatePatient(req.params.id, { supplementRecommendations: supplementRecommendations ?? null });
+      res.json(updated);
+    } catch (error) {
+      console.error("Erro ao atualizar recomendações de suplementos:", error);
+      res.status(500).json({ message: "Falha ao atualizar recomendações de suplementos." });
+    }
+  });
   
   app.get('/api/patient/my-profile', isAuthenticated, async (req: any, res) => {
     try {

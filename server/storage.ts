@@ -115,6 +115,7 @@ export class DatabaseStorage implements IStorage {
       mealsPerDayWilling: patient.mealsPerDayWilling ?? null,
       alcoholConsumption: patient.alcoholConsumption ?? null,
       supplements: patient.supplements ?? null,
+      supplementRecommendations: patient.supplementRecommendations ?? null,
       diseases: patient.diseases ?? null,
       medications: patient.medications ?? null,
       biotype: patient.biotype ?? null,
