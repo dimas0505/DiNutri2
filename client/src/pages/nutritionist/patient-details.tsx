@@ -114,13 +114,22 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
     queryKey: ["/api/patients", params.id],
   });
 
-  const { data: currentSubscription } = useQuery<Subscription>({
+  const { data: currentSubscription } = useQuery<Subscription | null>({
     queryKey: ["/api/patients", params.id, "subscription"],
     queryFn: async () => {
-      const response = await apiRequest("GET", `/api/patients/${params.id}/subscription`);
+      // Trata 404 como "sem assinatura" em vez de lançar erro
+      const response = await fetch(`/api/patients/${params.id}/subscription`, {
+        credentials: "include",
+      });
+      if (response.status === 404) return null;
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(`${response.status}: ${text || response.statusText}`);
+      }
       return await response.json();
     },
     enabled: !!patient,
+    retry: false,
   });
 
   const { data: prescriptions, isLoading: prescriptionsLoading } = useQuery<Prescription[]>({

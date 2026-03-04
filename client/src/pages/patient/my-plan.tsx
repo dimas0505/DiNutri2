@@ -26,13 +26,24 @@ export default function MyPlanPage() {
     enabled: !!user && user.role === "patient",
   });
 
-  const { data: subscription, isLoading: isLoadingSubscription, isError } = useQuery<Subscription>({
+  const { data: subscription, isLoading: isLoadingSubscription, isError } = useQuery<Subscription | null>({
     queryKey: ["/api/patients", currentPatient?.id, "subscription"],
     queryFn: async () => {
-      const response = await apiRequest("GET", `/api/patients/${currentPatient?.id}/subscription`);
+      // Trata 404 como "sem assinatura" em vez de lançar erro,
+      // pois é esperado que pacientes novos não tenham plano ativo.
+      const response = await fetch(`/api/patients/${currentPatient?.id}/subscription`, {
+        credentials: "include",
+      });
+      if (response.status === 404) return null;
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(`${response.status}: ${text || response.statusText}`);
+      }
       return await response.json();
     },
     enabled: !!currentPatient?.id,
+    // Não retenta 4xx — são falhas determinísticas
+    retry: false,
   });
 
   const renderStatusBadge = (status: Subscription['status'], expiresAt?: Date | null) => {
