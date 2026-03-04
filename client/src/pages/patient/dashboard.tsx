@@ -156,15 +156,18 @@ export default function PatientDashboard() {
     },
   });
 
-  const { data: subscription } = useQuery<Subscription>({
+  const { data: subscription } = useQuery<Subscription | null>({
     queryKey: ["/api/patients", patientProfile?.id, "subscription"],
     queryFn: async () => {
-      const res = await apiRequest("GET", `/api/patients/${patientProfile!.id}/subscription`);
+      // Trata 404 como "sem assinatura" em vez de lançar erro
+      const res = await fetch(`/api/patients/${patientProfile!.id}/subscription`, {
+        credentials: "include",
+      });
+      if (res.status === 404) return null;
       if (!res.ok) return null;
       return res.json();
     },
     enabled: !!patientProfile?.id,
-    // Não lançar erro quando não há plano (404 é esperado)
     retry: false,
   });
 

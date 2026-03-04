@@ -1,49 +1,104 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 
+/**
+ * Componente responsável por detectar e aplicar atualizações do Service Worker.
+ *
+ * Problemas corrigidos nesta versão:
+ * 1. Não detectava novas versões durante a sessão (só verificava no mount).
+ * 2. O listener de 'controllerchange' era adicionado múltiplas vezes,
+ *    podendo causar reloads em loop.
+ * 3. Não verificava periodicamente se há uma nova versão disponível.
+ */
 export function UpdateNotifier() {
-  const [waitingWorker, setWaitingWorker] = useState<ServiceWorker | null>(null);
   const { toast, dismiss } = useToast();
+  // Ref para garantir que o listener de controllerchange seja adicionado apenas uma vez
+  const controllerChangeListenerAdded = useRef(false);
+  // Ref para evitar que o reload seja chamado múltiplas vezes
+  const isReloading = useRef(false);
 
   useEffect(() => {
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistration().then((registration) => {
-        if (!registration) return;
+    if (!('serviceWorker' in navigator)) return;
 
-        // Verifica se já existe um worker esperando na inicialização
-        // Isso pode acontecer se o usuário recarregou a página e há uma atualização pendente
-        if (registration.waiting) {
-          console.log('UpdateNotifier: Found waiting service worker on startup, automatically updating...');
-          setWaitingWorker(registration.waiting);
-          handleAutomaticUpdate(registration.waiting);
-        }
-      });
-    }
-  }, []);
-
-  const handleAutomaticUpdate = (worker: ServiceWorker) => {
-    // Show informative toast to user about automatic update
-    const { id } = toast({
-      title: 'Atualização em andamento...',
-      description: 'O aplicativo está sendo atualizado para a versão mais recente. A página será recarregada em breve.',
-    });
-
-    // Dismiss the toast after 5 seconds
-    setTimeout(() => {
-      dismiss(id);
-    }, 5000);
-
-    // Garante que a página recarregue assim que o novo worker assumir
-    navigator.serviceWorker.addEventListener('controllerchange', () => {
-      console.log('UpdateNotifier: Controller changed, reloading page...');
+    const handleControllerChange = () => {
+      // Evita reloads múltiplos caso o evento dispare mais de uma vez
+      if (isReloading.current) return;
+      isReloading.current = true;
+      console.log('[UpdateNotifier] Controller changed, reloading page...');
       window.location.reload();
+    };
+
+    const applyUpdate = (worker: ServiceWorker) => {
+      console.log('[UpdateNotifier] Applying update from waiting service worker...');
+
+      // Registra o listener de controllerchange apenas uma vez
+      if (!controllerChangeListenerAdded.current) {
+        controllerChangeListenerAdded.current = true;
+        navigator.serviceWorker.addEventListener('controllerchange', handleControllerChange);
+      }
+
+      const { id } = toast({
+        title: 'Atualizando o aplicativo...',
+        description: 'Uma nova versão está disponível. A página será recarregada em instantes.',
+      });
+
+      setTimeout(() => dismiss(id), 4000);
+
+      // Instrui o SW em espera a assumir o controle imediatamente
+      worker.postMessage({ action: 'SKIP_WAITING' });
+    };
+
+    const checkForWaitingWorker = (registration: ServiceWorkerRegistration) => {
+      if (registration.waiting) {
+        console.log('[UpdateNotifier] Found waiting service worker.');
+        applyUpdate(registration.waiting);
+      }
+    };
+
+    // Verifica se já há um SW em espera ao montar o componente
+    navigator.serviceWorker.getRegistration().then((registration) => {
+      if (!registration) return;
+
+      checkForWaitingWorker(registration);
+
+      // Detecta novos SWs que entram no estado "waiting" durante a sessão
+      registration.addEventListener('updatefound', () => {
+        const newWorker = registration.installing;
+        if (!newWorker) return;
+
+        console.log('[UpdateNotifier] New service worker found, monitoring state...');
+        newWorker.addEventListener('statechange', () => {
+          // Quando o novo SW termina de instalar e fica "waiting", aplica a atualização
+          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+            console.log('[UpdateNotifier] New service worker installed and waiting.');
+            applyUpdate(newWorker);
+          }
+        });
+      });
     });
 
-    // Envia a mensagem para o worker em espera automaticamente
-    console.log('UpdateNotifier: Automatically sending SKIP_WAITING message to service worker');
-    worker.postMessage({ action: 'SKIP_WAITING' });
-  };
+    // Verifica atualizações periodicamente a cada 30 minutos
+    // Isso garante que usuários com o app aberto por longos períodos recebam atualizações
+    const intervalId = setInterval(async () => {
+      try {
+        const registration = await navigator.serviceWorker.getRegistration();
+        if (registration) {
+          await registration.update();
+          console.log('[UpdateNotifier] Periodic update check completed.');
+        }
+      } catch (error) {
+        console.warn('[UpdateNotifier] Periodic update check failed:', error);
+      }
+    }, 30 * 60 * 1000);
 
-  // Este componente é puramente lógico e não renderiza nada na tela
+    return () => {
+      clearInterval(intervalId);
+      if (controllerChangeListenerAdded.current) {
+        navigator.serviceWorker.removeEventListener('controllerchange', handleControllerChange);
+      }
+    };
+  }, [toast, dismiss]);
+
+  // Componente puramente lógico — não renderiza nada na tela
   return null;
 }

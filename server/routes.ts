@@ -1437,47 +1437,53 @@ export async function setupRoutes(app: Express): Promise<void> {
         .leftJoin(users, eq(patients.userId, users.id))
         .where(eq(patients.ownerId, nutritionistId));
 
-      // 2. Prepara os dados para o relatório de forma iterativa e segura
-      const reportData = [];
-      for (const patient of patientsOfNutritionist) {
-        // Pula para o próximo paciente se não houver dados básicos
-        if (!patient.id || !patient.name) {
-          continue;
-        }
+      // 2. Busca assinaturas e atividades em batch (evita N+1 queries)
+      //    Antes: 2 queries por paciente (O(n) queries no total)
+      //    Agora: 2 queries totais independente do número de pacientes
 
-        // Para cada paciente, busca a assinatura mais recente de forma segura
-        let latestSubscription = null;
-        try {
-          const subscriptionResult = await db
+      const validPatients = patientsOfNutritionist.filter(p => p.id && p.name);
+      const patientIds = validPatients.map(p => p.id);
+      const userIds = validPatients.map(p => p.userId).filter(Boolean) as string[];
+
+      // Busca a assinatura mais recente de cada paciente em uma única query
+      // usando DISTINCT ON (PostgreSQL) via subquery com ROW_NUMBER
+      const allSubscriptions = patientIds.length > 0
+        ? await db
             .select()
             .from(subscriptions)
-            .where(eq(subscriptions.patientId, patient.id))
-            .orderBy(desc(subscriptions.createdAt))
-            .limit(1);
-          
-          latestSubscription = subscriptionResult[0] || null;
-        } catch (error) {
-          console.error(`Erro ao buscar assinatura para paciente ${patient.id}:`, error);
-        }
+            .where(sql`${subscriptions.patientId} = ANY(ARRAY[${sql.raw(patientIds.map(id => `'${id}'`).join(','))}]::text[])`)
+            .orderBy(subscriptions.patientId, desc(subscriptions.createdAt))
+        : [];
 
-        // Para cada paciente, busca a última atividade registrada de forma segura
-        let latestActivity = null;
-        try {
-          if (patient.userId) {
-            const activityResult = await db
-              .select()
-              .from(activityLog)
-              .where(eq(activityLog.userId, patient.userId))
-              .orderBy(desc(activityLog.createdAt))
-              .limit(1);
-            
-            latestActivity = activityResult[0] || null;
-          }
-        } catch (error) {
-          console.error(`Erro ao buscar atividade para paciente ${patient.id}:`, error);
+      // Mapa: patientId -> assinatura mais recente
+      const subscriptionByPatient = new Map<string, typeof allSubscriptions[0]>();
+      for (const sub of allSubscriptions) {
+        if (!subscriptionByPatient.has(sub.patientId)) {
+          subscriptionByPatient.set(sub.patientId, sub);
         }
+      }
 
-        reportData.push({
+      // Busca a última atividade de cada usuário em uma única query
+      const allActivities = userIds.length > 0
+        ? await db
+            .select()
+            .from(activityLog)
+            .where(sql`${activityLog.userId} = ANY(ARRAY[${sql.raw(userIds.map(id => `'${id}'`).join(','))}]::text[])`)
+            .orderBy(activityLog.userId, desc(activityLog.createdAt))
+        : [];
+
+      // Mapa: userId -> última atividade
+      const activityByUser = new Map<string, typeof allActivities[0]>();
+      for (const activity of allActivities) {
+        if (!activityByUser.has(activity.userId)) {
+          activityByUser.set(activity.userId, activity);
+        }
+      }
+
+      const reportData = validPatients.map(patient => {
+        const latestSubscription = subscriptionByPatient.get(patient.id) || null;
+        const latestActivity = patient.userId ? activityByUser.get(patient.userId) || null : null;
+        return {
           patientId: patient.id,
           patientName: patient.name || 'N/A',
           patientEmail: patient.userEmail || 'N/A',
@@ -1486,8 +1492,8 @@ export async function setupRoutes(app: Express): Promise<void> {
           planExpiresAt: latestSubscription?.expiresAt || null,
           lastActivityTimestamp: latestActivity?.createdAt || null,
           lastActivityType: latestActivity?.activityType || 'Nenhuma atividade',
-        });
-      }
+        };
+      });
 
       // 3. Criação do arquivo Excel (lógica existente, sem alterações)
       const workbook = new ExcelJS.Workbook();

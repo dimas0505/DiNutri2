@@ -41,14 +41,40 @@ export const getQueryFn: <T>(options: {
     return await res.json();
   };
 
+/**
+ * Verifica se um erro é do tipo 4xx (erros do cliente).
+ * Erros 4xx não devem ser retentados pois são falhas determinísticas
+ * (ex: 400 Bad Request, 401 Unauthorized, 403 Forbidden, 404 Not Found).
+ */
+export function isClientError(error: unknown): boolean {
+  if (error instanceof Error) {
+    const match = error.message.match(/^(\d{3}):/);
+    if (match) {
+      const status = parseInt(match[1], 10);
+      return status >= 400 && status < 500;
+    }
+  }
+  return false;
+}
+
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       queryFn: getQueryFn({ on401: "throw" }),
       refetchInterval: false,
-      refetchOnWindowFocus: false,
-      staleTime: Infinity,
-      retry: false,
+      // Recarrega dados ao focar a janela para garantir que o usuário
+      // veja informações atualizadas ao retornar ao app.
+      refetchOnWindowFocus: true,
+      // 5 minutos: dados são considerados frescos por 5 min após o fetch.
+      // Evita requisições desnecessárias em navegação rápida entre páginas,
+      // mas garante atualização após ausências mais longas.
+      staleTime: 5 * 60 * 1000,
+      // Não retenta erros do cliente (4xx) pois são falhas determinísticas.
+      // Retenta apenas erros de rede/servidor (5xx) uma vez.
+      retry: (failureCount, error) => {
+        if (isClientError(error)) return false;
+        return failureCount < 1;
+      },
     },
     mutations: {
       retry: false,
