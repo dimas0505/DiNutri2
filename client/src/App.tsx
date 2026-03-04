@@ -33,7 +33,8 @@ import AdminProfilePage from "@/pages/admin/profile";
 import EditUserPage from "@/pages/admin/edit-user";
 import PatientDashboard from "@/pages/patient/dashboard";
 import PatientProfilePage from "@/pages/patient/profile";
-import PatientSupplementsPage from "@/pages/patient/supplements";
+import PatientSupplementsPage from "./pages/patient/supplements";
+import PatientDiaryPage from "./pages/patient/diary";
 import { MobileLayout } from "@/components/layout/mobile-layout";
 import { Wrench } from "lucide-react";
 
@@ -110,7 +111,7 @@ function Router() {
           <Route path="/patient/prescription" component={PatientPrescriptionView} />
           <Route path="/prescriptions/:id/print" component={PrescriptionPrintPage} />
           <Route path="/evolution" component={() => <ComingSoonPage title="Evolução" />} />
-          <Route path="/diary" component={() => <ComingSoonPage title="Diário" />} />
+          <Route path="/diary" component={PatientDiaryPage} />
           <Route path="/goals" component={() => <ComingSoonPage title="Metas" />} />
           <Route path="/patient/supplements" component={PatientSupplementsPage} />
           <Route path="/exams" component={() => <ComingSoonPage title="Exames" />} />

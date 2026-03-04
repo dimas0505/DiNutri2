@@ -114,6 +114,7 @@ export function DefaultMobileDrawer({ onProfileClick }: DefaultMobileDrawerProps
           { label: "Meu Plano", href: "/my-plan", icon: ShieldCheck, action: "navigate" },
           { label: "Prescrições", href: "/patient/prescriptions", icon: FileText, action: "navigate" },
           { label: "Avaliações", href: "/assessments", icon: ClipboardList, action: "navigate" },
+          { label: "Diário", href: "/diary", icon: BookOpen, action: "navigate" },
           { label: "Perfil", href: "/profile", icon: User, action: "navigate" },
         ]
       : []),

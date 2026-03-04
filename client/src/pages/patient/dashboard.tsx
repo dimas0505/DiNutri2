@@ -1,4 +1,4 @@
-import { Bell, ClipboardList, Cross, ShieldCheck, TrendingUp, User, UtensilsCrossed, ChefHat } from "lucide-react";
+import { Bell, ClipboardList, Cross, ShieldCheck, TrendingUp, User, UtensilsCrossed, ChefHat, BookOpen } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { MobileLayout } from "@/components/layout/mobile-layout";
 import { useLocation } from "wouter";
@@ -50,10 +50,10 @@ const dashboardCards: DashboardCard[] = [
     iconColor: "text-[#F59E0B]",
   },
   {
-    title: "Evolução",
-    subtitle: "Diário e evolução fotográfica",
-    href: "/evolution",
-    icon: TrendingUp,
+    title: "Diário",
+    subtitle: "Sua evolução fotográfica",
+    href: "/diary",
+    icon: BookOpen,
     iconBg: "bg-[#FFEAF4]",
     iconColor: "text-[#EC4899]",
   },
