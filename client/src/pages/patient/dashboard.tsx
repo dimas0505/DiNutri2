@@ -1,4 +1,4 @@
-import { Bell, ClipboardList, Cross, ShieldCheck, TrendingUp, User, UtensilsCrossed, ChefHat, BookOpen } from "lucide-react";
+import { Bell, ClipboardList, Cross, ShieldCheck, TrendingUp, User, UtensilsCrossed, ChefHat, BookOpen, LogOut } from "lucide-react";
 import { useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { MobileLayout } from "@/components/layout/mobile-layout";
@@ -147,7 +147,7 @@ function getPlanStatus(subscription: Subscription | null | undefined): {
 }
 
 export default function PatientDashboard() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [, setLocation] = useLocation();
   const invalidatePatientData = useInvalidatePatientData();
 
@@ -226,13 +226,25 @@ export default function PatientDashboard() {
               </div>
             </div>
 
-            <button
-              type="button"
-              className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center"
-              onClick={() => handleNavigate("/profile")}
-            >
-              <Bell className="w-5 h-5 text-white" />
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center"
+                onClick={() => handleNavigate("/profile")}
+                title="Perfil"
+              >
+                <Bell className="w-5 h-5 text-white" />
+              </button>
+              <button
+                type="button"
+                className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center"
+                onClick={logout}
+                title="Sair"
+                data-testid="button-logout"
+              >
+                <LogOut className="w-5 h-5 text-white" />
+              </button>
+            </div>
           </div>
 
           <div className="mt-4 space-y-2">

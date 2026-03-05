@@ -7,6 +7,8 @@ import { Home, Users, FileText, User, LogOut, Shield, UserPlus, Settings, Shield
 import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import type { LucideIcon } from "lucide-react";
+import { DiNutriLogo } from "@/components/ui/dinutri-logo";
+import { Button } from "@/components/ui/button";
 
 interface MobileLayoutProps {
   children: React.ReactNode;
@@ -40,7 +42,7 @@ export function MobileLayout({
   drawerContent,
 }: MobileLayoutProps) {
   const isMobile = useIsMobile();
-  const { isPatient, isNutritionist } = useAuth();
+  const { user, isPatient, isNutritionist, logout } = useAuth();
   const [location] = useLocation();
 
   const navItems: LayoutNavItem[] = isPatient
@@ -57,6 +59,42 @@ export function MobileLayout({
       : [];
 
   if (!isMobile) {
+    if (isPatient && !hideHeader) {
+      return (
+        <div className="min-h-screen bg-background">
+          <header className="bg-card border-b border-border px-4 py-3">
+            <div className="max-w-7xl mx-auto flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <DiNutriLogo size="sm" variant="full" />
+                {title && (
+                  <>
+                    <span className="text-muted-foreground">|</span>
+                    <span className="text-foreground font-medium">{title}</span>
+                  </>
+                )}
+              </div>
+              <div className="flex items-center space-x-3">
+                <span className="text-sm text-muted-foreground">
+                  {(user as any)?.firstName || (user as any)?.email}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={logout}
+                  title="Sair"
+                  className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
+                  data-testid="button-logout-desktop"
+                >
+                  <LogOut className="h-4 w-4" />
+                  <span className="sr-only">Sair</span>
+                </Button>
+              </div>
+            </div>
+          </header>
+          <div className={className}>{children}</div>
+        </div>
+      );
+    }
     return <div className={className}>{children}</div>;
   }
 

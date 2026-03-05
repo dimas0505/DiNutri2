@@ -1,4 +1,4 @@
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -29,7 +29,7 @@ export default function Header({
   drawerContent,
   className
 }: HeaderProps) {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const isMobile = useIsMobile();
 
   const handleBack = () => {
@@ -100,6 +100,19 @@ export default function Header({
           <span className="text-sm text-muted-foreground" data-testid="text-user-name">
             {(user as any)?.firstName || (user as any)?.email}
           </span>
+          {user && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={logout}
+              title="Sair"
+              className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
+              data-testid="button-logout"
+            >
+              <LogOut className="h-4 w-4" />
+              <span className="sr-only">Sair</span>
+            </Button>
+          )}
         </div>
       </div>
     </header>
