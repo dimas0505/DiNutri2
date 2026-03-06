@@ -25,6 +25,7 @@ import { generatePrescriptionPDF } from "@/utils/pdf-generator";
 import { calculateDurninBodyFat, calculateAgeFromBirthDate } from "@/utils/durnin-body-fat";
 import { calculateIMC, calculateIdealWeightRange, calculateRCQ, calculateCMB, calculateAbdominalRisk } from "@/utils/nutritional-assessment";
 import { cn } from "@/lib/utils";
+import { getActivityLevelLabel } from "@/components/ui/activity-level-selector";
 import type {
   Patient, Prescription, AnamnesisRecord, FoodDiaryEntryWithPrescription,
   MealData, MoodType, Subscription, PatientDocument, AnthropometricAssessment,
@@ -768,13 +769,7 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
             } />
           )}
           {patient.activityLevel && (
-            <InfoRow icon={<Activity className="h-4 w-4 text-green-500" />} label="Nível de Atividade" value={
-              patient.activityLevel === "sedentary" ? "Sedentário" :
-              patient.activityLevel === "light" ? "Levemente ativo" :
-              patient.activityLevel === "moderate" ? "Moderadamente ativo" :
-              patient.activityLevel === "active" ? "Ativo" :
-              patient.activityLevel === "very_active" ? "Muito ativo" : patient.activityLevel
-            } />
+            <InfoRow icon={<Activity className="h-4 w-4 text-green-500" />} label="Nível de Atividade" value={getActivityLevelLabel(patient.activityLevel)} />
           )}
           {patient.biotype && (
             <InfoRow icon={<User className="h-4 w-4 text-indigo-500" />} label="Biotipo" value={
