@@ -19,6 +19,7 @@ import { DiNutriLogo } from "@/components/ui/dinutri-logo";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
+import { ActivityLevelSelector } from "@/components/ui/activity-level-selector";
 
 // Date formatting function for dd/mm/yyyy mask
 const formatDate = (value: string) => {
@@ -488,20 +489,14 @@ export default function AnamnesePage() {
                       control={form.control}
                       name="activityLevel"
                       render={({ field }) => (
-                        <FormItem>
+                        <FormItem className="md:col-span-2">
                           <FormLabel>Nível de Atividade Física</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value || ""}>
-                            <FormControl>
-                              <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="1">1 - Sedentário</SelectItem>
-                              <SelectItem value="2">2 - Levemente ativo</SelectItem>
-                              <SelectItem value="3">3 - Moderadamente ativo</SelectItem>
-                              <SelectItem value="4">4 - Muito ativo</SelectItem>
-                              <SelectItem value="5">5 - Extremamente ativo</SelectItem>
-                            </SelectContent>
-                          </Select>
+                          <FormControl>
+                            <ActivityLevelSelector
+                              value={field.value || ""}
+                              onChange={field.onChange}
+                            />
+                          </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}

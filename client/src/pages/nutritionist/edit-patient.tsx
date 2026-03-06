@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { updatePatientSchema, type UpdatePatient, type Patient } from "@shared/schema";
 import { DefaultMobileDrawer } from "@/components/layout/mobile-layout";
+import { ActivityLevelSelector } from "@/components/ui/activity-level-selector";
 
 type FormData = UpdatePatient;
 
@@ -119,7 +120,7 @@ export default function EditPatientPage({ params }: { params: { id: string } }) 
               <CardContent className="space-y-4">
                 {/* Fields for anamnesis data */}
                 <FormField control={form.control} name="goal" render={({ field }) => ( <FormItem> <FormLabel>Objetivo</FormLabel> <Select onValueChange={field.onChange} value={field.value ?? ""}> <FormControl><SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger></FormControl> <SelectContent> <SelectItem value="lose_weight">Perder peso</SelectItem> <SelectItem value="maintain_weight">Manter peso</SelectItem> <SelectItem value="gain_weight">Ganhar peso</SelectItem> </SelectContent> </Select> <FormMessage /> </FormItem> )}/>
-                <FormField control={form.control} name="activityLevel" render={({ field }) => ( <FormItem> <FormLabel>Nível de Atividade</FormLabel> <Select onValueChange={field.onChange} value={field.value ?? ""}> <FormControl><SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger></FormControl> <SelectContent> <SelectItem value="1">1 - Sedentário</SelectItem> <SelectItem value="2">2 - Levemente ativo</SelectItem> <SelectItem value="3">3 - Moderadamente ativo</SelectItem> <SelectItem value="4">4 - Muito ativo</SelectItem> <SelectItem value="5">5 - Extremamente ativo</SelectItem> </SelectContent> </Select> <FormMessage /> </FormItem> )}/>
+                <FormField control={form.control} name="activityLevel" render={({ field }) => ( <FormItem> <FormLabel>Nível de Atividade Física</FormLabel> <FormControl><ActivityLevelSelector value={field.value ?? ""} onChange={field.onChange} /></FormControl> <FormMessage /> </FormItem> )}/>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField control={form.control} name="biotype" render={({ field }) => ( <FormItem> <FormLabel>Biotipo</FormLabel> <Select onValueChange={field.onChange} value={field.value ?? ""}> <FormControl><SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger></FormControl> <SelectContent> <SelectItem value="gain_weight_easily">Ganho peso facilmente</SelectItem> <SelectItem value="hard_to_gain">Dificuldade para ganhar peso</SelectItem> <SelectItem value="gain_muscle_easily">Ganho músculo facilmente</SelectItem> </SelectContent> </Select> <FormMessage /> </FormItem> )}/>

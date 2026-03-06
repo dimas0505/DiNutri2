@@ -21,6 +21,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { insertPatientSchema } from "@shared/schema";
 import { DefaultMobileDrawer } from "@/components/layout/mobile-layout";
 import { Copy, LinkIcon, UserPlus, User, Calendar, Activity, ClipboardList } from "lucide-react";
+import { ActivityLevelSelector } from "@/components/ui/activity-level-selector";
 
 // Schema do formulário de criação manual - alinhado com anamnese.tsx
 const formSchema = insertPatientSchema.omit({ ownerId: true, userId: true }).extend({
@@ -493,22 +494,14 @@ export default function NewPatientPage() {
                               control={form.control}
                               name="activityLevel"
                               render={({ field }) => (
-                                <FormItem>
+                                <FormItem className="md:col-span-2">
                                   <FormLabel className="text-gray-700 font-semibold">Nível de Atividade Física</FormLabel>
-                                  <Select onValueChange={field.onChange} value={field.value || ""}>
-                                    <FormControl>
-                                      <SelectTrigger className="h-12 border-2 border-gray-200 focus:border-green-500 focus:ring-4 focus:ring-green-500 focus:ring-opacity-20 transition-all duration-300 rounded-xl text-base bg-white/80 backdrop-blur-sm">
-                                        <SelectValue placeholder="Selecionar" />
-                                      </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                      <SelectItem value="1">1 - Sedentário</SelectItem>
-                                      <SelectItem value="2">2 - Levemente ativo</SelectItem>
-                                      <SelectItem value="3">3 - Moderadamente ativo</SelectItem>
-                                      <SelectItem value="4">4 - Muito ativo</SelectItem>
-                                      <SelectItem value="5">5 - Extremamente ativo</SelectItem>
-                                    </SelectContent>
-                                  </Select>
+                                  <FormControl>
+                                    <ActivityLevelSelector
+                                      value={field.value || ""}
+                                      onChange={field.onChange}
+                                    />
+                                  </FormControl>
                                   <FormMessage />
                                 </FormItem>
                               )}
