@@ -1,5 +1,10 @@
 // ARQUIVO: ./client/src/hooks/usePushNotifications.ts
 // Hook para gerenciar notificações push no frontend (Web Push API)
+// 
+// SOLUÇÃO DEFINITIVA (Google):
+// - Usa sessionStorage para persistir intenção de assinatura após reload
+// - Sincronização global entre componentes via eventos
+// - Retomada automática após reload forçado no Android
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { apiRequest } from '@/lib/queryClient';
@@ -40,10 +45,6 @@ export function usePushNotifications(): UsePushNotificationsReturn {
 
   /**
    * Sincroniza o estado da permissão e da assinatura com a realidade do navegador.
-   * 
-   * @param forceReload Se true, recarrega a página caso a permissão ainda pareça 'denied'.
-   * Isso é necessário em PWAs Android/iOS onde o navegador cacheia o estado da permissão
-   * e só o atualiza após um refresh completo.
    */
   const refreshPermission = useCallback(async (forceReload = false) => {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
@@ -156,6 +157,10 @@ export function usePushNotifications(): UsePushNotificationsReturn {
       });
 
       setIsSubscribed(true);
+      
+      // NOVO: Avisa todas as outras instâncias do hook que a subscrição mudou
+      window.dispatchEvent(new Event('push-subscription-changed'));
+      
       return true;
     } catch (error) {
       console.error('[PushNotifications] Erro ao assinar:', error);
@@ -186,6 +191,40 @@ export function usePushNotifications(): UsePushNotificationsReturn {
       setIsLoading(false);
     }
   }, []);
+
+  // NOVO: Sincronização global e retomada automática após reload
+  useEffect(() => {
+    // 1. Sincronização global entre componentes e retorno de background
+    const handleSync = () => refreshPermission(false);
+    
+    window.addEventListener('push-subscription-changed', handleSync);
+    window.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        refreshPermission(false);
+      }
+    });
+
+    // 2. Retomar a assinatura automaticamente após o reload forçado
+    const checkPendingSubscription = async () => {
+      const pending = sessionStorage.getItem('PENDING_PUSH_SUBSCRIBE');
+      if (pending === 'true') {
+        sessionStorage.removeItem('PENDING_PUSH_SUBSCRIBE');
+        
+        // Se a permissão foi concedida nas configs do SO, o reload atualizou essa variável
+        if (Notification.permission === 'granted') {
+          console.log('[PushNotifications] Retomando assinatura após reload...');
+          await subscribe(); // Assina direto, sem perguntar
+        }
+      }
+    };
+
+    checkPendingSubscription();
+
+    return () => {
+      window.removeEventListener('push-subscription-changed', handleSync);
+      window.removeEventListener('visibilitychange', handleSync);
+    };
+  }, [refreshPermission, subscribe]);
 
   return { 
     permission, 

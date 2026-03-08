@@ -3,10 +3,11 @@
 // Exibe o status atual e permite ATIVAR (sem opção de desativar — recurso crítico).
 // Quando bloqueado, exibe instruções por sistema operacional (Android / iPhone).
 //
-// FIX DEFINITIVO: Adiciona botão "Já ativei, verificar novamente" que força
-// uma revalidação manual da permissão. Isso contorna limitações de cache de
-// permissão em PWAs Android/iOS onde o navegador não detecta mudanças
-// automaticamente após o usuário voltar das configurações do sistema.
+// SOLUÇÃO DEFINITIVA (Google):
+// O botão "Já ativei, verificar novamente" agora:
+// 1. Se a permissão já é 'granted', assina direto no PushManager
+// 2. Se ainda é 'denied', injeta flag no sessionStorage e força reload
+// 3. Após o reload, o hook retoma a assinatura automaticamente
 
 import { Bell, BellRing, Loader2, CheckCircle2, AlertTriangle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -14,8 +15,10 @@ import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
 
+const SESSION_BLOCKED_SHOWN = 'NOTIFICATION_PROMPT_BLOCKED_SHOWN';
+
 export function PushNotificationManager() {
-  const { permission, isSubscribed, isLoading, subscribe, refreshPermission } = usePushNotifications();
+  const { permission, isSubscribed, isLoading, subscribe } = usePushNotifications();
   const { toast } = useToast();
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -31,27 +34,52 @@ export function PushNotificationManager() {
     }
   };
 
-  // ── Botão de revalidação manual ──
-  // Força o hook a verificar a permissão novamente.
-  // Se o navegador ainda retornar 'denied', o hook forçará um reload da página
-  // para limpar o cache de permissão do navegador em modo PWA.
+  // ── Botão de revalidação manual (SOLUÇÃO GOOGLE) ──
+  // Implementa o fluxo de retomada automática + sincronização
   const handleManualRefresh = async () => {
     setIsRefreshing(true);
+    sessionStorage.removeItem(SESSION_BLOCKED_SHOWN);
+    
     try {
-      // Passamos forceReload=true para forçar o recarregamento da página
-      // caso o navegador ainda esteja reportando 'denied' indevidamente.
-      await refreshPermission(true);
-      
-      toast({
-        title: 'Verificando...',
-        description: 'Permissão revalidada. Se você ativou as notificações, o botão "Ativar" aparecerá.',
-      });
+      const currentPerm = Notification.permission;
+
+      if (currentPerm === 'granted') {
+        // Se o navegador já reconheceu a permissão, só falta assinar no PushManager
+        console.log('[PushNotificationManager] Permissão já concedida, assinando...');
+        const success = await subscribe();
+        if (success) {
+          toast({ 
+            title: 'Notificações ativadas! 🔔', 
+            description: 'Tudo pronto para você receber os alertas.' 
+          });
+        } else {
+          toast({ 
+            title: 'Aviso', 
+            description: 'Permissão concedida, mas houve um erro ao registrar no servidor.', 
+            variant: 'destructive' 
+          });
+        }
+      } else if (currentPerm === 'denied') {
+        // No Android, se estava negado, o navegador EXIGE reload para ler a nova permissão do sistema operacional.
+        // Salvamos a flag para o hook fazer a assinatura sozinho no próximo boot.
+        console.log('[PushNotificationManager] Permissão ainda negada, injetando flag e recarregando...');
+        sessionStorage.setItem('PENDING_PUSH_SUBSCRIBE', 'true');
+        toast({ 
+          title: 'Aplicando permissões...', 
+          description: 'Recarregando o aplicativo...' 
+        });
+        window.location.reload();
+      } else {
+        // Estado 'default' (vai abrir o prompt nativo)
+        console.log('[PushNotificationManager] Permissão em estado default, solicitando...');
+        await subscribe();
+      }
     } catch (err) {
-      console.error('Erro ao revalidar permissão:', err);
-      toast({
-        title: 'Erro',
-        description: 'Não foi possível revalidar a permissão. Tente novamente.',
-        variant: 'destructive',
+      console.error('[PushNotificationManager] Erro ao revalidar:', err);
+      toast({ 
+        title: 'Erro', 
+        description: 'Falha ao verificar permissões.', 
+        variant: 'destructive' 
       });
     } finally {
       setIsRefreshing(false);
@@ -137,8 +165,7 @@ export function PushNotificationManager() {
           ))}
         </div>
 
-        {/* ── NOVO: Botão de revalidação manual ── */}
-        {/* Contorna limitações de cache de permissão em PWAs Android/iOS */}
+        {/* ── Botão de revalidação manual (SOLUÇÃO GOOGLE) ── */}
         <Button
           onClick={handleManualRefresh}
           disabled={isRefreshing}
