@@ -3,10 +3,11 @@
 // Exibe o status atual e permite ATIVAR (sem opção de desativar — recurso crítico).
 // Quando bloqueado, exibe instruções por sistema operacional (Android / iPhone).
 //
-// FIX DEFINITIVO: Adiciona botão "Já ativei, verificar novamente" que força
-// uma revalidação manual da permissão. Isso contorna limitações de cache de
-// permissão em PWAs Android/iOS onde o navegador não detecta mudanças
-// automaticamente após o usuário voltar das configurações do sistema.
+// SOLUÇÃO DEFINITIVA (Google):
+// O botão "Já ativei, verificar novamente" agora:
+// 1. Se a permissão já é 'granted', assina direto no PushManager
+// 2. Se ainda é 'denied', injeta flag no sessionStorage e força reload
+// 3. Após o reload, o hook retoma a assinatura automaticamente
 
 import { Bell, BellRing, Loader2, CheckCircle2, AlertTriangle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -35,6 +36,8 @@ export function PushNotificationManager() {
     }
   };
 
+  // ── Botão de revalidação manual (SOLUÇÃO GOOGLE) ──
+  // Implementa o fluxo de retomada automática + sincronização
   const handleManualRefresh = async () => {
     setIsRefreshing(true);
     sessionStorage.removeItem(SESSION_BLOCKED_SHOWN);
@@ -43,40 +46,43 @@ export function PushNotificationManager() {
       const currentPerm = Notification.permission;
 
       if (currentPerm === 'granted') {
-        // Caso raro: navegador já reconheceu a permissão na sessão atual
+        // Se o navegador já reconheceu a permissão, só falta assinar no PushManager
+        console.log('[PushNotificationManager] Permissão já concedida, assinando...');
         const success = await subscribe();
         if (success) {
-          toast({
-            title: 'Notificações ativadas! 🔔',
-            description: 'Tudo pronto para você receber os alertas.',
+          toast({ 
+            title: 'Notificações ativadas! 🔔', 
+            description: 'Tudo pronto para você receber os alertas.' 
           });
         } else {
-          toast({
-            title: 'Erro ao ativar',
-            description: 'Permissão concedida, mas houve um erro ao registrar. Tente o botão "Ativar".',
-            variant: 'destructive',
+          toast({ 
+            title: 'Aviso', 
+            description: 'Permissão concedida, mas houve um erro ao registrar no servidor.', 
+            variant: 'destructive' 
           });
         }
       } else if (currentPerm === 'denied') {
         // Cenário principal no Android/iOS:
         // O navegador ainda reporta 'denied' mesmo que o usuário já tenha ativado no SO.
         // Salvamos a intenção antes do reload — o hook vai retomá-la após recarregar.
+        console.log('[PushNotificationManager] Permissão ainda negada, injetando flag e recarregando...');
         sessionStorage.setItem('PENDING_PUSH_SUBSCRIBE', 'true');
-        toast({
-          title: 'Aplicando permissões...',
-          description: 'Recarregando o aplicativo para ler as novas configurações.',
+        toast({ 
+          title: 'Aplicando permissões...', 
+          description: 'Recarregando o aplicativo para ler as novas configurações.' 
         });
         window.location.reload();
       } else {
         // Estado 'default' — solicitar permissão nativa ao usuário
+        console.log('[PushNotificationManager] Permissão em estado default, solicitando...');
         await subscribe();
       }
     } catch (err) {
-      console.error('Erro ao verificar permissões:', err);
-      toast({
-        title: 'Erro',
-        description: 'Falha ao verificar permissões. Tente novamente.',
-        variant: 'destructive',
+      console.error('[PushNotificationManager] Erro ao revalidar:', err);
+      toast({ 
+        title: 'Erro', 
+        description: 'Falha ao verificar permissões. Tente novamente.', 
+        variant: 'destructive' 
       });
     } finally {
       setIsRefreshing(false);
@@ -162,8 +168,7 @@ export function PushNotificationManager() {
           ))}
         </div>
 
-        {/* ── NOVO: Botão de revalidação manual ── */}
-        {/* Contorna limitações de cache de permissão em PWAs Android/iOS */}
+        {/* ── Botão de revalidação manual (SOLUÇÃO GOOGLE) ── */}
         <Button
           onClick={handleManualRefresh}
           disabled={isRefreshing}

@@ -1,5 +1,10 @@
 // ARQUIVO: ./client/src/hooks/usePushNotifications.ts
 // Hook para gerenciar notificações push no frontend (Web Push API)
+// 
+// SOLUÇÃO DEFINITIVA (Google):
+// - Usa sessionStorage para persistir intenção de assinatura após reload
+// - Sincronização global entre componentes via eventos
+// - Retomada automática após reload forçado no Android
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { apiRequest } from '@/lib/queryClient';
@@ -40,10 +45,6 @@ export function usePushNotifications(): UsePushNotificationsReturn {
 
   /**
    * Sincroniza o estado da permissão e da assinatura com a realidade do navegador.
-   * 
-   * @param forceReload Se true, recarrega a página caso a permissão ainda pareça 'denied'.
-   * Isso é necessário em PWAs Android/iOS onde o navegador cacheia o estado da permissão
-   * e só o atualiza após um refresh completo.
    */
   const refreshPermission = useCallback(async (forceReload = false) => {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
@@ -156,8 +157,10 @@ export function usePushNotifications(): UsePushNotificationsReturn {
       });
 
       setIsSubscribed(true);
+      
       // Avisa todas as outras instâncias do hook que a subscrição mudou
       window.dispatchEvent(new Event('push-subscription-changed'));
+      
       return true;
     } catch (error) {
       console.error('[PushNotifications] Erro ao assinar:', error);
