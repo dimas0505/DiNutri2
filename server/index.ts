@@ -93,6 +93,29 @@ async function ensureRoutesRegistered() {
       console.error("[DB] Failed to ensure weight_kg column:", err);
     }
 
+    // Ensure push_subscriptions table exists for Web Push notifications.
+    // Idempotent — safe to run on every cold start.
+    try {
+      await db.execute(sql`
+        CREATE TABLE IF NOT EXISTS push_subscriptions (
+          id         VARCHAR PRIMARY KEY,
+          user_id    VARCHAR NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          endpoint   TEXT NOT NULL,
+          p256dh     TEXT NOT NULL,
+          auth       TEXT NOT NULL,
+          created_at TIMESTAMP DEFAULT NOW(),
+          updated_at TIMESTAMP DEFAULT NOW()
+        )
+      `);
+      await db.execute(sql`
+        CREATE INDEX IF NOT EXISTS idx_push_subscriptions_user
+        ON push_subscriptions (user_id)
+      `);
+      console.log("[DB] push_subscriptions table ensured.");
+    } catch (err) {
+      console.error("[DB] Failed to ensure push_subscriptions table:", err);
+    }
+
     await setupRoutes(app);
     
     // Middleware de tratamento de erros
