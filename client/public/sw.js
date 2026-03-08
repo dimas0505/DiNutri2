@@ -157,18 +157,17 @@ self.addEventListener('push', (event) => {
       vibrate: [100, 50, 100],
       data: {
         dateOfArrival: Date.now(),
-        primaryKey: data.primaryKey || 1
+        url: data.url || '/',
+        type: data.type || 'message',
       },
       actions: [
         {
           action: 'explore',
           title: 'Ver detalhes',
-          icon: '/icon-192x192.png'
         },
         {
           action: 'close',
           title: 'Fechar',
-          icon: '/icon-192x192.png'
         }
       ]
     };
@@ -181,15 +180,41 @@ self.addEventListener('push', (event) => {
 
 // Notification click handler
 self.addEventListener('notificationclick', (event) => {
-  console.log('Notification click received');
+  console.log('Notification click received:', event.notification.data);
 
   event.notification.close();
 
-  if (event.action === 'explore') {
-    event.waitUntil(
-      clients.openWindow('/')
-    );
+  // Determinar a URL de destino com base no tipo de notificação
+  let targetUrl = '/';
+  if (event.notification.data) {
+    const data = typeof event.notification.data === 'string'
+      ? JSON.parse(event.notification.data)
+      : event.notification.data;
+    if (data.url) {
+      targetUrl = data.url;
+    } else if (data.type === 'plan') {
+      targetUrl = '/my-plan';
+    } else if (data.type === 'assessment') {
+      targetUrl = '/assessments';
+    }
   }
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      // Se o app já está aberto, focar e navegar
+      for (const client of clientList) {
+        if ('focus' in client) {
+          client.focus();
+          client.navigate(targetUrl);
+          return;
+        }
+      }
+      // Se não está aberto, abrir nova janela
+      if (clients.openWindow) {
+        return clients.openWindow(targetUrl);
+      }
+    })
+  );
 });
 
 // Message handler for update commands

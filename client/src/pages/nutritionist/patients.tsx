@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { Search, Plus, Eye, FileText, Link as LinkIcon, Copy, MoreVertical, Users, Trash2 } from "lucide-react";
+import { Search, Plus, Eye, FileText, Link as LinkIcon, Copy, MoreVertical, Users, Trash2, Bell } from "lucide-react";
 import Header from "@/components/layout/header";
 import { NutritionistSidebar } from "@/components/layout/nutritionist-sidebar";
 import { MobileLayout, DefaultMobileDrawer } from "@/components/layout/mobile-layout";
@@ -269,6 +269,15 @@ export default function PatientsPage() {
               Adicionar
             </Button>
           </div>
+          {/* Botão de Notificações */}
+          <Button
+            variant="outline"
+            onClick={() => setLocation("/notifications/send")}
+            className="w-full h-11 text-sm bg-white/90 backdrop-blur-sm border-2 border-[#4E9F87]/40 hover:border-[#4E9F87] hover:bg-[#4E9F87]/5 text-[#4E9F87] transition-all duration-200 rounded-xl shadow-sm"
+          >
+            <Bell className="h-4 w-4 mr-2" />
+            Enviar Notificação aos Pacientes
+          </Button>
         </div>
 
         {/* Enhanced Patients List */}

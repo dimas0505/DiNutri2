@@ -11,6 +11,7 @@ import {
   Activity, Target, Clipboard, TrendingUp, Percent,
 } from "lucide-react";
 import type { Patient, AnthropometricAssessment } from "@shared/schema";
+import { PushNotificationManager } from "@/components/PushNotificationManager";
 // Importações mantidas para reativação futura do cálculo automático Durnin & Womersley
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { calculateDurninBodyFat, calculateAgeFromBirthDate } from "@/utils/durnin-body-fat";
@@ -211,6 +212,8 @@ export default function PatientProfilePage() {
               {/* ── Aba Dados Pessoais ── */}
               <TabsContent value="personal">
                 <div className="space-y-2.5">
+                  {/* Card de Notificações Push */}
+                  <PushNotificationManager variant="card" />
                   {personalItems.map((item) => {
                     const Icon = item.icon;
                     return (

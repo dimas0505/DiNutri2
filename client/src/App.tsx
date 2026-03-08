@@ -19,6 +19,7 @@ import EditPatientPage from "@/pages/nutritionist/edit-patient";
 import PrescriptionEditorPage from "@/pages/nutritionist/prescription-editor";
 import SubscriptionsPage from "@/pages/nutritionist/subscriptions";
 import ReportsPage from "@/pages/nutritionist/reports";
+import SendNotificationPage from "@/pages/nutritionist/send-notification";
 import PatientPrescriptionView from "@/pages/patient/prescription-view";
 import PatientPrescriptionsList from "@/pages/patient/prescriptions-list";
 import PrescriptionPrintPage from "@/pages/patient/prescription-print";
@@ -98,6 +99,7 @@ function Router() {
           <Route path="/prescriptions/:id/edit" component={PrescriptionEditorPage} />
           <Route path="/subscriptions" component={SubscriptionsPage} />
           <Route path="/reports" component={ReportsPage} />
+          <Route path="/notifications/send" component={SendNotificationPage} />
         </>
       )}
 

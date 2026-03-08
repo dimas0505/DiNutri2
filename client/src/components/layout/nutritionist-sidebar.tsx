@@ -1,4 +1,4 @@
-import { LogOut, Home, Settings, Users2, Calendar, FileText, CreditCard, LineChart } from "lucide-react";
+import { LogOut, Home, Settings, Users2, Calendar, FileText, CreditCard, LineChart, Bell } from "lucide-react";
 import { DiNutriLogo } from "@/components/ui/dinutri-logo";
 import { Link, useLocation } from "wouter";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -72,6 +72,20 @@ export function NutritionistSidebar() {
             </Link>
           </TooltipTrigger>
           <TooltipContent side="right">Relatórios</TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Link
+              href="/notifications/send"
+              className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground md:h-8 md:w-8"
+              data-active={location.startsWith('/notifications')}
+            >
+              <Bell className="h-5 w-5" />
+              <span className="sr-only">Notificações</span>
+            </Link>
+          </TooltipTrigger>
+          <TooltipContent side="right">Enviar Notificações</TooltipContent>
         </Tooltip>
 
         <Tooltip>

@@ -215,6 +215,21 @@ export const patientDocuments = pgTable("patient_documents", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Push Subscriptions table (Web Push API)
+export const pushSubscriptions = pgTable(
+  "push_subscriptions",
+  {
+    id: varchar("id").primaryKey(),
+    userId: varchar("user_id").references(() => users.id, { onDelete: 'cascade' }).notNull(),
+    endpoint: text("endpoint").notNull(),
+    p256dh: text("p256dh").notNull(),
+    auth: text("auth").notNull(),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [index("IDX_push_subscriptions_user").on(table.userId)]
+);
+
 // Relations
 export const usersRelations = relations(users, ({ one, many }) => ({
   patientProfile: one(patients, {
@@ -300,6 +315,13 @@ export const patientDocumentsRelations = relations(patientDocuments, ({ one }) =
   }),
   nutritionist: one(users, {
     fields: [patientDocuments.nutritionistId],
+    references: [users.id],
+  }),
+}));
+
+export const pushSubscriptionsRelations = relations(pushSubscriptions, ({ one }) => ({
+  user: one(users, {
+    fields: [pushSubscriptions.userId],
     references: [users.id],
   }),
 }));
@@ -467,6 +489,7 @@ export type InsertPatientDocument = z.infer<typeof insertPatientDocumentSchema>;
 export type AnthropometricAssessment = typeof anthropometricAssessments.$inferSelect;
 export type InsertAnthropometricAssessment = z.infer<typeof insertAnthropometricAssessmentSchema>;
 export type UpdateAnthropometricAssessment = z.infer<typeof updateAnthropometricAssessmentSchema>;
+export type PushSubscription = typeof pushSubscriptions.$inferSelect;
 
 // Extended type for food diary entries with prescription and mood information
 export interface FoodDiaryEntryWithPrescription extends FoodDiaryEntry {

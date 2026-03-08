@@ -11,11 +11,12 @@ import { handleUpload, type HandleUploadBody } from '@vercel/blob/client';
 import { put } from '@vercel/blob';
 import multer from 'multer';
 import { eq, and, desc, or, sql } from 'drizzle-orm';
-import { anamnesisRecords, foodDiaryEntries, prescriptions, users, patients, subscriptions, activityLog, patientDocuments, anthropometricAssessments } from '../shared/schema.js';
+import { anamnesisRecords, foodDiaryEntries, prescriptions, users, patients, subscriptions, activityLog, patientDocuments, anthropometricAssessments, pushSubscriptions } from '../shared/schema.js';
 import { db } from './db.js';
 import sharp from 'sharp';
 import { nanoid } from 'nanoid';
 import { logActivity } from './activity-logger.js';
+import { sendPushToUser, sendPushToAllPatients, getVapidPublicKey } from './push-notifications.js';
 import ExcelJS from 'exceljs';
 import { format } from 'date-fns';
 
@@ -568,6 +569,21 @@ export async function setupRoutes(app: Express): Promise<void> {
     try {
       const prescription = await storage.publishPrescription(req.params.id);
       res.json(prescription);
+
+      // Disparar notificação push para o paciente (em background, sem bloquear a resposta)
+      try {
+        const patient = await storage.getPatient(prescription.patientId);
+        if (patient?.userId) {
+          await sendPushToUser(patient.userId, {
+            title: 'Novo Plano Alimentar Disponível! 🥗',
+            body: `Seu plano "${prescription.title}" foi disponibilizado pelo seu nutricionista.`,
+            url: '/my-plan',
+            type: 'plan',
+          });
+        }
+      } catch (pushErr) {
+        console.error('[PushNotifications] Erro ao enviar notificação de plano publicado:', pushErr);
+      }
     } catch (error) {
       console.error("Error publishing prescription:", error);
       res.status(500).json({ message: "Failed to publish prescription" });
@@ -1577,7 +1593,21 @@ export async function setupRoutes(app: Express): Promise<void> {
       }).returning();
       console.log(`[Upload] Document saved successfully: ${newDoc.id}`);
 
-      return res.status(201).json(newDoc);
+      // Disparar notificação push para o paciente (em background, sem bloquear a resposta)
+      res.status(201).json(newDoc);
+      try {
+        if (patient.userId) {
+          await sendPushToUser(patient.userId, {
+            title: 'Relatório de Avaliação Disponível! 📊',
+            body: `Um novo documento de avaliação (${safeFileName}) foi disponibilizado pelo seu nutricionista.`,
+            url: '/assessments',
+            type: 'assessment',
+          });
+        }
+      } catch (pushErr) {
+        console.error('[PushNotifications] Erro ao enviar notificação de avaliação:', pushErr);
+      }
+      return;
     } catch (error) {
       console.error("[Upload] Erro ao enviar avaliação:", error);
       res.status(500).json({ message: "Falha ao enviar avaliação." });
@@ -1746,6 +1776,119 @@ export async function setupRoutes(app: Express): Promise<void> {
     } catch (error) {
       console.error("Erro ao excluir avaliação antropométrica:", error);
       res.status(500).json({ message: "Falha ao excluir avaliação antropométrica." });
+    }
+  });
+
+  // ─── PUSH NOTIFICATIONS ROUTES ─────────────────────────────────────────────
+
+  // GET: Retorna a chave pública VAPID para o frontend criar assinaturas
+  app.get('/api/push/vapid-public-key', (req, res) => {
+    const key = getVapidPublicKey();
+    if (!key) {
+      return res.status(503).json({ message: 'Notificações push não configuradas no servidor.' });
+    }
+    res.json({ publicKey: key });
+  });
+
+  // POST: Paciente registra sua assinatura push
+  app.post('/api/push/subscribe', isAuthenticated, async (req: any, res) => {
+    try {
+      const { endpoint, keys } = req.body;
+      if (!endpoint || !keys?.p256dh || !keys?.auth) {
+        return res.status(400).json({ message: 'Dados de assinatura inválidos.' });
+      }
+
+      // Verificar se já existe assinatura com esse endpoint para esse usuário
+      const [existing] = await db
+        .select()
+        .from(pushSubscriptions)
+        .where(and(eq(pushSubscriptions.userId, req.user.id), eq(pushSubscriptions.endpoint, endpoint)));
+
+      if (existing) {
+        // Atualizar chaves (podem ter mudado)
+        await db
+          .update(pushSubscriptions)
+          .set({ p256dh: keys.p256dh, auth: keys.auth, updatedAt: new Date() })
+          .where(eq(pushSubscriptions.id, existing.id));
+        return res.json({ message: 'Assinatura atualizada com sucesso.' });
+      }
+
+      // Criar nova assinatura
+      await db.insert(pushSubscriptions).values({
+        id: nanoid(),
+        userId: req.user.id,
+        endpoint,
+        p256dh: keys.p256dh,
+        auth: keys.auth,
+      });
+
+      return res.status(201).json({ message: 'Assinatura criada com sucesso.' });
+    } catch (error) {
+      console.error('[PushNotifications] Erro ao registrar assinatura:', error);
+      res.status(500).json({ message: 'Falha ao registrar assinatura push.' });
+    }
+  });
+
+  // DELETE: Paciente cancela sua assinatura push
+  app.delete('/api/push/unsubscribe', isAuthenticated, async (req: any, res) => {
+    try {
+      const { endpoint } = req.body;
+      if (endpoint) {
+        await db
+          .delete(pushSubscriptions)
+          .where(and(eq(pushSubscriptions.userId, req.user.id), eq(pushSubscriptions.endpoint, endpoint)));
+      } else {
+        // Remover todas as assinaturas do usuário
+        await db.delete(pushSubscriptions).where(eq(pushSubscriptions.userId, req.user.id));
+      }
+      return res.status(204).send();
+    } catch (error) {
+      console.error('[PushNotifications] Erro ao cancelar assinatura:', error);
+      res.status(500).json({ message: 'Falha ao cancelar assinatura push.' });
+    }
+  });
+
+  // POST: Nutricionista envia mensagem personalizada (para um paciente ou para todos)
+  app.post('/api/push/send-message', isAuthenticated, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'nutritionist' && req.user.role !== 'admin') {
+        return res.status(403).json({ message: 'Acesso negado. Apenas nutricionistas.' });
+      }
+
+      const { title, body, targetUserId } = req.body;
+      if (!title || !body) {
+        return res.status(400).json({ message: 'Título e mensagem são obrigatórios.' });
+      }
+
+      const payload = { title, body, type: 'message' as const };
+      let totalSent = 0;
+
+      if (targetUserId) {
+        // Enviar para um paciente específico
+        // Verificar se o paciente pertence ao nutricionista
+        const patient = await db
+          .select()
+          .from(patients)
+          .where(and(eq(patients.userId, targetUserId), eq(patients.ownerId, req.user.id)))
+          .limit(1);
+
+        if (patient.length === 0) {
+          return res.status(404).json({ message: 'Paciente não encontrado ou não pertence a você.' });
+        }
+
+        totalSent = await sendPushToUser(targetUserId, payload);
+      } else {
+        // Enviar para todos os pacientes do nutricionista
+        totalSent = await sendPushToAllPatients(req.user.id, payload);
+      }
+
+      return res.json({
+        message: `Notificação enviada com sucesso.`,
+        sent: totalSent,
+      });
+    } catch (error) {
+      console.error('[PushNotifications] Erro ao enviar mensagem:', error);
+      res.status(500).json({ message: 'Falha ao enviar notificação.' });
     }
   });
 
