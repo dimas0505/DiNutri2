@@ -9,7 +9,7 @@
 //   o flag de sessão é limpo e o popup de ativação reaparece automaticamente.
 
 import { useState, useEffect, useRef } from "react";
-import { Bell, X, BellRing, Sparkles } from "lucide-react";
+import { Bell, X, BellRing, Sparkles, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { useToast } from "@/hooks/use-toast";
@@ -162,9 +162,17 @@ export function NotificationPrompt() {
                 </div>
               </div>
 
+              <Button
+                onClick={() => window.location.reload()}
+                size="sm"
+                className="mt-4 w-full h-10 text-sm font-semibold rounded-2xl text-white bg-[#4E9F87] hover:bg-[#3d8a74]"
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Já reativei — recarregar
+              </Button>
               <button
                 onClick={handleDismiss}
-                className="mt-4 w-full text-xs text-gray-400 py-1 hover:text-gray-600 transition-colors"
+                className="w-full text-xs text-gray-400 py-1 hover:text-gray-600 transition-colors"
               >
                 Fechar
               </button>
