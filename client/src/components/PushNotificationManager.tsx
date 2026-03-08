@@ -15,7 +15,9 @@ import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
 
-const SESSION_BLOCKED_SHOWN = 'NOTIFICATION_PROMPT_BLOCKED_SHOWN';
+// Shared key with NotificationPrompt — must be cleared before a force-reload so
+// that the blocked popup can reappear if permission is still denied after reload.
+const SESSION_BLOCKED_SHOWN = 'dinutri_blocked_shown_session';
 
 export function PushNotificationManager() {
   const { permission, isSubscribed, isLoading, subscribe } = usePushNotifications();
@@ -60,17 +62,18 @@ export function PushNotificationManager() {
           });
         }
       } else if (currentPerm === 'denied') {
-        // No Android, se estava negado, o navegador EXIGE reload para ler a nova permissão do sistema operacional.
-        // Salvamos a flag para o hook fazer a assinatura sozinho no próximo boot.
+        // Cenário principal no Android/iOS:
+        // O navegador ainda reporta 'denied' mesmo que o usuário já tenha ativado no SO.
+        // Salvamos a intenção antes do reload — o hook vai retomá-la após recarregar.
         console.log('[PushNotificationManager] Permissão ainda negada, injetando flag e recarregando...');
         sessionStorage.setItem('PENDING_PUSH_SUBSCRIBE', 'true');
         toast({ 
           title: 'Aplicando permissões...', 
-          description: 'Recarregando o aplicativo...' 
+          description: 'Recarregando o aplicativo para ler as novas configurações.' 
         });
         window.location.reload();
       } else {
-        // Estado 'default' (vai abrir o prompt nativo)
+        // Estado 'default' — solicitar permissão nativa ao usuário
         console.log('[PushNotificationManager] Permissão em estado default, solicitando...');
         await subscribe();
       }
@@ -78,7 +81,7 @@ export function PushNotificationManager() {
       console.error('[PushNotificationManager] Erro ao revalidar:', err);
       toast({ 
         title: 'Erro', 
-        description: 'Falha ao verificar permissões.', 
+        description: 'Falha ao verificar permissões. Tente novamente.', 
         variant: 'destructive' 
       });
     } finally {

@@ -38,7 +38,7 @@ export function NotificationPrompt() {
 
     prevPermissionRef.current = permission;
 
-    // Se já estiver inscrito, não suportado, ou carregando (retomando assinatura), não mostra nada
+    // Se já estiver inscrito, não suportado, ou o hook ainda estiver processando, não mostra nada
     if (isSubscribed || permission === "unsupported" || isLoading) {
       setVisible(false);
       return;
@@ -52,8 +52,10 @@ export function NotificationPrompt() {
           setVisible(true);
           sessionStorage.setItem(SESSION_BLOCKED_SHOWN, "1");
         }
-      } else if (permission === "default") {
-        // Permissão "default": mostrar toda vez até ativar
+      } else if (permission === "default" || permission === "granted") {
+        // "default": solicitar permissão ao usuário
+        // "granted": permissão já concedida mas ainda sem assinatura (ex: após
+        //   reativar nas configurações do Android) — mostrar para completar cadastro
         setVisible(true);
       }
     }, 2000);
