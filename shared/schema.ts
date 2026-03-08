@@ -230,6 +230,23 @@ export const pushSubscriptions = pgTable(
   (table) => [index("IDX_push_subscriptions_user").on(table.userId)]
 );
 
+// In-App Notifications table (fallback independente de permissão push)
+// Garante que o paciente receba mensagens mesmo sem autorizar notificações do sistema.
+export const inAppNotifications = pgTable(
+  "in_app_notifications",
+  {
+    id: varchar("id").primaryKey(),
+    userId: varchar("user_id").references(() => users.id, { onDelete: 'cascade' }).notNull(),
+    title: varchar("title").notNull(),
+    body: text("body").notNull(),
+    type: varchar("type", { enum: ["plan", "assessment", "message", "general"] }).notNull().default("general"),
+    isRead: boolean("is_read").notNull().default(false),
+    url: text("url"),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (table) => [index("IDX_in_app_notifications_user").on(table.userId)]
+);
+
 // Relations
 export const usersRelations = relations(users, ({ one, many }) => ({
   patientProfile: one(patients, {
@@ -315,6 +332,13 @@ export const patientDocumentsRelations = relations(patientDocuments, ({ one }) =
   }),
   nutritionist: one(users, {
     fields: [patientDocuments.nutritionistId],
+    references: [users.id],
+  }),
+}));
+
+export const inAppNotificationsRelations = relations(inAppNotifications, ({ one }) => ({
+  user: one(users, {
+    fields: [inAppNotifications.userId],
     references: [users.id],
   }),
 }));
@@ -490,6 +514,15 @@ export type AnthropometricAssessment = typeof anthropometricAssessments.$inferSe
 export type InsertAnthropometricAssessment = z.infer<typeof insertAnthropometricAssessmentSchema>;
 export type UpdateAnthropometricAssessment = z.infer<typeof updateAnthropometricAssessmentSchema>;
 export type PushSubscription = typeof pushSubscriptions.$inferSelect;
+export type InAppNotification = typeof inAppNotifications.$inferSelect;
+export type InsertInAppNotification = {
+  id: string;
+  userId: string;
+  title: string;
+  body: string;
+  type: 'plan' | 'assessment' | 'message' | 'general';
+  url?: string | null;
+};
 
 // Extended type for food diary entries with prescription and mood information
 export interface FoodDiaryEntryWithPrescription extends FoodDiaryEntry {

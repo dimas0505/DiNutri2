@@ -139,6 +139,10 @@ export default {
             opacity: "1",
           },
         },
+        "wiggle": {
+          "0%, 100%": { transform: "rotate(-10deg)" },
+          "50%": { transform: "rotate(10deg)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -147,6 +151,7 @@ export default {
         "slide-out-to-left": "slide-out-to-left 0.3s ease-out",
         "fade-in": "fade-in 0.2s ease-out",
         "bounce-in": "bounce-in 0.4s ease-out",
+        "wiggle": "wiggle 1s ease-in-out infinite",
       },
     },
   },
