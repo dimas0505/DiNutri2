@@ -47,6 +47,9 @@ export function usePushNotifications(): UsePushNotificationsReturn {
   // Ref para rastrear o estado anterior e evitar updates desnecessários
   const permissionRef = useRef<PermissionState>('default');
 
+  // Cache da chave VAPID para evitar fetch durante o fluxo de subscribe (User Gesture)
+  const vapidKeyRef = useRef<string | null>(null);
+
   /**
    * Sincroniza o estado da permissão e da assinatura com a realidade do navegador.
    */
@@ -124,10 +127,29 @@ export function usePushNotifications(): UsePushNotificationsReturn {
     };
   }, [refreshPermission]);
 
+  // Pré-carregar a chave VAPID assim que o hook montar para evitar fetch durante o subscribe()
+  useEffect(() => {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+    fetch('/api/push/vapid-public-key')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.publicKey) {
+          vapidKeyRef.current = data.publicKey;
+        }
+      })
+      .catch((err) => {
+        console.warn('[PushNotifications] Falha ao pré-carregar chave VAPID:', err);
+        // Será tentado novamente dentro do subscribe() se necessário
+      });
+  }, []);
+
   /**
    * Solicita permissão ao usuário e registra a assinatura push no servidor.
    * IMPORTANTE: Esta função deve ser chamada dentro de um evento de clique (user gesture)
    * para contornar a restrição de segurança do navegador.
+   *
+   * Modelo Fast-Track: mínimo de awaits antes do pushManager.subscribe() para preservar
+   * o User Gesture Context do navegador.
    */
   const subscribe = useCallback(async (): Promise<boolean> => {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
@@ -136,28 +158,49 @@ export function usePushNotifications(): UsePushNotificationsReturn {
 
     setIsLoading(true);
     try {
-      // Se a permissão já é 'granted', pula o requestPermission()
+      // 1. Solicitar permissão SE ainda não concedida (único await antes do subscribe)
       let result = Notification.permission;
       if (result === 'default') {
         result = await Notification.requestPermission();
       }
-      
-      await refreshPermission();
 
+      // 2. Verificar se permissão foi concedida
       if (result !== 'granted') {
         return false;
       }
 
-      const vapidResponse = await fetch('/api/push/vapid-public-key');
-      if (!vapidResponse.ok) return false;
-      const { publicKey } = await vapidResponse.json();
+      // 3. Obter a chave VAPID do cache (sem await se já disponível)
+      let publicKey = vapidKeyRef.current;
+      if (!publicKey) {
+        const vapidResponse = await fetch('/api/push/vapid-public-key');
+        if (!vapidResponse.ok) return false;
+        const data = await vapidResponse.json();
+        publicKey = data.publicKey;
+        vapidKeyRef.current = publicKey;
+      }
 
+      if (!publicKey) return false;
+
+      // 4. Aguardar Service Worker pronto
       const registration = await navigator.serviceWorker.ready;
+
+      // 5. Limpar assinatura antiga/corrompida antes de criar nova
+      try {
+        const existingSub = await registration.pushManager.getSubscription();
+        if (existingSub) {
+          await existingSub.unsubscribe();
+        }
+      } catch (unsubErr) {
+        console.warn('[PushNotifications] Falha ao remover assinatura anterior (continuando):', unsubErr);
+      }
+
+      // 6. Criar nova assinatura (o clique ainda está "vivo" aqui)
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(publicKey),
       });
 
+      // 7. Registrar assinatura no servidor
       const subJson = subscription.toJSON();
       await apiRequest('POST', '/api/push/subscribe', {
         endpoint: subJson.endpoint,
@@ -167,6 +210,7 @@ export function usePushNotifications(): UsePushNotificationsReturn {
         },
       });
 
+      // 8. Atualizar estados e disparar evento de sincronização
       setIsSubscribed(true);
       setNeedsFinalization(false);
       
@@ -183,7 +227,7 @@ export function usePushNotifications(): UsePushNotificationsReturn {
     } finally {
       setIsLoading(false);
     }
-  }, [refreshPermission]);
+  }, []);
 
   /**
    * Cancela a assinatura push.
