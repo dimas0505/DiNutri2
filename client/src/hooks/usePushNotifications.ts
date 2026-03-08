@@ -156,6 +156,8 @@ export function usePushNotifications(): UsePushNotificationsReturn {
       });
 
       setIsSubscribed(true);
+      // Avisa todas as outras instâncias do hook que a subscrição mudou
+      window.dispatchEvent(new Event('push-subscription-changed'));
       return true;
     } catch (error) {
       console.error('[PushNotifications] Erro ao assinar:', error);
@@ -186,6 +188,36 @@ export function usePushNotifications(): UsePushNotificationsReturn {
       setIsLoading(false);
     }
   }, []);
+
+  // Sincronização global entre instâncias + retomada após reload
+  useEffect(() => {
+    // 1. Ouvir evento global de sincronização entre componentes
+    const handleSync = () => refreshPermission(false);
+    window.addEventListener('push-subscription-changed', handleSync);
+
+    // 2. Retomar assinatura automaticamente após reload forçado
+    // O botão "Já ativei" salva PENDING_PUSH_SUBSCRIBE antes do reload.
+    // Após o reload, Notification.permission já reflete a realidade do SO.
+    const checkPendingSubscription = async () => {
+      const pending = sessionStorage.getItem('PENDING_PUSH_SUBSCRIBE');
+      if (pending === 'true') {
+        sessionStorage.removeItem('PENDING_PUSH_SUBSCRIBE');
+        console.log('[PushNotifications] Flag PENDING_PUSH_SUBSCRIBE encontrada. Verificando permissão após reload...');
+        if (Notification.permission === 'granted') {
+          console.log('[PushNotifications] Permissão granted após reload. Assinando automaticamente...');
+          await subscribe();
+        }
+      }
+    };
+
+    checkPendingSubscription().catch((err) => {
+      console.error('[PushNotifications] Erro ao verificar subscrição pendente:', err);
+    });
+
+    return () => {
+      window.removeEventListener('push-subscription-changed', handleSync);
+    };
+  }, [refreshPermission, subscribe]);
 
   return { 
     permission, 

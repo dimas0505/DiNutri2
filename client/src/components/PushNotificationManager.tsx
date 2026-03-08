@@ -19,7 +19,7 @@ import { useState } from 'react';
 const SESSION_BLOCKED_SHOWN = 'dinutri_blocked_shown_session';
 
 export function PushNotificationManager() {
-  const { permission, isSubscribed, isLoading, subscribe, refreshPermission } = usePushNotifications();
+  const { permission, isSubscribed, isLoading, subscribe } = usePushNotifications();
   const { toast } = useToast();
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -35,55 +35,47 @@ export function PushNotificationManager() {
     }
   };
 
-  // ── Botão de revalidação manual ──
-  // Força o hook a verificar a permissão novamente.
-  // Se o navegador ainda retornar 'denied', o hook forçará um reload da página
-  // para limpar o cache de permissão do navegador em modo PWA.
   const handleManualRefresh = async () => {
     setIsRefreshing(true);
-    // Clear the session flag BEFORE reloading so the blocked popup can
-    // reappear on the next load if the permission is still denied.
     sessionStorage.removeItem(SESSION_BLOCKED_SHOWN);
+    
     try {
-      // Passamos forceReload=true para forçar o recarregamento da página
-      // caso o navegador ainda esteja reportando 'denied' indevidamente.
-      await refreshPermission(true);
+      const currentPerm = Notification.permission;
 
-      // Após refreshPermission, se a permissão já for 'granted' (usuário ativou
-      // nas configurações do sistema e voltou ao app), completar a subscrição push
-      // automaticamente — sem exigir que o usuário clique em outro botão.
-      const currentPermission = Notification.permission;
-      if (currentPermission === 'granted') {
+      if (currentPerm === 'granted') {
+        // Caso raro: navegador já reconheceu a permissão na sessão atual
         const success = await subscribe();
         if (success) {
           toast({
             title: 'Notificações ativadas! 🔔',
-            description: 'Você receberá alertas quando seu nutricionista disponibilizar novidades.',
+            description: 'Tudo pronto para você receber os alertas.',
           });
-          return;
         } else {
           toast({
-            title: 'Erro ao ativar notificações',
-            description: 'Não foi possível concluir a subscrição. Tente tocar em "Ativar" novamente.',
+            title: 'Erro ao ativar',
+            description: 'Permissão concedida, mas houve um erro ao registrar. Tente o botão "Ativar".',
             variant: 'destructive',
           });
-          return;
         }
-      }
-
-      // Se ainda não for 'granted' (ex: reload vai ocorrer, ou usuário não ativou ainda),
-      // mostrar toast informativo apenas quando não vamos recarregar a página
-      if (currentPermission !== 'denied') {
+      } else if (currentPerm === 'denied') {
+        // Cenário principal no Android/iOS:
+        // O navegador ainda reporta 'denied' mesmo que o usuário já tenha ativado no SO.
+        // Salvamos a intenção antes do reload — o hook vai retomá-la após recarregar.
+        sessionStorage.setItem('PENDING_PUSH_SUBSCRIBE', 'true');
         toast({
-          title: 'Verificando...',
-          description: 'Permissão revalidada. Se você ativou as notificações, o botão "Ativar" aparecerá.',
+          title: 'Aplicando permissões...',
+          description: 'Recarregando o aplicativo para ler as novas configurações.',
         });
+        window.location.reload();
+      } else {
+        // Estado 'default' — solicitar permissão nativa ao usuário
+        await subscribe();
       }
     } catch (err) {
-      console.error('Erro ao revalidar permissão:', err);
+      console.error('Erro ao verificar permissões:', err);
       toast({
         title: 'Erro',
-        description: 'Não foi possível revalidar a permissão. Tente novamente.',
+        description: 'Falha ao verificar permissões. Tente novamente.',
         variant: 'destructive',
       });
     } finally {
