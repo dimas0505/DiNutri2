@@ -32,20 +32,35 @@ export function PushNotificationManager() {
   };
 
   // ── Botão de revalidação manual ──
-  // Força o hook a verificar a permissão novamente.
-  // Se o navegador ainda retornar 'denied', o hook forçará um reload da página
-  // para limpar o cache de permissão do navegador em modo PWA.
+  // Lê a permissão diretamente do navegador (sem estado cacheado do React) e:
+  //   • Se 'granted' ou 'default' → tenta assinar as notificações push imediatamente
+  //     (requestPermission() retorna 'granted' sem dialog quando já foi autorizado pelo sistema)
+  //   • Se ainda 'denied' → força reload da página para limpar o cache de permissão do PWA
   const handleManualRefresh = async () => {
     setIsRefreshing(true);
     try {
-      // Passamos forceReload=true para forçar o recarregamento da página
-      // caso o navegador ainda esteja reportando 'denied' indevidamente.
-      await refreshPermission(true);
-      
-      toast({
-        title: 'Verificando...',
-        description: 'Permissão revalidada. Se você ativou as notificações, o botão "Ativar" aparecerá.',
-      });
+      const currentPermission = Notification.permission;
+
+      if (currentPermission === 'granted' || currentPermission === 'default') {
+        // Permissão disponível — assinatura pode ser criada diretamente
+        const success = await subscribe();
+        if (success) {
+          toast({
+            title: 'Notificações ativadas! 🔔',
+            description: 'Você receberá alertas quando seu nutricionista disponibilizar novidades.',
+          });
+        } else {
+          toast({
+            title: 'Não foi possível ativar',
+            description: 'Verifique as permissões nas configurações e tente novamente.',
+            variant: 'destructive',
+          });
+        }
+      } else {
+        // Ainda 'denied' no cache do navegador — recarregar a página é a única
+        // forma confiável de forçar o navegador a reler o estado real do SO.
+        await refreshPermission(true);
+      }
     } catch (err) {
       console.error('Erro ao revalidar permissão:', err);
       toast({
