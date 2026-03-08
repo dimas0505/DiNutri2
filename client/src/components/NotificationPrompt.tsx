@@ -38,8 +38,8 @@ export function NotificationPrompt() {
 
     prevPermissionRef.current = permission;
 
-    // Se já estiver inscrito ou não suportado, não mostra nada
-    if (isSubscribed || permission === "unsupported") {
+    // Se já estiver inscrito, não suportado, ou o hook ainda estiver processando, não mostra nada
+    if (isSubscribed || permission === "unsupported" || isLoading) {
       setVisible(false);
       return;
     }
@@ -60,7 +60,7 @@ export function NotificationPrompt() {
       }
     }, 2000);
     return () => clearTimeout(timer);
-  }, [permission, isSubscribed]);
+  }, [permission, isSubscribed, isLoading]);
 
   const handleActivate = async () => {
     const success = await subscribe();
