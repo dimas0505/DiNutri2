@@ -50,6 +50,73 @@ export function usePushNotifications(): UsePushNotificationsReturn {
         setIsSubscribed(!!sub);
       });
     });
+
+    // ── FIX: Observar mudanças de permissão via Permissions API ──
+    // Quando o usuário libera a permissão nas configurações do sistema e
+    // retorna ao app, o estado "denied" muda para "default" (ou "granted"),
+    // mas o React não sabia disso porque só lia Notification.permission uma
+    // única vez na montagem. Agora usamos PermissionStatus.onchange para
+    // atualizar o estado reativamente.
+    let permissionStatus: PermissionStatus | null = null;
+
+    if ('permissions' in navigator) {
+      navigator.permissions.query({ name: 'notifications' as PermissionName }).then((status) => {
+        permissionStatus = status;
+
+        // Sincronizar imediatamente caso o estado já tenha mudado
+        setPermission(status.state === 'prompt' ? 'default' : status.state as PermissionState);
+
+        // Ouvir mudanças futuras (ex: usuário volta das configurações do sistema)
+        status.onchange = () => {
+          const newState = status.state === 'prompt' ? 'default' : status.state as PermissionState;
+          console.log('[PushNotifications] Permissão alterada para:', newState);
+          setPermission(newState);
+
+          // Se a permissão foi concedida externamente (via configurações do SO),
+          // verificar se já existe assinatura ativa e atualizar o estado
+          if (newState === 'granted') {
+            navigator.serviceWorker.ready.then((registration) => {
+              registration.pushManager.getSubscription().then((sub) => {
+                setIsSubscribed(!!sub);
+              });
+            });
+          }
+        };
+      }).catch(() => {
+        // Fallback silencioso: navegadores que não suportam permissions.query
+        // continuarão usando apenas Notification.permission (comportamento anterior)
+      });
+    }
+
+    // ── FIX: Reler permissão ao app ganhar foco (visibilitychange) ──
+    // Em PWAs instaladas, o usuário pode sair para as configurações do sistema,
+    // liberar a permissão e voltar. O evento visibilitychange garante que
+    // relemos o estado atualizado quando o app volta ao primeiro plano,
+    // mesmo em navegadores sem suporte à Permissions API.
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        const currentPermission = Notification.permission as PermissionState;
+        setPermission(currentPermission);
+
+        // Se passou de "denied" para "default" ou "granted", verificar assinatura
+        if (currentPermission === 'granted' || currentPermission === 'default') {
+          navigator.serviceWorker.ready.then((registration) => {
+            registration.pushManager.getSubscription().then((sub) => {
+              setIsSubscribed(!!sub);
+            });
+          });
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (permissionStatus) {
+        permissionStatus.onchange = null;
+      }
+    };
   }, []);
 
   /**
