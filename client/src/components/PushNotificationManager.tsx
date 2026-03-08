@@ -1,7 +1,7 @@
 // ARQUIVO: ./client/src/components/PushNotificationManager.tsx
 // Componente informativo de notificações push no perfil do paciente.
-// Exibe o status atual e permite ATIVAR (mas não desativar pelo app — recurso importante).
-// Quando bloqueado, exibe passo a passo para reativar nas configurações do navegador.
+// Exibe o status atual e permite ATIVAR (sem opção de desativar — recurso crítico).
+// Quando bloqueado, exibe instruções por sistema operacional (Android / iPhone).
 
 import { Bell, BellRing, Loader2, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -12,10 +12,7 @@ export function PushNotificationManager() {
   const { permission, isSubscribed, isLoading, subscribe } = usePushNotifications();
   const { toast } = useToast();
 
-  // Não exibir nada se o navegador não suporta notificações
-  if (permission === 'unsupported') {
-    return null;
-  }
+  if (permission === 'unsupported') return null;
 
   const handleSubscribe = async () => {
     const success = await subscribe();
@@ -27,7 +24,7 @@ export function PushNotificationManager() {
     }
   };
 
-  // ── Estado: notificações já ativas ──
+  // ── Ativo ──
   if (isSubscribed) {
     return (
       <div className="rounded-xl border border-[#4E9F87]/30 bg-[#4E9F87]/5 p-4">
@@ -49,7 +46,7 @@ export function PushNotificationManager() {
     );
   }
 
-  // ── Estado: permissão bloqueada no navegador ──
+  // ── Bloqueado — instruções por sistema operacional ──
   if (permission === 'denied') {
     return (
       <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 space-y-3">
@@ -61,25 +58,47 @@ export function PushNotificationManager() {
           <div className="flex-1 min-w-0">
             <h3 className="text-sm font-semibold text-gray-800">Notificações Bloqueadas</h3>
             <p className="mt-0.5 text-xs text-amber-700 leading-relaxed">
-              As notificações foram bloqueadas neste navegador. Siga os passos abaixo para reativar e não perder nenhum aviso do seu nutricionista.
+              As notificações do aplicativo estão bloqueadas. Para reativar, acesse as configurações do seu celular:
             </p>
           </div>
         </div>
 
-        {/* Passo a passo */}
-        <div className="bg-white border border-amber-200 rounded-xl p-3 space-y-2">
-          <p className="text-xs font-semibold text-amber-800 mb-1">Como reativar:</p>
+        {/* Android */}
+        <div className="bg-white border border-amber-200 rounded-xl p-3 space-y-1.5">
+          <div className="flex items-center gap-1.5 mb-1">
+            <span className="text-sm">🤖</span>
+            <p className="text-xs font-bold text-gray-700">Android</p>
+          </div>
           {[
-            'Toque no ícone de cadeado ou "ⓘ" na barra de endereço do navegador',
-            'Selecione "Permissões" ou "Configurações do site"',
-            'Encontre "Notificações" e mude para "Permitir"',
-            'Recarregue o aplicativo',
+            "Abra as Configurações do celular",
+            "Toque em Aplicativos → DiNutri",
+            "Toque em Notificações e ative",
           ].map((step, i) => (
             <div key={i} className="flex items-start gap-2">
-              <span className="shrink-0 w-5 h-5 rounded-full bg-amber-100 text-amber-700 text-xs font-bold flex items-center justify-center mt-0.5">
+              <span className="shrink-0 w-4 h-4 rounded-full bg-[#7C3AED]/15 text-[#7C3AED] text-[10px] font-bold flex items-center justify-center mt-0.5">
                 {i + 1}
               </span>
-              <p className="text-xs text-gray-600 leading-snug">{step}</p>
+              <p className="text-[11px] text-gray-600 leading-snug">{step}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* iPhone */}
+        <div className="bg-white border border-amber-200 rounded-xl p-3 space-y-1.5">
+          <div className="flex items-center gap-1.5 mb-1">
+            <span className="text-sm">🍎</span>
+            <p className="text-xs font-bold text-gray-700">iPhone</p>
+          </div>
+          {[
+            "Abra os Ajustes do iPhone",
+            "Role e toque em DiNutri",
+            "Toque em Notificações e ative \"Permitir Notificações\"",
+          ].map((step, i) => (
+            <div key={i} className="flex items-start gap-2">
+              <span className="shrink-0 w-4 h-4 rounded-full bg-[#4E9F87]/15 text-[#4E9F87] text-[10px] font-bold flex items-center justify-center mt-0.5">
+                {i + 1}
+              </span>
+              <p className="text-[11px] text-gray-600 leading-snug">{step}</p>
             </div>
           ))}
         </div>
@@ -87,7 +106,7 @@ export function PushNotificationManager() {
     );
   }
 
-  // ── Estado: ainda não ativou ──
+  // ── Inativo — botão para ativar ──
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
       <div className="flex items-start gap-3">
@@ -106,11 +125,7 @@ export function PushNotificationManager() {
           disabled={isLoading}
           className="shrink-0 bg-[#4E9F87] hover:bg-[#3d8a74] text-white"
         >
-          {isLoading ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            'Ativar'
-          )}
+          {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Ativar'}
         </Button>
       </div>
     </div>
