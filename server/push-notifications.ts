@@ -7,10 +7,12 @@ import { pushSubscriptions, users, patients } from '../shared/schema.js';
 import { eq } from 'drizzle-orm';
 
 // Configuração das chaves VAPID
-// As chaves devem ser definidas nas variáveis de ambiente do servidor.
+// Prioridade: variáveis de ambiente > valores padrão do projeto.
 // Para gerar novas chaves: node -e "const wp=require('web-push'); const k=wp.generateVAPIDKeys(); console.log(k);"
-const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY || '';
-const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || '';
+const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY
+  || 'BGKKOirr7QB_WGX4VPj87pYfwe5HNZtGXS8jtTmhR-QgGTCeTh0t_VDXG7BrhYQW-QgRVHb8ML5IxS2_SVN7X2E';
+const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY
+  || 'zMl4iQipDDjcCdF-BK1qglna675kx4IfTuYJEZ_WpAo';
 const VAPID_EMAIL = process.env.VAPID_EMAIL || 'mailto:admin@dinutri.com';
 
 if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
