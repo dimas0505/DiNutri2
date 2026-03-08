@@ -52,8 +52,10 @@ export function NotificationPrompt() {
           setVisible(true);
           sessionStorage.setItem(SESSION_BLOCKED_SHOWN, "1");
         }
-      } else if (permission === "default") {
-        // Permissão "default": mostrar toda vez até ativar
+      } else if (permission === "default" || permission === "granted") {
+        // "default": solicitar permissão ao usuário
+        // "granted": permissão já concedida mas ainda sem assinatura (ex: após
+        //   reativar nas configurações do Android) — mostrar para completar cadastro
         setVisible(true);
       }
     }, 2000);
