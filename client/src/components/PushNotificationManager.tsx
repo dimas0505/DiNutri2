@@ -21,6 +21,9 @@ import { useState } from 'react';
 // that the blocked popup can reappear if permission is still denied after reload.
 const SESSION_BLOCKED_SHOWN = 'dinutri_blocked_shown_session';
 
+// Delay before reloading after nuclear Service Worker recovery
+const RECOVERY_RELOAD_DELAY_MS = 2000;
+
 export function PushNotificationManager() {
   const { permission, isSubscribed, isLoading, needsFinalization, subscribe } = usePushNotifications();
   const { toast } = useToast();
@@ -57,11 +60,23 @@ export function PushNotificationManager() {
             description: 'Tudo pronto para você receber os alertas.' 
           });
         } else {
+          // Permissão concedida mas subscribe() falhou — Service Worker provavelmente corrompido
+          console.log('[PushNotificationManager] Subscribe falhou com permissão granted. Iniciando recuperação nuclear...');
+          if ('serviceWorker' in navigator) {
+            try {
+              const registrations = await navigator.serviceWorker.getRegistrations();
+              await Promise.all(registrations.map((reg) => reg.unregister()));
+              console.log('[PushNotificationManager] Service Workers desregistrados.');
+            } catch (swErr) {
+              console.error('[PushNotificationManager] Erro ao desregistrar Service Workers:', swErr);
+            }
+          }
           toast({ 
-            title: 'Aviso', 
-            description: 'Permissão concedida, mas houve um erro ao registrar no servidor.', 
-            variant: 'destructive' 
+            title: 'Limpando sistema...', 
+            description: 'O app vai reiniciar para corrigir. Aguarde.',
+            variant: 'destructive'
           });
+          setTimeout(() => window.location.reload(), RECOVERY_RELOAD_DELAY_MS);
         }
       } else if (currentPerm === 'denied') {
         // Cenário principal no Android/iOS:
@@ -71,7 +86,7 @@ export function PushNotificationManager() {
         sessionStorage.setItem('PENDING_PUSH_SUBSCRIBE', 'true');
         toast({ 
           title: 'Aplicando permissões...', 
-          description: 'Recarregando o aplicativo para ler as novas configurações.' 
+          description: 'Recarregando o aplicativo para ler as novas configurações do sistema.' 
         });
         window.location.reload();
       } else {
