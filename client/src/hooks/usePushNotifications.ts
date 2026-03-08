@@ -5,6 +5,8 @@
 // - Contorna a restrição "User Gesture Requirement" dos navegadores
 // - Usa needsFinalization para sinalizar quando o usuário precisa clicar para finalizar
 // - Garante que subscribe() seja chamado dentro de um evento de clique
+// - Usa sessionStorage para persistir intenção de assinatura após reload
+// - Sincronização global entre componentes via eventos
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { apiRequest } from '@/lib/queryClient';
@@ -47,10 +49,6 @@ export function usePushNotifications(): UsePushNotificationsReturn {
 
   /**
    * Sincroniza o estado da permissão e da assinatura com a realidade do navegador.
-   * 
-   * @param forceReload Se true, recarrega a página caso a permissão ainda pareça 'denied'.
-   * Isso é necessário em PWAs Android/iOS onde o navegador cacheia o estado da permissão
-   * e só o atualiza após um refresh completo.
    */
   const refreshPermission = useCallback(async (forceReload = false) => {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
@@ -177,6 +175,7 @@ export function usePushNotifications(): UsePushNotificationsReturn {
       
       // Avisa todas as outras instâncias do hook que a subscrição mudou
       window.dispatchEvent(new Event('push-subscription-changed'));
+      
       return true;
     } catch (error) {
       console.error('[PushNotifications] Erro ao assinar:', error);
