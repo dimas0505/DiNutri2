@@ -14,6 +14,10 @@ import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
 
+// Shared key with NotificationPrompt — must be cleared before a force-reload so
+// that the blocked popup can reappear if permission is still denied after reload.
+const SESSION_BLOCKED_SHOWN = 'dinutri_blocked_shown_session';
+
 export function PushNotificationManager() {
   const { permission, isSubscribed, isLoading, subscribe, refreshPermission } = usePushNotifications();
   const { toast } = useToast();
@@ -37,6 +41,9 @@ export function PushNotificationManager() {
   // para limpar o cache de permissão do navegador em modo PWA.
   const handleManualRefresh = async () => {
     setIsRefreshing(true);
+    // Clear the session flag BEFORE reloading so the blocked popup can
+    // reappear on the next load if the permission is still denied.
+    sessionStorage.removeItem(SESSION_BLOCKED_SHOWN);
     try {
       // Passamos forceReload=true para forçar o recarregamento da página
       // caso o navegador ainda esteja reportando 'denied' indevidamente.
