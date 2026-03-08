@@ -11,12 +11,13 @@ import { handleUpload, type HandleUploadBody } from '@vercel/blob/client';
 import { put } from '@vercel/blob';
 import multer from 'multer';
 import { eq, and, desc, or, sql } from 'drizzle-orm';
-import { anamnesisRecords, foodDiaryEntries, prescriptions, users, patients, subscriptions, activityLog, patientDocuments, anthropometricAssessments, pushSubscriptions } from '../shared/schema.js';
+import { anamnesisRecords, foodDiaryEntries, prescriptions, users, patients, subscriptions, activityLog, patientDocuments, anthropometricAssessments, pushSubscriptions, inAppNotifications } from '../shared/schema.js';
 import { db } from './db.js';
 import sharp from 'sharp';
 import { nanoid } from 'nanoid';
 import { logActivity } from './activity-logger.js';
 import { sendPushToUser, sendPushToAllPatients, getVapidPublicKey } from './push-notifications.js';
+import { createInAppNotification, createInAppNotificationForAllPatients } from './in-app-notifications.js';
 import ExcelJS from 'exceljs';
 import { format } from 'date-fns';
 
@@ -570,19 +571,25 @@ export async function setupRoutes(app: Express): Promise<void> {
       const prescription = await storage.publishPrescription(req.params.id);
       res.json(prescription);
 
-      // Disparar notificação push para o paciente (em background, sem bloquear a resposta)
+      // Disparar notificações (push + in-app) para o paciente em background
       try {
         const patient = await storage.getPatient(prescription.patientId);
         if (patient?.userId) {
-          await sendPushToUser(patient.userId, {
+          const notifPayload = {
             title: 'Novo Plano Alimentar Disponível! 🥗',
             body: `Seu plano "${prescription.title}" foi disponibilizado pelo seu nutricionista.`,
             url: '/my-plan',
-            type: 'plan',
-          });
+            type: 'plan' as const,
+          };
+          // Push (funciona apenas se o paciente autorizou)
+          await sendPushToUser(patient.userId, notifPayload).catch((e) =>
+            console.error('[PushNotifications] Erro ao enviar push de plano publicado:', e)
+          );
+          // In-app (sempre funciona, independente de permissão)
+          await createInAppNotification(patient.userId, notifPayload);
         }
-      } catch (pushErr) {
-        console.error('[PushNotifications] Erro ao enviar notificação de plano publicado:', pushErr);
+      } catch (notifErr) {
+        console.error('[Notifications] Erro ao enviar notificações de plano publicado:', notifErr);
       }
     } catch (error) {
       console.error("Error publishing prescription:", error);
@@ -1593,19 +1600,25 @@ export async function setupRoutes(app: Express): Promise<void> {
       }).returning();
       console.log(`[Upload] Document saved successfully: ${newDoc.id}`);
 
-      // Disparar notificação push para o paciente (em background, sem bloquear a resposta)
+      // Disparar notificações (push + in-app) para o paciente em background
       res.status(201).json(newDoc);
       try {
         if (patient.userId) {
-          await sendPushToUser(patient.userId, {
+          const assessmentPayload = {
             title: 'Relatório de Avaliação Disponível! 📊',
             body: `Um novo documento de avaliação (${safeFileName}) foi disponibilizado pelo seu nutricionista.`,
             url: '/assessments',
-            type: 'assessment',
-          });
+            type: 'assessment' as const,
+          };
+          // Push (funciona apenas se o paciente autorizou)
+          await sendPushToUser(patient.userId, assessmentPayload).catch((e) =>
+            console.error('[PushNotifications] Erro ao enviar push de avaliação:', e)
+          );
+          // In-app (sempre funciona, independente de permissão)
+          await createInAppNotification(patient.userId, assessmentPayload);
         }
-      } catch (pushErr) {
-        console.error('[PushNotifications] Erro ao enviar notificação de avaliação:', pushErr);
+      } catch (notifErr) {
+        console.error('[Notifications] Erro ao enviar notificações de avaliação:', notifErr);
       }
       return;
     } catch (error) {
@@ -1862,6 +1875,7 @@ export async function setupRoutes(app: Express): Promise<void> {
 
       const payload = { title, body, type: 'message' as const };
       let totalSent = 0;
+      let inAppCount = 0;
 
       if (targetUserId) {
         // Enviar para um paciente específico
@@ -1876,15 +1890,23 @@ export async function setupRoutes(app: Express): Promise<void> {
           return res.status(404).json({ message: 'Paciente não encontrado ou não pertence a você.' });
         }
 
+        // Push (funciona apenas se o paciente autorizou)
         totalSent = await sendPushToUser(targetUserId, payload);
+        // In-app (sempre funciona, independente de permissão)
+        await createInAppNotification(targetUserId, payload);
+        inAppCount = 1;
       } else {
         // Enviar para todos os pacientes do nutricionista
+        // Push (funciona apenas se o paciente autorizou)
         totalSent = await sendPushToAllPatients(req.user.id, payload);
+        // In-app (sempre funciona, independente de permissão)
+        inAppCount = await createInAppNotificationForAllPatients(req.user.id, payload);
       }
 
       return res.json({
         message: `Notificação enviada com sucesso.`,
         sent: totalSent,
+        inApp: inAppCount,
       });
     } catch (error) {
       console.error('[PushNotifications] Erro ao enviar mensagem:', error);
@@ -1912,6 +1934,78 @@ export async function setupRoutes(app: Express): Promise<void> {
     } catch (error) {
       console.error("Erro ao buscar última avaliação antropométrica:", error);
       res.status(500).json({ message: "Falha ao buscar avaliação antropométrica." });
+    }
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Rotas de Notificações In-App (inbox interno do paciente)
+  // Funcionam independente de qualquer permissão do sistema operacional.
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  // GET: Paciente busca suas notificações in-app (mais recentes primeiro)
+  app.get('/api/notifications/inbox', isAuthenticated, async (req: any, res) => {
+    try {
+      const notifications = await db
+        .select()
+        .from(inAppNotifications)
+        .where(eq(inAppNotifications.userId, req.user.id))
+        .orderBy(desc(inAppNotifications.createdAt))
+        .limit(50);
+      return res.json(notifications);
+    } catch (error) {
+      console.error('[InAppNotifications] Erro ao buscar notificações:', error);
+      res.status(500).json({ message: 'Falha ao buscar notificações.' });
+    }
+  });
+
+  // GET: Conta de notificações não lidas do paciente (para o badge)
+  app.get('/api/notifications/unread-count', isAuthenticated, async (req: any, res) => {
+    try {
+      const result = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(inAppNotifications)
+        .where(and(
+          eq(inAppNotifications.userId, req.user.id),
+          eq(inAppNotifications.isRead, false)
+        ));
+      return res.json({ count: result[0]?.count ?? 0 });
+    } catch (error) {
+      console.error('[InAppNotifications] Erro ao contar não lidas:', error);
+      res.status(500).json({ message: 'Falha ao contar notificações.' });
+    }
+  });
+
+  // PATCH: Paciente marca uma notificação como lida
+  app.patch('/api/notifications/:id/read', isAuthenticated, async (req: any, res) => {
+    try {
+      await db
+        .update(inAppNotifications)
+        .set({ isRead: true })
+        .where(and(
+          eq(inAppNotifications.id, req.params.id),
+          eq(inAppNotifications.userId, req.user.id)
+        ));
+      return res.json({ ok: true });
+    } catch (error) {
+      console.error('[InAppNotifications] Erro ao marcar como lida:', error);
+      res.status(500).json({ message: 'Falha ao marcar notificação como lida.' });
+    }
+  });
+
+  // PATCH: Paciente marca todas as notificações como lidas
+  app.patch('/api/notifications/read-all', isAuthenticated, async (req: any, res) => {
+    try {
+      await db
+        .update(inAppNotifications)
+        .set({ isRead: true })
+        .where(and(
+          eq(inAppNotifications.userId, req.user.id),
+          eq(inAppNotifications.isRead, false)
+        ));
+      return res.json({ ok: true });
+    } catch (error) {
+      console.error('[InAppNotifications] Erro ao marcar todas como lidas:', error);
+      res.status(500).json({ message: 'Falha ao marcar notificações como lidas.' });
     }
   });
 }

@@ -116,6 +116,31 @@ async function ensureRoutesRegistered() {
       console.error("[DB] Failed to ensure push_subscriptions table:", err);
     }
 
+    // Ensure in_app_notifications table exists for in-app inbox.
+    // Idempotent — safe to run on every cold start.
+    // Funciona como fallback para pacientes que não autorizaram notificações push.
+    try {
+      await db.execute(sql`
+        CREATE TABLE IF NOT EXISTS in_app_notifications (
+          id         VARCHAR PRIMARY KEY,
+          user_id    VARCHAR NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          title      VARCHAR NOT NULL,
+          body       TEXT NOT NULL,
+          type       VARCHAR NOT NULL DEFAULT 'general',
+          is_read    BOOLEAN NOT NULL DEFAULT FALSE,
+          url        TEXT,
+          created_at TIMESTAMP DEFAULT NOW()
+        )
+      `);
+      await db.execute(sql`
+        CREATE INDEX IF NOT EXISTS idx_in_app_notifications_user
+        ON in_app_notifications (user_id)
+      `);
+      console.log("[DB] in_app_notifications table ensured.");
+    } catch (err) {
+      console.error("[DB] Failed to ensure in_app_notifications table:", err);
+    }
+
     await setupRoutes(app);
     
     // Middleware de tratamento de erros

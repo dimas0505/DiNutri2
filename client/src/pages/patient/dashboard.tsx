@@ -1,5 +1,6 @@
-import { Bell, BellOff, ClipboardList, Cross, ShieldCheck, TrendingUp, User, UtensilsCrossed, ChefHat, BookOpen, LogOut } from "lucide-react";
+import { ClipboardList, Cross, ShieldCheck, User, UtensilsCrossed, ChefHat, BookOpen, LogOut } from "lucide-react";
 import { NotificationPrompt } from "@/components/NotificationPrompt";
+import { InboxBellButton } from "@/components/InboxPanel";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
@@ -152,7 +153,8 @@ export default function PatientDashboard() {
   const { user, logout } = useAuth();
   const [, setLocation] = useLocation();
   const invalidatePatientData = useInvalidatePatientData();
-  const { isSubscribed, permission } = usePushNotifications();
+  // O hook usePushNotifications ainda é usado pelo NotificationPrompt (renderizado abaixo)
+  usePushNotifications();
 
   // Invalida o cache ao montar o dashboard (ex: ao retornar via barra de navegação
   // inferior ou acessar diretamente pela URL)
@@ -232,21 +234,8 @@ export default function PatientDashboard() {
             </div>
 
             <div className="flex items-center gap-2">
-              <button
-                type="button"
-                className="relative w-10 h-10 rounded-full bg-white/20 flex items-center justify-center"
-                onClick={() => handleNavigate("/profile")}
-                title={isSubscribed ? "Notificações ativas" : "Ativar notificações"}
-              >
-                {isSubscribed
-                  ? <Bell className="w-5 h-5 text-white" />
-                  : <BellOff className="w-5 h-5 text-white/70" />
-                }
-                {/* Ponto vermelho quando notificações não estão ativas */}
-                {!isSubscribed && permission !== 'unsupported' && permission !== 'denied' && (
-                  <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-400 rounded-full border-2 border-[#7C3AED] animate-pulse" />
-                )}
-              </button>
+              {/* Sininho de inbox in-app — funciona independente de permissão push */}
+              <InboxBellButton />
               <button
                 type="button"
                 className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center"
