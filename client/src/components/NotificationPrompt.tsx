@@ -5,8 +5,10 @@
 // - Permissão "default": aparece toda vez que o app abre, até o usuário ativar.
 // - Permissão "denied": aparece UMA VEZ por sessão com instruções de Android/iPhone.
 //   Não fica em loop — o usuário precisa ir nas configurações do celular para resolver.
+// - Quando o usuário libera a permissão nas configurações do sistema e volta ao app,
+//   o flag de sessão é limpo e o popup de ativação reaparece automaticamente.
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Bell, X, BellRing, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
@@ -19,8 +21,22 @@ export function NotificationPrompt() {
   const { permission, isSubscribed, isLoading, subscribe } = usePushNotifications();
   const { toast } = useToast();
   const [visible, setVisible] = useState(false);
+  // Rastrear o valor anterior de permission para detectar transição denied → default
+  const prevPermissionRef = useRef<string | null>(null);
 
   useEffect(() => {
+    const prev = prevPermissionRef.current;
+
+    // ── FIX: Quando a permissão volta de "denied" para "default" (usuário
+    // liberou nas configurações do sistema e retornou ao app), limpar o flag
+    // de sessão para que o popup de ativação possa reaparecer normalmente.
+    if (prev === 'denied' && permission === 'default') {
+      sessionStorage.removeItem(SESSION_BLOCKED_SHOWN);
+      setVisible(false); // fechar qualquer popup aberto antes de reabrir
+    }
+
+    prevPermissionRef.current = permission;
+
     const timer = setTimeout(() => {
       if (isSubscribed || permission === "unsupported") return;
 

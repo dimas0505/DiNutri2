@@ -2,6 +2,11 @@
 // Componente informativo de notificações push no perfil do paciente.
 // Exibe o status atual e permite ATIVAR (sem opção de desativar — recurso crítico).
 // Quando bloqueado, exibe instruções por sistema operacional (Android / iPhone).
+//
+// FIX: Quando o usuário libera a permissão nas configurações do sistema e volta
+// ao perfil, o componente agora detecta a mudança via Permissions API /
+// visibilitychange (propagada pelo hook usePushNotifications) e exibe
+// automaticamente o botão "Ativar" em vez de continuar mostrando as instruções.
 
 import { Bell, BellRing, Loader2, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -47,6 +52,10 @@ export function PushNotificationManager() {
   }
 
   // ── Bloqueado — instruções por sistema operacional ──
+  // Este estado só é exibido quando Notification.permission === 'denied'.
+  // Quando o usuário libera a permissão nas configurações do sistema e retorna
+  // ao app, o hook detecta a mudança e permission volta para 'default',
+  // fazendo o componente renderizar o estado "Inativo" com o botão Ativar.
   if (permission === 'denied') {
     return (
       <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 space-y-3">
@@ -58,7 +67,7 @@ export function PushNotificationManager() {
           <div className="flex-1 min-w-0">
             <h3 className="text-sm font-semibold text-gray-800">Notificações Bloqueadas</h3>
             <p className="mt-0.5 text-xs text-amber-700 leading-relaxed">
-              As notificações do aplicativo estão bloqueadas. Para reativar, acesse as configurações do seu celular:
+              As notificações do aplicativo estão bloqueadas. Para reativar, acesse as configurações do seu celular e volte ao app:
             </p>
           </div>
         </div>
@@ -73,6 +82,7 @@ export function PushNotificationManager() {
             "Abra as Configurações do celular",
             "Toque em Aplicativos → DiNutri",
             "Toque em Notificações e ative",
+            "Volte ao app — o botão Ativar aparecerá aqui",
           ].map((step, i) => (
             <div key={i} className="flex items-start gap-2">
               <span className="shrink-0 w-4 h-4 rounded-full bg-[#7C3AED]/15 text-[#7C3AED] text-[10px] font-bold flex items-center justify-center mt-0.5">
@@ -93,6 +103,7 @@ export function PushNotificationManager() {
             "Abra os Ajustes do iPhone",
             "Role e toque em DiNutri",
             "Toque em Notificações e ative \"Permitir Notificações\"",
+            "Volte ao app — o botão Ativar aparecerá aqui",
           ].map((step, i) => (
             <div key={i} className="flex items-start gap-2">
               <span className="shrink-0 w-4 h-4 rounded-full bg-[#4E9F87]/15 text-[#4E9F87] text-[10px] font-bold flex items-center justify-center mt-0.5">
@@ -107,6 +118,8 @@ export function PushNotificationManager() {
   }
 
   // ── Inativo — botão para ativar ──
+  // Renderizado quando permission === 'default' (inclui o caso em que o usuário
+  // acabou de liberar a permissão nas configurações do sistema).
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
       <div className="flex items-start gap-3">
