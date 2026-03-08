@@ -1,33 +1,34 @@
 // ARQUIVO: ./client/src/components/PushNotificationManager.tsx
 // Componente informativo de notificações push no perfil do paciente.
 // Exibe o status atual e permite ATIVAR (sem opção de desativar — recurso crítico).
-// Quando bloqueado, exibe instruções por sistema operacional (Android / iPhone).
-//
-// SOLUÇÃO DEFINITIVA (Google - Finalização Manual):
-// Quando a permissão é concedida após reload, o botão muda para "Finalizar Ativação"
-// com animação pulsante, aguardando o clique do usuário para contornar a restrição
-// "User Gesture Requirement" do navegador.
-// - Se a permissão já é 'granted', assina direto no PushManager
-// - Se ainda é 'denied', injeta flag no sessionStorage e força reload
-// - Após o reload, o hook retoma a assinatura e sinaliza needsFinalization
+// Quando bloqueado, exibe instruções específicas por dispositivo e um botão simples de reload.
 
 import { Bell, BellRing, Loader2, CheckCircle2, AlertTriangle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { useToast } from '@/hooks/use-toast';
-import { useState } from 'react';
 
-// Shared key with NotificationPrompt — must be cleared before a force-reload so
-// that the blocked popup can reappear if permission is still denied after reload.
-const SESSION_BLOCKED_SHOWN = 'dinutri_blocked_shown_session';
+type DeviceType = 'android' | 'ios' | 'desktop-chrome' | 'desktop-firefox' | 'desktop-safari' | 'unknown';
 
-// Delay before reloading after nuclear Service Worker recovery
-const RECOVERY_RELOAD_DELAY_MS = 2000;
+function detectDevice(): DeviceType {
+  const ua = navigator.userAgent;
+  const isIos = /iphone|ipad|ipod/i.test(ua);
+  const isAndroid = /android/i.test(ua);
+  const isChrome = /chrome/i.test(ua) && !/edg/i.test(ua);
+  const isSafari = /safari/i.test(ua) && !/chrome/i.test(ua);
+  const isFirefox = /firefox/i.test(ua);
+
+  if (isIos) return 'ios';
+  if (isAndroid) return 'android';
+  if (isChrome) return 'desktop-chrome';
+  if (isFirefox) return 'desktop-firefox';
+  if (isSafari) return 'desktop-safari';
+  return 'unknown';
+}
 
 export function PushNotificationManager() {
-  const { permission, isSubscribed, isLoading, needsFinalization, subscribe } = usePushNotifications();
+  const { permission, isSubscribed, isLoading, subscribe } = usePushNotifications();
   const { toast } = useToast();
-  const [isRefreshing, setIsRefreshing] = useState(false);
 
   if (permission === 'unsupported') return null;
 
@@ -38,71 +39,6 @@ export function PushNotificationManager() {
         title: 'Notificações ativadas! 🔔',
         description: 'Você receberá alertas quando seu nutricionista disponibilizar novidades.',
       });
-    }
-  };
-
-  // ── Botão de revalidação manual (SOLUÇÃO GOOGLE) ──
-  // Implementa o fluxo de retomada automática + sincronização
-  const handleManualRefresh = async () => {
-    setIsRefreshing(true);
-    sessionStorage.removeItem(SESSION_BLOCKED_SHOWN);
-    
-    try {
-      const currentPerm = Notification.permission;
-
-      if (currentPerm === 'granted') {
-        // Se o navegador já reconheceu a permissão, só falta assinar no PushManager
-        console.log('[PushNotificationManager] Permissão já concedida, assinando...');
-        const success = await subscribe();
-        if (success) {
-          toast({ 
-            title: 'Notificações ativadas! 🔔', 
-            description: 'Tudo pronto para você receber os alertas.' 
-          });
-        } else {
-          // Permissão concedida mas subscribe() falhou — Service Worker provavelmente corrompido
-          console.log('[PushNotificationManager] Subscribe falhou com permissão granted. Iniciando recuperação nuclear...');
-          if ('serviceWorker' in navigator) {
-            try {
-              const registrations = await navigator.serviceWorker.getRegistrations();
-              await Promise.all(registrations.map((reg) => reg.unregister()));
-              console.log('[PushNotificationManager] Service Workers desregistrados.');
-            } catch (swErr) {
-              console.error('[PushNotificationManager] Erro ao desregistrar Service Workers:', swErr);
-            }
-          }
-          toast({ 
-            title: 'Limpando sistema...', 
-            description: 'O app vai reiniciar para corrigir. Aguarde.',
-            variant: 'destructive'
-          });
-          setTimeout(() => window.location.reload(), RECOVERY_RELOAD_DELAY_MS);
-        }
-      } else if (currentPerm === 'denied') {
-        // Cenário principal no Android/iOS:
-        // O navegador ainda reporta 'denied' mesmo que o usuário já tenha ativado no SO.
-        // Salvamos a intenção antes do reload — o hook vai sinalizá-la após recarregar.
-        console.log('[PushNotificationManager] Permissão ainda negada, injetando flag e recarregando...');
-        sessionStorage.setItem('PENDING_PUSH_SUBSCRIBE', 'true');
-        toast({ 
-          title: 'Aplicando permissões...', 
-          description: 'Recarregando o aplicativo para ler as novas configurações do sistema.' 
-        });
-        window.location.reload();
-      } else {
-        // Estado 'default' — solicitar permissão nativa ao usuário
-        console.log('[PushNotificationManager] Permissão em estado default, solicitando...');
-        await subscribe();
-      }
-    } catch (err) {
-      console.error('[PushNotificationManager] Erro ao revalidar:', err);
-      toast({ 
-        title: 'Erro', 
-        description: 'Falha ao verificar permissões. Tente novamente.', 
-        variant: 'destructive' 
-      });
-    } finally {
-      setIsRefreshing(false);
     }
   };
 
@@ -128,8 +64,71 @@ export function PushNotificationManager() {
     );
   }
 
-  // ── Bloqueado — instruções por sistema operacional ──
+  // ── Bloqueado — instruções específicas por dispositivo ──
   if (permission === 'denied') {
+    const device = detectDevice();
+
+    const instructionsByDevice: Record<string, { emoji: string; label: string; steps: string[] }> = {
+      android: {
+        emoji: '🤖',
+        label: 'Android',
+        steps: [
+          'Abra as Configurações do celular',
+          'Toque em Aplicativos → DiNutri',
+          'Toque em Notificações e ative',
+          'Volte ao app e toque em "Já reativei"',
+        ],
+      },
+      ios: {
+        emoji: '🍎',
+        label: 'iPhone',
+        steps: [
+          'Abra os Ajustes do iPhone',
+          'Role até encontrar DiNutri e toque',
+          'Toque em Notificações',
+          'Ative "Permitir Notificações" e volte ao app',
+        ],
+      },
+      'desktop-chrome': {
+        emoji: '🌐',
+        label: 'Chrome (Desktop)',
+        steps: [
+          'Clique no 🔒 cadeado na barra de endereços',
+          'Ao lado de "Notificações", selecione "Permitir"',
+          'Recarregue a página',
+        ],
+      },
+      'desktop-firefox': {
+        emoji: '🦊',
+        label: 'Firefox (Desktop)',
+        steps: [
+          'Clique no 🔒 cadeado na barra de endereços',
+          'Clique em "Mais informações"',
+          'Aba "Permissões" → "Receber notificações" → desmarque "Bloquear"',
+          'Recarregue a página',
+        ],
+      },
+      'desktop-safari': {
+        emoji: '🧭',
+        label: 'Safari (Desktop)',
+        steps: [
+          'Menu Safari → Configurações para este site',
+          'Ao lado de "Notificações", selecione "Permitir"',
+          'Recarregue a página',
+        ],
+      },
+    };
+
+    const info = instructionsByDevice[device] ?? {
+      emoji: '⚙️',
+      label: 'Configurações do navegador',
+      steps: [
+        'Acesse as configurações do seu navegador',
+        'Encontre as permissões para o site do DiNutri',
+        'Ative as notificações e recarregue a página',
+      ],
+    };
+
     return (
       <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 space-y-3">
         {/* Cabeçalho */}
@@ -140,24 +139,20 @@ export function PushNotificationManager() {
           <div className="flex-1 min-w-0">
             <h3 className="text-sm font-semibold text-gray-800">Notificações Bloqueadas</h3>
             <p className="mt-0.5 text-xs text-amber-700 leading-relaxed">
-              As notificações do aplicativo estão bloqueadas. Para reativar, acesse as configurações do seu celular:
+              Para reativar, siga os passos abaixo no seu dispositivo:
             </p>
           </div>
         </div>
 
-        {/* Android */}
+        {/* Instruções específicas para o dispositivo detectado */}
         <div className="bg-white border border-amber-200 rounded-xl p-3 space-y-1.5">
           <div className="flex items-center gap-1.5 mb-1">
-            <span className="text-sm">🤖</span>
-            <p className="text-xs font-bold text-gray-700">Android</p>
+            <span className="text-sm">{info.emoji}</span>
+            <p className="text-xs font-bold text-gray-700">{info.label}</p>
           </div>
-          {[
-            "Abra as Configurações do celular",
-            "Toque em Aplicativos → DiNutri",
-            "Toque em Notificações e ative",
-          ].map((step, i) => (
+          {info.steps.map((step, i) => (
             <div key={i} className="flex items-start gap-2">
-              <span className="shrink-0 w-4 h-4 rounded-full bg-[#7C3AED]/15 text-[#7C3AED] text-[10px] font-bold flex items-center justify-center mt-0.5">
+              <span className="shrink-0 w-4 h-4 rounded-full bg-amber-100 text-amber-700 text-[10px] font-bold flex items-center justify-center mt-0.5">
                 {i + 1}
               </span>
               <p className="text-[11px] text-gray-600 leading-snug">{step}</p>
@@ -165,57 +160,15 @@ export function PushNotificationManager() {
           ))}
         </div>
 
-        {/* iPhone */}
-        <div className="bg-white border border-amber-200 rounded-xl p-3 space-y-1.5">
-          <div className="flex items-center gap-1.5 mb-1">
-            <span className="text-sm">🍎</span>
-            <p className="text-xs font-bold text-gray-700">iPhone</p>
-          </div>
-          {[
-            "Abra os Ajustes do iPhone",
-            "Role e toque em DiNutri",
-            "Toque em Notificações e ative \"Permitir Notificações\"",
-          ].map((step, i) => (
-            <div key={i} className="flex items-start gap-2">
-              <span className="shrink-0 w-4 h-4 rounded-full bg-[#4E9F87]/15 text-[#4E9F87] text-[10px] font-bold flex items-center justify-center mt-0.5">
-                {i + 1}
-              </span>
-              <p className="text-[11px] text-gray-600 leading-snug">{step}</p>
-            </div>
-          ))}
-        </div>
-
-        {/* ── Botão dinâmico: "Verificar" ou "Finalizar Ativação" ── */}
-        {/* SOLUÇÃO GOOGLE: Quando needsFinalization é true, o botão muda para "Finalizar Ativação" */}
-        {/* com animação pulsante, aguardando o clique do usuário (user gesture) para contornar */}
-        {/* a restrição de segurança do navegador. */}
+        {/* Botão simples de recarregar */}
         <Button
-          onClick={handleManualRefresh}
-          disabled={isRefreshing || isLoading}
-          variant={needsFinalization ? "default" : "outline"}
+          onClick={() => window.location.reload()}
+          variant="outline"
           size="sm"
-          className={`w-full mt-2 transition-all ${
-            needsFinalization 
-              ? 'bg-blue-600 hover:bg-blue-700 text-white animate-pulse' 
-              : 'border-amber-300 text-amber-700 hover:bg-amber-100'
-          }`}
+          className="w-full mt-2 border-amber-300 text-amber-700 hover:bg-amber-100"
         >
-          {isRefreshing || isLoading ? (
-            <>
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              Processando...
-            </>
-          ) : needsFinalization ? (
-            <>
-              <CheckCircle2 className="h-4 w-4 mr-2" />
-              Finalizar Ativação (Último passo)
-            </>
-          ) : (
-            <>
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Já ativei, verificar novamente
-            </>
-          )}
+          <RefreshCw className="h-4 w-4 mr-2" />
+          Já reativei nas configurações — recarregar
         </Button>
       </div>
     );
