@@ -78,6 +78,9 @@ export default {
         'safe-left': 'env(safe-area-inset-left)',
         'safe-right': 'env(safe-area-inset-right)',
       },
+      padding: {
+        safe: 'env(safe-area-inset-bottom, 16px)',
+      },
       minHeight: {
         'touch': '44px',
       },
