@@ -1,22 +1,19 @@
 // ARQUIVO: ./client/src/components/PushNotificationManager.tsx
-// Componente para o paciente ativar/desativar notificações push
+// Componente informativo de notificações push no perfil do paciente.
+// Exibe o status atual e permite ATIVAR (mas não desativar pelo app — recurso importante).
 
-import { Bell, BellOff, BellRing, Loader2 } from 'lucide-react';
+import { Bell, BellRing, Loader2, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { useToast } from '@/hooks/use-toast';
 
-interface PushNotificationManagerProps {
-  /** Se true, exibe como card completo; se false, exibe como botão compacto */
-  variant?: 'card' | 'compact';
-}
-
-export function PushNotificationManager({ variant = 'card' }: PushNotificationManagerProps) {
-  const { permission, isSubscribed, isLoading, subscribe, unsubscribe } = usePushNotifications();
+export function PushNotificationManager() {
+  const { permission, isSubscribed, isLoading, subscribe } = usePushNotifications();
   const { toast } = useToast();
 
+  // Não exibir nada se o navegador não suporta notificações
   if (permission === 'unsupported') {
-    return null; // Não exibir nada se o navegador não suporta
+    return null;
   }
 
   const handleSubscribe = async () => {
@@ -28,80 +25,77 @@ export function PushNotificationManager({ variant = 'card' }: PushNotificationMa
       });
     } else if (permission === 'denied') {
       toast({
-        title: 'Permissão negada',
-        description: 'Para ativar as notificações, acesse as configurações do seu navegador e permita notificações para este site.',
+        title: 'Permissão bloqueada',
+        description:
+          'Para ativar as notificações, acesse as configurações do seu navegador e permita notificações para este site.',
         variant: 'destructive',
       });
     }
   };
 
-  const handleUnsubscribe = async () => {
-    await unsubscribe();
-    toast({
-      title: 'Notificações desativadas',
-      description: 'Você não receberá mais alertas push deste aplicativo.',
-    });
-  };
-
-  if (variant === 'compact') {
+  // Estado: notificações já ativas — exibe confirmação, sem botão de desativar
+  if (isSubscribed) {
     return (
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={isSubscribed ? handleUnsubscribe : handleSubscribe}
-        disabled={isLoading || permission === 'denied'}
-        className="gap-2"
-      >
-        {isLoading ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
-        ) : isSubscribed ? (
-          <BellOff className="h-4 w-4" />
-        ) : (
-          <Bell className="h-4 w-4" />
-        )}
-        {isSubscribed ? 'Desativar notificações' : 'Ativar notificações'}
-      </Button>
+      <div className="rounded-xl border border-[#4E9F87]/30 bg-[#4E9F87]/5 p-4">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#4E9F87]/15">
+            <BellRing className="h-5 w-5 text-[#4E9F87]" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1.5">
+              <h3 className="text-sm font-semibold text-gray-800">Notificações Ativas</h3>
+              <CheckCircle2 className="h-4 w-4 text-[#4E9F87]" />
+            </div>
+            <p className="mt-0.5 text-xs text-gray-500 leading-relaxed">
+              Você receberá alertas de novos planos, avaliações e mensagens do seu nutricionista.
+            </p>
+          </div>
+        </div>
+      </div>
     );
   }
 
+  // Estado: permissão bloqueada no navegador
+  if (permission === 'denied') {
+    return (
+      <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+        <div className="flex items-start gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-100">
+            <Bell className="h-5 w-5 text-amber-500" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h3 className="text-sm font-semibold text-gray-800">Notificações Bloqueadas</h3>
+            <p className="mt-0.5 text-xs text-amber-700 leading-relaxed">
+              As notificações estão bloqueadas no seu navegador. Para ativar, acesse as{' '}
+              <strong>configurações do navegador</strong> e permita notificações para este site.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Estado: ainda não ativou — exibe card para ativar
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
       <div className="flex items-start gap-3">
-        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${isSubscribed ? 'bg-[#4E9F87]/10' : 'bg-gray-100'}`}>
-          {isSubscribed ? (
-            <BellRing className="h-5 w-5 text-[#4E9F87]" />
-          ) : (
-            <Bell className="h-5 w-5 text-gray-400" />
-          )}
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-100">
+          <Bell className="h-5 w-5 text-gray-400" />
         </div>
         <div className="flex-1 min-w-0">
-          <h3 className="text-sm font-semibold text-gray-800">
-            Notificações Push
-          </h3>
+          <h3 className="text-sm font-semibold text-gray-800">Notificações Push</h3>
           <p className="mt-0.5 text-xs text-gray-500 leading-relaxed">
-            {isSubscribed
-              ? 'Você receberá alertas quando seu nutricionista disponibilizar um novo plano alimentar, relatório de avaliação ou enviar uma mensagem.'
-              : permission === 'denied'
-              ? 'Notificações bloqueadas. Acesse as configurações do navegador para permitir.'
-              : 'Ative para receber alertas mesmo com o aplicativo fechado.'}
+            Ative para receber alertas do seu nutricionista mesmo com o aplicativo fechado.
           </p>
-          {permission === 'denied' && (
-            <p className="mt-1 text-xs text-amber-600 font-medium">
-              ⚠️ Permissão bloqueada no navegador
-            </p>
-          )}
         </div>
         <Button
-          variant={isSubscribed ? 'outline' : 'default'}
           size="sm"
-          onClick={isSubscribed ? handleUnsubscribe : handleSubscribe}
-          disabled={isLoading || permission === 'denied'}
-          className={`shrink-0 ${!isSubscribed && permission !== 'denied' ? 'bg-[#4E9F87] hover:bg-[#3d8a74] text-white' : ''}`}
+          onClick={handleSubscribe}
+          disabled={isLoading}
+          className="shrink-0 bg-[#4E9F87] hover:bg-[#3d8a74] text-white"
         >
           {isLoading ? (
             <Loader2 className="h-4 w-4 animate-spin" />
-          ) : isSubscribed ? (
-            'Desativar'
           ) : (
             'Ativar'
           )}
