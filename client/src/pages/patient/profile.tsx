@@ -213,7 +213,7 @@ export default function PatientProfilePage() {
               <TabsContent value="personal">
                 <div className="space-y-2.5">
                   {/* Card de Notificações Push */}
-                  <PushNotificationManager variant="card" />
+                  <PushNotificationManager />
                   {personalItems.map((item) => {
                     const Icon = item.icon;
                     return (

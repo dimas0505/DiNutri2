@@ -1,4 +1,6 @@
-import { Bell, ClipboardList, Cross, ShieldCheck, TrendingUp, User, UtensilsCrossed, ChefHat, BookOpen, LogOut } from "lucide-react";
+import { Bell, BellOff, ClipboardList, Cross, ShieldCheck, TrendingUp, User, UtensilsCrossed, ChefHat, BookOpen, LogOut } from "lucide-react";
+import { NotificationPrompt } from "@/components/NotificationPrompt";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { MobileLayout } from "@/components/layout/mobile-layout";
@@ -150,6 +152,7 @@ export default function PatientDashboard() {
   const { user, logout } = useAuth();
   const [, setLocation] = useLocation();
   const invalidatePatientData = useInvalidatePatientData();
+  const { isSubscribed, permission } = usePushNotifications();
 
   // Invalida o cache ao montar o dashboard (ex: ao retornar via barra de navegação
   // inferior ou acessar diretamente pela URL)
@@ -213,6 +216,8 @@ export default function PatientDashboard() {
 
   return (
     <MobileLayout hideHeader>
+      {/* Popup persuasivo para ativar notificações push */}
+      <NotificationPrompt />
       <div className="min-h-screen bg-[#F0F1F7] pb-24">
         <section className="bg-gradient-to-b from-[#5B21B6] to-[#7C3AED] text-white px-5 pt-[max(12px,env(safe-area-inset-top))] pb-8 rounded-b-[22px] shadow-sm">
           <div className="flex items-center justify-between">
@@ -229,11 +234,18 @@ export default function PatientDashboard() {
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center"
+                className="relative w-10 h-10 rounded-full bg-white/20 flex items-center justify-center"
                 onClick={() => handleNavigate("/profile")}
-                title="Perfil"
+                title={isSubscribed ? "Notificações ativas" : "Ativar notificações"}
               >
-                <Bell className="w-5 h-5 text-white" />
+                {isSubscribed
+                  ? <Bell className="w-5 h-5 text-white" />
+                  : <BellOff className="w-5 h-5 text-white/70" />
+                }
+                {/* Ponto vermelho quando notificações não estão ativas */}
+                {!isSubscribed && permission !== 'unsupported' && permission !== 'denied' && (
+                  <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-400 rounded-full border-2 border-[#7C3AED] animate-pulse" />
+                )}
               </button>
               <button
                 type="button"

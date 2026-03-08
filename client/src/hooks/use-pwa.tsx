@@ -34,6 +34,20 @@ export function usePWA() {
     const handleAppInstalled = () => {
       setIsInstalled(true);
       setInstallPrompt(null);
+      // Solicitar permissão de notificação automaticamente após instalar o app
+      // Aguarda 3 segundos para o app terminar de abrir
+      setTimeout(() => {
+        if (
+          'Notification' in window &&
+          Notification.permission === 'default' &&
+          'serviceWorker' in navigator &&
+          'PushManager' in window
+        ) {
+          Notification.requestPermission().then((result) => {
+            console.log('[PWA] Permissão de notificação após instalação:', result);
+          });
+        }
+      }, 3000);
     };
 
     checkInstalled();
