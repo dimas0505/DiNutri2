@@ -48,11 +48,37 @@ export function PushNotificationManager() {
       // Passamos forceReload=true para forçar o recarregamento da página
       // caso o navegador ainda esteja reportando 'denied' indevidamente.
       await refreshPermission(true);
-      
-      toast({
-        title: 'Verificando...',
-        description: 'Permissão revalidada. Se você ativou as notificações, o botão "Ativar" aparecerá.',
-      });
+
+      // Após refreshPermission, se a permissão já for 'granted' (usuário ativou
+      // nas configurações do sistema e voltou ao app), completar a subscrição push
+      // automaticamente — sem exigir que o usuário clique em outro botão.
+      const currentPermission = Notification.permission;
+      if (currentPermission === 'granted') {
+        const success = await subscribe();
+        if (success) {
+          toast({
+            title: 'Notificações ativadas! 🔔',
+            description: 'Você receberá alertas quando seu nutricionista disponibilizar novidades.',
+          });
+          return;
+        } else {
+          toast({
+            title: 'Erro ao ativar notificações',
+            description: 'Não foi possível concluir a subscrição. Tente tocar em "Ativar" novamente.',
+            variant: 'destructive',
+          });
+          return;
+        }
+      }
+
+      // Se ainda não for 'granted' (ex: reload vai ocorrer, ou usuário não ativou ainda),
+      // mostrar toast informativo apenas quando não vamos recarregar a página
+      if (currentPermission !== 'denied') {
+        toast({
+          title: 'Verificando...',
+          description: 'Permissão revalidada. Se você ativou as notificações, o botão "Ativar" aparecerá.',
+        });
+      }
     } catch (err) {
       console.error('Erro ao revalidar permissão:', err);
       toast({
