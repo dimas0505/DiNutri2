@@ -32,12 +32,16 @@ export function PushNotificationManager() {
   };
 
   // ── Botão de revalidação manual ──
-  // Força o hook a verificar a permissão novamente sem recarregar a página.
-  // Essencial para PWAs onde o navegador não detecta mudanças automaticamente.
+  // Força o hook a verificar a permissão novamente.
+  // Se o navegador ainda retornar 'denied', o hook forçará um reload da página
+  // para limpar o cache de permissão do navegador em modo PWA.
   const handleManualRefresh = async () => {
     setIsRefreshing(true);
     try {
-      await refreshPermission();
+      // Passamos forceReload=true para forçar o recarregamento da página
+      // caso o navegador ainda esteja reportando 'denied' indevidamente.
+      await refreshPermission(true);
+      
       toast({
         title: 'Verificando...',
         description: 'Permissão revalidada. Se você ativou as notificações, o botão "Ativar" aparecerá.',
