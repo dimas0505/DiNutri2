@@ -31,15 +31,20 @@ export function NotificationPrompt() {
     // liberou nas configurações do sistema e retornou ao app), limpar o flag
     // de sessão para que o popup de ativação possa reaparecer normalmente.
     if (prev === 'denied' && permission === 'default') {
+      console.log('[NotificationPrompt] Permissão mudou de denied para default. Limpando flag de sessão.');
       sessionStorage.removeItem(SESSION_BLOCKED_SHOWN);
       setVisible(false); // fechar qualquer popup aberto antes de reabrir
     }
 
     prevPermissionRef.current = permission;
 
-    const timer = setTimeout(() => {
-      if (isSubscribed || permission === "unsupported") return;
+    // Se já estiver inscrito ou não suportado, não mostra nada
+    if (isSubscribed || permission === "unsupported") {
+      setVisible(false);
+      return;
+    }
 
+    const timer = setTimeout(() => {
       if (permission === "denied") {
         // Mostrar o popup de bloqueado apenas uma vez por sessão
         const alreadyShown = sessionStorage.getItem(SESSION_BLOCKED_SHOWN);
@@ -47,7 +52,7 @@ export function NotificationPrompt() {
           setVisible(true);
           sessionStorage.setItem(SESSION_BLOCKED_SHOWN, "1");
         }
-      } else {
+      } else if (permission === "default") {
         // Permissão "default": mostrar toda vez até ativar
         setVisible(true);
       }
@@ -64,8 +69,6 @@ export function NotificationPrompt() {
         description: "Você receberá alertas do seu nutricionista em tempo real.",
       });
     }
-    // Se negado agora, o useEffect vai re-executar com permission="denied"
-    // e o popup de instruções aparecerá automaticamente
   };
 
   const handleDismiss = () => setVisible(false);
