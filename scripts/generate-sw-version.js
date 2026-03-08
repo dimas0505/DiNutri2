@@ -12,8 +12,10 @@ const swDistPath = path.resolve(process.cwd(), 'dist/public/sw.js');
 let swContent = fs.readFileSync(swTemplatePath, 'utf8');
 
 // Replace the static cache version with the dynamic one
+// FIX: Usar regex mais robusto que detecta qualquer número de versão
+// e não falha quando o comentário muda (ex: 'dinutri-v2' com comentário)
 swContent = swContent.replace(
-  /const CACHE_NAME = 'dinutri-v1';/,
+  /const CACHE_NAME = 'dinutri-v\d+';[^\n]*/,
   `const CACHE_NAME = 'dinutri-v${version}';`
 );
 
