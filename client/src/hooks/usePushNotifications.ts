@@ -1,5 +1,10 @@
 // ARQUIVO: ./client/src/hooks/usePushNotifications.ts
 // Hook para gerenciar notificações push no frontend (Web Push API)
+//
+// SOLUÇÃO DEFINITIVA (Google - Finalização Manual):
+// - Contorna a restrição "User Gesture Requirement" dos navegadores
+// - Usa needsFinalization para sinalizar quando o usuário precisa clicar para finalizar
+// - Garante que subscribe() seja chamado dentro de um evento de clique
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { apiRequest } from '@/lib/queryClient';
@@ -10,6 +15,7 @@ interface UsePushNotificationsReturn {
   permission: PermissionState;
   isSubscribed: boolean;
   isLoading: boolean;
+  needsFinalization: boolean;
   subscribe: () => Promise<boolean>;
   unsubscribe: () => Promise<void>;
   refreshPermission: (forceReload?: boolean) => Promise<void>;
@@ -34,6 +40,7 @@ export function usePushNotifications(): UsePushNotificationsReturn {
   const [permission, setPermission] = useState<PermissionState>('default');
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [needsFinalization, setNeedsFinalization] = useState(false);
   
   // Ref para rastrear o estado anterior e evitar updates desnecessários
   const permissionRef = useRef<PermissionState>('default');
@@ -121,6 +128,8 @@ export function usePushNotifications(): UsePushNotificationsReturn {
 
   /**
    * Solicita permissão ao usuário e registra a assinatura push no servidor.
+   * IMPORTANTE: Esta função deve ser chamada dentro de um evento de clique (user gesture)
+   * para contornar a restrição de segurança do navegador.
    */
   const subscribe = useCallback(async (): Promise<boolean> => {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
@@ -129,7 +138,12 @@ export function usePushNotifications(): UsePushNotificationsReturn {
 
     setIsLoading(true);
     try {
-      const result = await Notification.requestPermission();
+      // Se a permissão já é 'granted', pula o requestPermission()
+      let result = Notification.permission;
+      if (result === 'default') {
+        result = await Notification.requestPermission();
+      }
+      
       await refreshPermission();
 
       if (result !== 'granted') {
@@ -156,6 +170,11 @@ export function usePushNotifications(): UsePushNotificationsReturn {
       });
 
       setIsSubscribed(true);
+      setNeedsFinalization(false);
+      
+      // Limpar a flag de finalização
+      sessionStorage.removeItem('PENDING_PUSH_SUBSCRIBE');
+      
       // Avisa todas as outras instâncias do hook que a subscrição mudou
       window.dispatchEvent(new Event('push-subscription-changed'));
       return true;
@@ -189,40 +208,43 @@ export function usePushNotifications(): UsePushNotificationsReturn {
     }
   }, []);
 
-  // Sincronização global entre instâncias + retomada após reload
+  // Sincronização global entre instâncias + detecção de finalização necessária
   useEffect(() => {
     // 1. Ouvir evento global de sincronização entre componentes
     const handleSync = () => refreshPermission(false);
     window.addEventListener('push-subscription-changed', handleSync);
 
-    // 2. Retomar assinatura automaticamente após reload forçado
-    // O botão "Já ativei" salva PENDING_PUSH_SUBSCRIBE antes do reload.
-    // Após o reload, Notification.permission já reflete a realidade do SO.
-    const checkPendingSubscription = async () => {
+    // 2. Detectar quando a permissão foi concedida após reload (necessita finalização manual)
+    // O navegador bloqueia subscribe() sem um clique do usuário, então sinalizamos para o componente
+    const checkPendingSubscription = () => {
       const pending = sessionStorage.getItem('PENDING_PUSH_SUBSCRIBE');
       if (pending === 'true') {
-        sessionStorage.removeItem('PENDING_PUSH_SUBSCRIBE');
         console.log('[PushNotifications] Flag PENDING_PUSH_SUBSCRIBE encontrada. Verificando permissão após reload...');
-        if (Notification.permission === 'granted') {
-          console.log('[PushNotifications] Permissão granted após reload. Assinando automaticamente...');
-          await subscribe();
+        
+        // Se a permissão já é granted após o reload, sinalizamos que precisa finalizar
+        if (Notification.permission === 'granted' && !isSubscribed) {
+          console.log('[PushNotifications] Permissão granted após reload. Aguardando clique do usuário para finalizar...');
+          setNeedsFinalization(true);
+        } else if (Notification.permission !== 'granted') {
+          // Se ainda não foi concedida, limpamos a flag
+          sessionStorage.removeItem('PENDING_PUSH_SUBSCRIBE');
+          setNeedsFinalization(false);
         }
       }
     };
 
-    checkPendingSubscription().catch((err) => {
-      console.error('[PushNotifications] Erro ao verificar subscrição pendente:', err);
-    });
+    checkPendingSubscription();
 
     return () => {
       window.removeEventListener('push-subscription-changed', handleSync);
     };
-  }, [refreshPermission, subscribe]);
+  }, [isSubscribed]);
 
   return { 
     permission, 
     isSubscribed, 
     isLoading, 
+    needsFinalization,
     subscribe, 
     unsubscribe,
     refreshPermission 
