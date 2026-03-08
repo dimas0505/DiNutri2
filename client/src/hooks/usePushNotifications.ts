@@ -35,11 +35,12 @@ export function usePushNotifications(): UsePushNotificationsReturn {
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   
-  // Ref para evitar loops infinitos e garantir acesso ao estado atual em callbacks
+  // Ref para rastrear o estado anterior e evitar updates desnecessários
   const permissionRef = useRef<PermissionState>('default');
 
   /**
    * Sincroniza o estado da permissão e da assinatura com a realidade do navegador.
+   * Pode ser chamada manualmente (ex: via botão "Verificar novamente").
    */
   const refreshPermission = useCallback(async () => {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
@@ -50,14 +51,14 @@ export function usePushNotifications(): UsePushNotificationsReturn {
 
     const currentPermission = Notification.permission as PermissionState;
     
-    // Só atualiza se houver mudança real para evitar re-renders desnecessários
+    // Só atualiza se houver mudança real
     if (permissionRef.current !== currentPermission) {
       console.log(`[PushNotifications] Mudança detectada: ${permissionRef.current} -> ${currentPermission}`);
       setPermission(currentPermission);
       permissionRef.current = currentPermission;
     }
 
-    // Se a permissão for 'granted' ou 'default', verifica se há assinatura ativa
+    // Se a permissão não for 'denied', verifica assinatura
     if (currentPermission !== 'denied') {
       try {
         const registration = await navigator.serviceWorker.ready;
@@ -76,7 +77,6 @@ export function usePushNotifications(): UsePushNotificationsReturn {
     refreshPermission();
 
     // 1. Permissions API (Reativo)
-    // Melhor método, mas nem todos os navegadores disparam 'onchange' para notificações
     let permissionStatus: PermissionStatus | null = null;
     if ('permissions' in navigator) {
       navigator.permissions.query({ name: 'notifications' as PermissionName }).then((status) => {
@@ -91,7 +91,6 @@ export function usePushNotifications(): UsePushNotificationsReturn {
     }
 
     // 2. Visibility Change (Foco do App)
-    // Essencial para PWAs: quando o usuário volta das configurações do Android/iOS
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         console.log('[PushNotifications] App voltou ao foco, revalidando permissão...');
@@ -100,18 +99,8 @@ export function usePushNotifications(): UsePushNotificationsReturn {
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
-    // 3. Polling de Segurança (Fallback Extremo)
-    // Alguns navegadores Android não disparam visibilitychange corretamente em modo PWA.
-    // O polling de 2 segundos garante que a UI atualize mesmo sem eventos.
-    const interval = setInterval(() => {
-      if (document.visibilityState === 'visible') {
-        refreshPermission();
-      }
-    }, 2000);
-
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      clearInterval(interval);
       if (permissionStatus) {
         permissionStatus.onchange = null;
       }

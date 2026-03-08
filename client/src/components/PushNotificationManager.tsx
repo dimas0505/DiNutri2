@@ -3,19 +3,21 @@
 // Exibe o status atual e permite ATIVAR (sem opção de desativar — recurso crítico).
 // Quando bloqueado, exibe instruções por sistema operacional (Android / iPhone).
 //
-// FIX: Quando o usuário libera a permissão nas configurações do sistema e volta
-// ao perfil, o componente agora detecta a mudança via Permissions API /
-// visibilitychange (propagada pelo hook usePushNotifications) e exibe
-// automaticamente o botão "Ativar" em vez de continuar mostrando as instruções.
+// FIX DEFINITIVO: Adiciona botão "Já ativei, verificar novamente" que força
+// uma revalidação manual da permissão. Isso contorna limitações de cache de
+// permissão em PWAs Android/iOS onde o navegador não detecta mudanças
+// automaticamente após o usuário voltar das configurações do sistema.
 
-import { Bell, BellRing, Loader2, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { Bell, BellRing, Loader2, CheckCircle2, AlertTriangle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { useToast } from '@/hooks/use-toast';
+import { useState } from 'react';
 
 export function PushNotificationManager() {
-  const { permission, isSubscribed, isLoading, subscribe } = usePushNotifications();
+  const { permission, isSubscribed, isLoading, subscribe, refreshPermission } = usePushNotifications();
   const { toast } = useToast();
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   if (permission === 'unsupported') return null;
 
@@ -26,6 +28,29 @@ export function PushNotificationManager() {
         title: 'Notificações ativadas! 🔔',
         description: 'Você receberá alertas quando seu nutricionista disponibilizar novidades.',
       });
+    }
+  };
+
+  // ── Botão de revalidação manual ──
+  // Força o hook a verificar a permissão novamente sem recarregar a página.
+  // Essencial para PWAs onde o navegador não detecta mudanças automaticamente.
+  const handleManualRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await refreshPermission();
+      toast({
+        title: 'Verificando...',
+        description: 'Permissão revalidada. Se você ativou as notificações, o botão "Ativar" aparecerá.',
+      });
+    } catch (err) {
+      console.error('Erro ao revalidar permissão:', err);
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível revalidar a permissão. Tente novamente.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsRefreshing(false);
     }
   };
 
@@ -52,10 +77,6 @@ export function PushNotificationManager() {
   }
 
   // ── Bloqueado — instruções por sistema operacional ──
-  // Este estado só é exibido quando Notification.permission === 'denied'.
-  // Quando o usuário libera a permissão nas configurações do sistema e retorna
-  // ao app, o hook detecta a mudança e permission volta para 'default',
-  // fazendo o componente renderizar o estado "Inativo" com o botão Ativar.
   if (permission === 'denied') {
     return (
       <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 space-y-3">
@@ -67,7 +88,7 @@ export function PushNotificationManager() {
           <div className="flex-1 min-w-0">
             <h3 className="text-sm font-semibold text-gray-800">Notificações Bloqueadas</h3>
             <p className="mt-0.5 text-xs text-amber-700 leading-relaxed">
-              As notificações do aplicativo estão bloqueadas. Para reativar, acesse as configurações do seu celular e volte ao app:
+              As notificações do aplicativo estão bloqueadas. Para reativar, acesse as configurações do seu celular:
             </p>
           </div>
         </div>
@@ -82,7 +103,6 @@ export function PushNotificationManager() {
             "Abra as Configurações do celular",
             "Toque em Aplicativos → DiNutri",
             "Toque em Notificações e ative",
-            "Volte ao app — o botão Ativar aparecerá aqui",
           ].map((step, i) => (
             <div key={i} className="flex items-start gap-2">
               <span className="shrink-0 w-4 h-4 rounded-full bg-[#7C3AED]/15 text-[#7C3AED] text-[10px] font-bold flex items-center justify-center mt-0.5">
@@ -103,7 +123,6 @@ export function PushNotificationManager() {
             "Abra os Ajustes do iPhone",
             "Role e toque em DiNutri",
             "Toque em Notificações e ative \"Permitir Notificações\"",
-            "Volte ao app — o botão Ativar aparecerá aqui",
           ].map((step, i) => (
             <div key={i} className="flex items-start gap-2">
               <span className="shrink-0 w-4 h-4 rounded-full bg-[#4E9F87]/15 text-[#4E9F87] text-[10px] font-bold flex items-center justify-center mt-0.5">
@@ -113,13 +132,33 @@ export function PushNotificationManager() {
             </div>
           ))}
         </div>
+
+        {/* ── NOVO: Botão de revalidação manual ── */}
+        {/* Contorna limitações de cache de permissão em PWAs Android/iOS */}
+        <Button
+          onClick={handleManualRefresh}
+          disabled={isRefreshing}
+          variant="outline"
+          size="sm"
+          className="w-full mt-2 border-amber-300 text-amber-700 hover:bg-amber-100"
+        >
+          {isRefreshing ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              Verificando...
+            </>
+          ) : (
+            <>
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Já ativei, verificar novamente
+            </>
+          )}
+        </Button>
       </div>
     );
   }
 
   // ── Inativo — botão para ativar ──
-  // Renderizado quando permission === 'default' (inclui o caso em que o usuário
-  // acabou de liberar a permissão nas configurações do sistema).
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
       <div className="flex items-start gap-3">
