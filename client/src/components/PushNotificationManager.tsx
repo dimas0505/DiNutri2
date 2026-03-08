@@ -3,11 +3,13 @@
 // Exibe o status atual e permite ATIVAR (sem opção de desativar — recurso crítico).
 // Quando bloqueado, exibe instruções por sistema operacional (Android / iPhone).
 //
-// SOLUÇÃO DEFINITIVA (Google):
-// O botão "Já ativei, verificar novamente" agora:
-// 1. Se a permissão já é 'granted', assina direto no PushManager
-// 2. Se ainda é 'denied', injeta flag no sessionStorage e força reload
-// 3. Após o reload, o hook retoma a assinatura automaticamente
+// SOLUÇÃO DEFINITIVA (Google - Finalização Manual):
+// Quando a permissão é concedida após reload, o botão muda para "Finalizar Ativação"
+// com animação pulsante, aguardando o clique do usuário para contornar a restrição
+// "User Gesture Requirement" do navegador.
+// - Se a permissão já é 'granted', assina direto no PushManager
+// - Se ainda é 'denied', injeta flag no sessionStorage e força reload
+// - Após o reload, o hook retoma a assinatura e sinaliza needsFinalization
 
 import { Bell, BellRing, Loader2, CheckCircle2, AlertTriangle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -20,7 +22,7 @@ import { useState } from 'react';
 const SESSION_BLOCKED_SHOWN = 'dinutri_blocked_shown_session';
 
 export function PushNotificationManager() {
-  const { permission, isSubscribed, isLoading, subscribe } = usePushNotifications();
+  const { permission, isSubscribed, isLoading, needsFinalization, subscribe } = usePushNotifications();
   const { toast } = useToast();
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -64,7 +66,7 @@ export function PushNotificationManager() {
       } else if (currentPerm === 'denied') {
         // Cenário principal no Android/iOS:
         // O navegador ainda reporta 'denied' mesmo que o usuário já tenha ativado no SO.
-        // Salvamos a intenção antes do reload — o hook vai retomá-la após recarregar.
+        // Salvamos a intenção antes do reload — o hook vai sinalizá-la após recarregar.
         console.log('[PushNotificationManager] Permissão ainda negada, injetando flag e recarregando...');
         sessionStorage.setItem('PENDING_PUSH_SUBSCRIBE', 'true');
         toast({ 
@@ -168,18 +170,30 @@ export function PushNotificationManager() {
           ))}
         </div>
 
-        {/* ── Botão de revalidação manual (SOLUÇÃO GOOGLE) ── */}
+        {/* ── Botão dinâmico: "Verificar" ou "Finalizar Ativação" ── */}
+        {/* SOLUÇÃO GOOGLE: Quando needsFinalization é true, o botão muda para "Finalizar Ativação" */}
+        {/* com animação pulsante, aguardando o clique do usuário (user gesture) para contornar */}
+        {/* a restrição de segurança do navegador. */}
         <Button
           onClick={handleManualRefresh}
-          disabled={isRefreshing}
-          variant="outline"
+          disabled={isRefreshing || isLoading}
+          variant={needsFinalization ? "default" : "outline"}
           size="sm"
-          className="w-full mt-2 border-amber-300 text-amber-700 hover:bg-amber-100"
+          className={`w-full mt-2 transition-all ${
+            needsFinalization 
+              ? 'bg-blue-600 hover:bg-blue-700 text-white animate-pulse' 
+              : 'border-amber-300 text-amber-700 hover:bg-amber-100'
+          }`}
         >
-          {isRefreshing ? (
+          {isRefreshing || isLoading ? (
             <>
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              Verificando...
+              Processando...
+            </>
+          ) : needsFinalization ? (
+            <>
+              <CheckCircle2 className="h-4 w-4 mr-2" />
+              Finalizar Ativação (Último passo)
             </>
           ) : (
             <>
