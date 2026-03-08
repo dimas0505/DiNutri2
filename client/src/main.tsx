@@ -8,7 +8,8 @@ import { registerServiceWorker } from "./hooks/use-pwa";
 addTouchClass();
 
 // Register service worker for PWA functionality
-if (import.meta.env.PROD) {
+// Registra em qualquer ambiente que não seja desenvolvimento local (localhost)
+if (!window.location.hostname.includes('localhost') && !window.location.hostname.includes('127.0.0.1')) {
   registerServiceWorker();
 }
 
