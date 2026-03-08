@@ -37,6 +37,8 @@ export function usePushNotifications(): UsePushNotificationsReturn {
   
   // Ref para rastrear o estado anterior e evitar updates desnecessários
   const permissionRef = useRef<PermissionState>('default');
+  // Ref para evitar múltiplas tentativas de auto-assinatura na mesma sessão
+  const autoSubscribeAttemptedRef = useRef(false);
 
   /**
    * Sincroniza o estado da permissão e da assinatura com a realidade do navegador.
@@ -164,6 +166,30 @@ export function usePushNotifications(): UsePushNotificationsReturn {
       setIsLoading(false);
     }
   }, [refreshPermission]);
+
+  /**
+   * Auto-assinatura quando a permissão passa a ser 'granted' sem uma assinatura ativa.
+   *
+   * Cenário principal: usuário havia bloqueado as notificações, foi às configurações
+   * do sistema e as reativou. Quando o app detecta 'granted' (via visibilitychange ou
+   * Permissions API onchange), tenta criar a assinatura push silenciosamente —
+   * sem mostrar nenhum dialog ao usuário, pois a permissão já foi concedida pelo SO.
+   */
+  useEffect(() => {
+    if (
+      permission === 'granted' &&
+      !isSubscribed &&
+      !isLoading &&
+      !autoSubscribeAttemptedRef.current
+    ) {
+      console.log('[PushNotifications] Permissão concedida sem assinatura — tentando assinar automaticamente...');
+      // O flag é marcado antes da chamada async para prevenir chamadas concorrentes.
+      // Se a tentativa falhar, a assinatura pode ser feita manualmente pelo usuário
+      // via botão "Ativar" na página de perfil.
+      autoSubscribeAttemptedRef.current = true;
+      subscribe();
+    }
+  }, [permission, isSubscribed, isLoading, subscribe]);
 
   /**
    * Cancela a assinatura push.

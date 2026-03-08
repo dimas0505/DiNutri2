@@ -9,9 +9,25 @@ import { useToast } from '@/hooks/use-toast';
  * 2. O listener de 'controllerchange' era adicionado múltiplas vezes,
  *    podendo causar reloads em loop.
  * 3. Não verificava periodicamente se há uma nova versão disponível.
+ * 4. O listener de 'controllerchange' era removido e não re-adicionado quando
+ *    toast/dismiss mudavam de referência (ex: ao exibir um toast), interrompendo
+ *    a atualização automática. Corrigido usando refs estáveis para as funções.
  */
 export function UpdateNotifier() {
   const { toast, dismiss } = useToast();
+
+  // Refs estáveis para toast/dismiss — evitam que o useEffect principal
+  // seja re-executado quando as referências mudam, o que destruiria o
+  // listener de 'controllerchange' e quebraria a atualização automática.
+  const toastRef = useRef(toast);
+  const dismissRef = useRef(dismiss);
+
+  // Mantém as refs sincronizadas com os valores mais recentes a cada render
+  useEffect(() => {
+    toastRef.current = toast;
+    dismissRef.current = dismiss;
+  }, [toast, dismiss]);
+
   // Ref para garantir que o listener de controllerchange seja adicionado apenas uma vez
   const controllerChangeListenerAdded = useRef(false);
   // Ref para evitar que o reload seja chamado múltiplas vezes
@@ -37,12 +53,12 @@ export function UpdateNotifier() {
         navigator.serviceWorker.addEventListener('controllerchange', handleControllerChange);
       }
 
-      const { id } = toast({
+      const { id } = toastRef.current({
         title: 'Atualizando o aplicativo...',
         description: 'Uma nova versão está disponível. A página será recarregada em instantes.',
       });
 
-      setTimeout(() => dismiss(id), 4000);
+      setTimeout(() => dismissRef.current(id), 4000);
 
       // Instrui o SW em espera a assumir o controle imediatamente
       worker.postMessage({ action: 'SKIP_WAITING' });
@@ -97,7 +113,8 @@ export function UpdateNotifier() {
         navigator.serviceWorker.removeEventListener('controllerchange', handleControllerChange);
       }
     };
-  }, [toast, dismiss]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Componente puramente lógico — não renderiza nada na tela
   return null;
