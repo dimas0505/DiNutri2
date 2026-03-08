@@ -1,7 +1,7 @@
 // ARQUIVO: ./client/src/hooks/usePushNotifications.ts
 // Hook para gerenciar notificações push no frontend (Web Push API)
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { apiRequest } from '@/lib/queryClient';
 
 type PermissionState = 'default' | 'granted' | 'denied' | 'unsupported';
@@ -12,6 +12,7 @@ interface UsePushNotificationsReturn {
   isLoading: boolean;
   subscribe: () => Promise<boolean>;
   unsubscribe: () => Promise<void>;
+  refreshPermission: () => Promise<void>;
 }
 
 /**
@@ -33,129 +34,117 @@ export function usePushNotifications(): UsePushNotificationsReturn {
   const [permission, setPermission] = useState<PermissionState>('default');
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Ref para evitar loops infinitos e garantir acesso ao estado atual em callbacks
+  const permissionRef = useRef<PermissionState>('default');
 
-  // Verificar suporte e estado atual ao montar
-  useEffect(() => {
+  /**
+   * Sincroniza o estado da permissão e da assinatura com a realidade do navegador.
+   */
+  const refreshPermission = useCallback(async () => {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
       setPermission('unsupported');
+      permissionRef.current = 'unsupported';
       return;
     }
 
-    // Ler permissão atual
-    setPermission(Notification.permission as PermissionState);
+    const currentPermission = Notification.permission as PermissionState;
+    
+    // Só atualiza se houver mudança real para evitar re-renders desnecessários
+    if (permissionRef.current !== currentPermission) {
+      console.log(`[PushNotifications] Mudança detectada: ${permissionRef.current} -> ${currentPermission}`);
+      setPermission(currentPermission);
+      permissionRef.current = currentPermission;
+    }
 
-    // Verificar se já há assinatura ativa
-    navigator.serviceWorker.ready.then((registration) => {
-      registration.pushManager.getSubscription().then((sub) => {
+    // Se a permissão for 'granted' ou 'default', verifica se há assinatura ativa
+    if (currentPermission !== 'denied') {
+      try {
+        const registration = await navigator.serviceWorker.ready;
+        const sub = await registration.pushManager.getSubscription();
         setIsSubscribed(!!sub);
-      });
-    });
+      } catch (err) {
+        console.error('[PushNotifications] Erro ao verificar assinatura:', err);
+      }
+    } else {
+      setIsSubscribed(false);
+    }
+  }, []);
 
-    // ── FIX: Observar mudanças de permissão via Permissions API ──
-    // Quando o usuário libera a permissão nas configurações do sistema e
-    // retorna ao app, o estado "denied" muda para "default" (ou "granted"),
-    // mas o React não sabia disso porque só lia Notification.permission uma
-    // única vez na montagem. Agora usamos PermissionStatus.onchange para
-    // atualizar o estado reativamente.
+  // Verificar suporte e estado inicial
+  useEffect(() => {
+    refreshPermission();
+
+    // 1. Permissions API (Reativo)
+    // Melhor método, mas nem todos os navegadores disparam 'onchange' para notificações
     let permissionStatus: PermissionStatus | null = null;
-
     if ('permissions' in navigator) {
       navigator.permissions.query({ name: 'notifications' as PermissionName }).then((status) => {
         permissionStatus = status;
-
-        // Sincronizar imediatamente caso o estado já tenha mudado
-        setPermission(status.state === 'prompt' ? 'default' : status.state as PermissionState);
-
-        // Ouvir mudanças futuras (ex: usuário volta das configurações do sistema)
         status.onchange = () => {
-          const newState = status.state === 'prompt' ? 'default' : status.state as PermissionState;
-          console.log('[PushNotifications] Permissão alterada para:', newState);
-          setPermission(newState);
-
-          // Se a permissão foi concedida externamente (via configurações do SO),
-          // verificar se já existe assinatura ativa e atualizar o estado
-          if (newState === 'granted') {
-            navigator.serviceWorker.ready.then((registration) => {
-              registration.pushManager.getSubscription().then((sub) => {
-                setIsSubscribed(!!sub);
-              });
-            });
-          }
+          console.log('[PushNotifications] Evento onchange da Permissions API');
+          refreshPermission();
         };
       }).catch(() => {
-        // Fallback silencioso: navegadores que não suportam permissions.query
-        // continuarão usando apenas Notification.permission (comportamento anterior)
+        // Fallback silencioso
       });
     }
 
-    // ── FIX: Reler permissão ao app ganhar foco (visibilitychange) ──
-    // Em PWAs instaladas, o usuário pode sair para as configurações do sistema,
-    // liberar a permissão e voltar. O evento visibilitychange garante que
-    // relemos o estado atualizado quando o app volta ao primeiro plano,
-    // mesmo em navegadores sem suporte à Permissions API.
+    // 2. Visibility Change (Foco do App)
+    // Essencial para PWAs: quando o usuário volta das configurações do Android/iOS
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        const currentPermission = Notification.permission as PermissionState;
-        setPermission(currentPermission);
-
-        // Se passou de "denied" para "default" ou "granted", verificar assinatura
-        if (currentPermission === 'granted' || currentPermission === 'default') {
-          navigator.serviceWorker.ready.then((registration) => {
-            registration.pushManager.getSubscription().then((sub) => {
-              setIsSubscribed(!!sub);
-            });
-          });
-        }
+        console.log('[PushNotifications] App voltou ao foco, revalidando permissão...');
+        refreshPermission();
       }
     };
-
     document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // 3. Polling de Segurança (Fallback Extremo)
+    // Alguns navegadores Android não disparam visibilitychange corretamente em modo PWA.
+    // O polling de 2 segundos garante que a UI atualize mesmo sem eventos.
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        refreshPermission();
+      }
+    }, 2000);
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      clearInterval(interval);
       if (permissionStatus) {
         permissionStatus.onchange = null;
       }
     };
-  }, []);
+  }, [refreshPermission]);
 
   /**
    * Solicita permissão ao usuário e registra a assinatura push no servidor.
-   * Retorna true se a assinatura foi criada com sucesso.
    */
   const subscribe = useCallback(async (): Promise<boolean> => {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-      console.warn('[PushNotifications] Não suportado neste navegador.');
       return false;
     }
 
     setIsLoading(true);
     try {
-      // Solicitar permissão
       const result = await Notification.requestPermission();
-      setPermission(result as PermissionState);
+      await refreshPermission();
 
       if (result !== 'granted') {
-        console.log('[PushNotifications] Permissão negada pelo usuário.');
         return false;
       }
 
-      // Buscar chave pública VAPID do servidor
       const vapidResponse = await fetch('/api/push/vapid-public-key');
-      if (!vapidResponse.ok) {
-        console.error('[PushNotifications] Servidor não retornou chave VAPID.');
-        return false;
-      }
+      if (!vapidResponse.ok) return false;
       const { publicKey } = await vapidResponse.json();
 
-      // Registrar assinatura no PushManager do Service Worker
       const registration = await navigator.serviceWorker.ready;
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(publicKey),
       });
 
-      // Enviar assinatura ao servidor
       const subJson = subscription.toJSON();
       await apiRequest('POST', '/api/push/subscribe', {
         endpoint: subJson.endpoint,
@@ -166,18 +155,17 @@ export function usePushNotifications(): UsePushNotificationsReturn {
       });
 
       setIsSubscribed(true);
-      console.log('[PushNotifications] Assinatura registrada com sucesso.');
       return true;
     } catch (error) {
-      console.error('[PushNotifications] Erro ao registrar assinatura:', error);
+      console.error('[PushNotifications] Erro ao assinar:', error);
       return false;
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [refreshPermission]);
 
   /**
-   * Cancela a assinatura push e remove do servidor.
+   * Cancela a assinatura push.
    */
   const unsubscribe = useCallback(async (): Promise<void> => {
     setIsLoading(true);
@@ -188,17 +176,22 @@ export function usePushNotifications(): UsePushNotificationsReturn {
       if (subscription) {
         const endpoint = subscription.endpoint;
         await subscription.unsubscribe();
-
         await apiRequest('DELETE', '/api/push/unsubscribe', { endpoint });
         setIsSubscribed(false);
-        console.log('[PushNotifications] Assinatura cancelada com sucesso.');
       }
     } catch (error) {
-      console.error('[PushNotifications] Erro ao cancelar assinatura:', error);
+      console.error('[PushNotifications] Erro ao cancelar:', error);
     } finally {
       setIsLoading(false);
     }
   }, []);
 
-  return { permission, isSubscribed, isLoading, subscribe, unsubscribe };
+  return { 
+    permission, 
+    isSubscribed, 
+    isLoading, 
+    subscribe, 
+    unsubscribe,
+    refreshPermission 
+  };
 }
