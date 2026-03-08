@@ -12,7 +12,7 @@ interface UsePushNotificationsReturn {
   isLoading: boolean;
   subscribe: () => Promise<boolean>;
   unsubscribe: () => Promise<void>;
-  refreshPermission: () => Promise<void>;
+  refreshPermission: (forceReload?: boolean) => Promise<void>;
 }
 
 /**
@@ -40,9 +40,12 @@ export function usePushNotifications(): UsePushNotificationsReturn {
 
   /**
    * Sincroniza o estado da permissão e da assinatura com a realidade do navegador.
-   * Pode ser chamada manualmente (ex: via botão "Verificar novamente").
+   * 
+   * @param forceReload Se true, recarrega a página caso a permissão ainda pareça 'denied'.
+   * Isso é necessário em PWAs Android/iOS onde o navegador cacheia o estado da permissão
+   * e só o atualiza após um refresh completo.
    */
-  const refreshPermission = useCallback(async () => {
+  const refreshPermission = useCallback(async (forceReload = false) => {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
       setPermission('unsupported');
       permissionRef.current = 'unsupported';
@@ -50,10 +53,19 @@ export function usePushNotifications(): UsePushNotificationsReturn {
     }
 
     const currentPermission = Notification.permission as PermissionState;
+    console.log(`[PushNotifications] Verificando permissão: ${currentPermission}`);
     
+    // Se o usuário clicou no botão manual e a permissão ainda é 'denied',
+    // forçamos um reload da página. É a única forma garantida de limpar o cache
+    // de permissão do navegador em modo PWA.
+    if (forceReload && currentPermission === 'denied') {
+      console.log('[PushNotifications] Forçando recarregamento da página para atualizar permissão...');
+      window.location.reload();
+      return;
+    }
+
     // Só atualiza se houver mudança real
     if (permissionRef.current !== currentPermission) {
-      console.log(`[PushNotifications] Mudança detectada: ${permissionRef.current} -> ${currentPermission}`);
       setPermission(currentPermission);
       permissionRef.current = currentPermission;
     }
