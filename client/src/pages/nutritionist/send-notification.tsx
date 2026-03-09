@@ -277,9 +277,9 @@ export default function SendNotificationPage() {
           type="button"
           variant="outline"
           className="w-full"
-          onClick={() => setLocation("/notifications/report")}
+          onClick={() => setLocation("/reports")}
         >
-          Ver relatório de notificações
+          Ir para central de relatórios
         </Button>
 
           {/* Botão de envio */}

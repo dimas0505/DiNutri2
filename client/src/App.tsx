@@ -101,6 +101,7 @@ function Router() {
           <Route path="/subscriptions" component={SubscriptionsPage} />
           <Route path="/reports" component={ReportsPage} />
           <Route path="/notifications/send" component={SendNotificationPage} />
+          <Route path="/reports/notifications" component={NotificationsReportPage} />
           <Route path="/notifications/report" component={NotificationsReportPage} />
         </>
       )}

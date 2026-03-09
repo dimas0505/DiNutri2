@@ -1,8 +1,9 @@
 import { useState } from 'react';
+import { Link } from 'wouter';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Download, Loader2 } from "lucide-react";
+import { Bell, Download, Loader2, LineChart } from "lucide-react";
 
 export default function ReportsPage() {
   const [isDownloading, setIsDownloading] = useState(false);
@@ -20,7 +21,7 @@ export default function ReportsPage() {
         method: "GET",
         credentials: "include",
       });
-      
+
       if (!response.ok) {
         throw new Error("Falha ao gerar o relatório.");
       }
@@ -39,7 +40,6 @@ export default function ReportsPage() {
         title: "Sucesso!",
         description: "Relatório baixado com sucesso.",
       });
-
     } catch (error) {
       console.error("Erro no download do relatório:", error);
       toast({
@@ -53,26 +53,54 @@ export default function ReportsPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-3xl font-bold">Relatórios</h1>
-      <Card>
-        <CardHeader>
-          <CardTitle>Relatório de Acesso de Pacientes</CardTitle>
-          <CardDescription>
-            Exporte uma planilha em Excel com os dados de acesso e status dos seus pacientes.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button onClick={handleDownload} disabled={isDownloading}>
-            {isDownloading ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Download className="mr-2 h-4 w-4" />
-            )}
-            {isDownloading ? "Gerando..." : "Baixar Relatório em Excel"}
-          </Button>
-        </CardContent>
-      </Card>
+    <div className="space-y-6 px-4 py-4 md:px-0 md:py-0">
+      <div>
+        <h1 className="text-2xl md:text-3xl font-bold">Relatórios</h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          Centralize aqui os relatórios de acesso e de notificações dos seus pacientes.
+        </p>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <LineChart className="h-4 w-4" />
+              Relatório de Acesso de Pacientes
+            </CardTitle>
+            <CardDescription>
+              Exporte uma planilha em Excel com os dados de acesso e status dos seus pacientes.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button onClick={handleDownload} disabled={isDownloading}>
+              {isDownloading ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="mr-2 h-4 w-4" />
+              )}
+              {isDownloading ? "Gerando..." : "Baixar Relatório em Excel"}
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Bell className="h-4 w-4" />
+              Relatório de Notificações
+            </CardTitle>
+            <CardDescription>
+              Veja quem tem app ativo, quem habilitou push e quem recebeu mensagens no inbox.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Link href="/reports/notifications">
+              <Button variant="outline">Abrir Relatório de Notificações</Button>
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
