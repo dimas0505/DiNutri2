@@ -256,7 +256,7 @@ export default function AssessmentsPage() {
                     {latestAnthro.createdAt ? new Date(latestAnthro.createdAt).toLocaleDateString("pt-BR") : ""}
                   </Badge>
                 </div>
-                <BodyHologramView assessment={latestAnthro} />
+                <BodyHologramView data={latestAnthro} />
               </div>
             )}
           </TabsContent>

@@ -1,423 +1,279 @@
-import { useEffect, useRef } from "react";
-import { motion, useAnimation, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
+import { Percent, Weight } from "lucide-react";
 import type { AnthropometricAssessment } from "@shared/schema";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
-interface MeasurePoint {
-  id: string;
-  label: string;
-  value: number;
-  unit: string;
-  /** Posição no SVG (0-100 %) */
-  cx: number;
-  cy: number;
-  /** Direção da linha: "left" | "right" */
-  side: "left" | "right";
-}
-
-interface BodyHologramViewProps {
-  assessment: AnthropometricAssessment;
-}
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function buildPoints(a: AnthropometricAssessment): MeasurePoint[] {
-  type Candidate = { label: string; raw: number | null | undefined; unit: string; cx: number; cy: number; side: "left" | "right" };
-  const candidates: Candidate[] = [
-    { label: "Pescoço",       raw: a.circumNeck,                       unit: "cm", cx: 50, cy: 13.5, side: "right" },
-    { label: "Tórax",         raw: a.circumChest,                      unit: "cm", cx: 50, cy: 22,   side: "left"  },
-    { label: "Cintura",       raw: a.circumWaist,                      unit: "cm", cx: 50, cy: 33,   side: "right" },
-    { label: "Abdômen",       raw: a.circumAbdomen,                    unit: "cm", cx: 50, cy: 38,   side: "left"  },
-    { label: "Quadril",       raw: a.circumHip,                        unit: "cm", cx: 50, cy: 46,   side: "right" },
-    { label: "Braço relax.",  raw: a.circumNonDominantArmRelaxed,      unit: "cm", cx: 50, cy: 27,   side: "left"  },
-    { label: "Braço contr.",  raw: a.circumNonDominantArmContracted,   unit: "cm", cx: 50, cy: 31,   side: "right" },
-    { label: "Coxa",          raw: a.circumNonDominantProximalThigh,   unit: "cm", cx: 50, cy: 56,   side: "left"  },
-    { label: "Panturrilha",   raw: a.circumNonDominantCalf,            unit: "cm", cx: 50, cy: 68,   side: "right" },
-  ];
-
-  return candidates
-    .filter((c) => c.raw != null)
-    .map((c, i) => ({
-      id: `mp-${i}`,
-      label: c.label,
-      value: c.raw as number,
-      unit: c.unit,
-      cx: c.cx,
-      cy: c.cy,
-      side: c.side,
-    }));
-}
-
-// ─── Constantes visuais ───────────────────────────────────────────────────────
-
-const NEON_BLUE   = "#00D4FF";
-const NEON_CYAN   = "#00FFE0";
-const NEON_PURPLE = "#A855F7";
-const GLOW_BLUE   = "rgba(0,212,255,0.35)";
-
-// Pontos de ancoragem no corpo (cx, cy em % do viewBox 100×100)
-// Mapeados para cada medida
-const ANCHOR_MAP: Record<string, { ax: number; ay: number }> = {
-  "Pescoço":      { ax: 50,   ay: 13.5 },
-  "Tórax":        { ax: 42,   ay: 22   },
-  "Cintura":      { ax: 56,   ay: 33   },
-  "Abdômen":      { ax: 42,   ay: 38   },
-  "Quadril":      { ax: 56,   ay: 46   },
-  "Braço relax.": { ax: 38,   ay: 27   },
-  "Braço contr.": { ax: 62,   ay: 31   },
-  "Coxa":         { ax: 42,   ay: 56   },
-  "Panturrilha":  { ax: 57,   ay: 68   },
-};
-
-// ─── Sub-componente: linha + label animados ────────────────────────────────────
-
-interface MeasureLineProps {
-  point: MeasurePoint;
-  index: number;
-  total: number;
-}
-
-function MeasureLine({ point, index, total }: MeasureLineProps) {
-  const anchor = ANCHOR_MAP[point.label] ?? { ax: point.cx, ay: point.cy };
-  const isLeft = point.side === "left";
-
-  // Posição do label (fora do corpo)
-  const labelX = isLeft ? 8 : 92;
-  const labelY = anchor.ay;
-
-  // Ponto intermediário para a linha em L
-  const midX = isLeft ? 28 : 72;
-
-  const delay = 0.4 + index * 0.15;
-
-  return (
-    <motion.g
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ delay, duration: 0.5 }}
-    >
-      {/* Linha do corpo até o label */}
-      <motion.polyline
-        points={`${anchor.ax},${anchor.ay} ${midX},${anchor.ay} ${labelX + (isLeft ? 14 : -14)},${labelY}`}
-        fill="none"
-        stroke={NEON_CYAN}
-        strokeWidth="0.4"
-        strokeDasharray="2 1"
-        initial={{ pathLength: 0, opacity: 0 }}
-        animate={{ pathLength: 1, opacity: 0.85 }}
-        transition={{ delay, duration: 0.6, ease: "easeOut" }}
-        style={{ filter: `drop-shadow(0 0 2px ${NEON_CYAN})` }}
-      />
-
-      {/* Ponto de ancoragem no corpo */}
-      <motion.circle
-        cx={anchor.ax}
-        cy={anchor.ay}
-        r="0.8"
-        fill={NEON_CYAN}
-        initial={{ scale: 0 }}
-        animate={{ scale: [1, 1.6, 1] }}
-        transition={{ delay, duration: 1.2, repeat: Infinity, repeatDelay: 2 }}
-        style={{ filter: `drop-shadow(0 0 3px ${NEON_CYAN})` }}
-      />
-
-      {/* Caixa do label */}
-      <motion.rect
-        x={isLeft ? labelX - 1 : labelX - 13}
-        y={labelY - 3.5}
-        width="14"
-        height="7"
-        rx="1"
-        fill="rgba(0,20,40,0.85)"
-        stroke={NEON_BLUE}
-        strokeWidth="0.3"
-        initial={{ scaleX: 0 }}
-        animate={{ scaleX: 1 }}
-        transition={{ delay: delay + 0.3, duration: 0.3 }}
-        style={{ transformOrigin: `${isLeft ? labelX + 6 : labelX - 6}px ${labelY}px`, filter: `drop-shadow(0 0 2px ${GLOW_BLUE})` }}
-      />
-
-      {/* Valor */}
-      <motion.text
-        x={isLeft ? labelX + 6 : labelX - 6}
-        y={labelY - 0.5}
-        textAnchor="middle"
-        fontSize="2.2"
-        fontWeight="700"
-        fill={NEON_BLUE}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: delay + 0.5, duration: 0.4 }}
-        style={{ fontFamily: "monospace", filter: `drop-shadow(0 0 2px ${NEON_BLUE})` }}
-      >
-        {point.value}
-      </motion.text>
-
-      {/* Unidade + label */}
-      <motion.text
-        x={isLeft ? labelX + 6 : labelX - 6}
-        y={labelY + 2.2}
-        textAnchor="middle"
-        fontSize="1.5"
-        fill={NEON_CYAN}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 0.9 }}
-        transition={{ delay: delay + 0.6, duration: 0.4 }}
-        style={{ fontFamily: "monospace" }}
-      >
-        {point.unit} · {point.label}
-      </motion.text>
-    </motion.g>
-  );
-}
-
-// ─── Silhueta SVG do corpo humano ─────────────────────────────────────────────
-
-function BodySilhouette() {
-  return (
-    <g>
-      {/* Cabeça */}
-      <ellipse cx="50" cy="7" rx="4.5" ry="5.5"
-        fill="none" stroke={NEON_BLUE} strokeWidth="0.6"
-        style={{ filter: `drop-shadow(0 0 3px ${NEON_BLUE})` }} />
-
-      {/* Pescoço */}
-      <rect x="47.5" y="12.2" width="5" height="3"
-        fill="none" stroke={NEON_BLUE} strokeWidth="0.5"
-        style={{ filter: `drop-shadow(0 0 2px ${NEON_BLUE})` }} />
-
-      {/* Tronco */}
-      <path d="M38,15 Q36,18 36,22 L36,44 Q36,47 38,48 L62,48 Q64,47 64,44 L64,22 Q64,18 62,15 Z"
-        fill="rgba(0,100,180,0.07)" stroke={NEON_BLUE} strokeWidth="0.6"
-        style={{ filter: `drop-shadow(0 0 3px ${NEON_BLUE})` }} />
-
-      {/* Braço esquerdo */}
-      <path d="M36,16 Q30,18 28,24 Q26,30 27,36 Q28,38 30,38 Q32,38 33,36 Q34,30 35,24 Q36,20 38,18"
-        fill="none" stroke={NEON_BLUE} strokeWidth="0.6"
-        style={{ filter: `drop-shadow(0 0 2px ${NEON_BLUE})` }} />
-
-      {/* Braço direito */}
-      <path d="M64,16 Q70,18 72,24 Q74,30 73,36 Q72,38 70,38 Q68,38 67,36 Q66,30 65,24 Q64,20 62,18"
-        fill="none" stroke={NEON_BLUE} strokeWidth="0.6"
-        style={{ filter: `drop-shadow(0 0 2px ${NEON_BLUE})` }} />
-
-      {/* Perna esquerda */}
-      <path d="M44,48 Q42,52 41,58 Q40,64 40,72 Q40,78 41,82 Q42,84 44,84 Q46,84 47,82 Q48,78 48,72 L48,48"
-        fill="none" stroke={NEON_BLUE} strokeWidth="0.6"
-        style={{ filter: `drop-shadow(0 0 2px ${NEON_BLUE})` }} />
-
-      {/* Perna direita */}
-      <path d="M56,48 Q58,52 59,58 Q60,64 60,72 Q60,78 59,82 Q58,84 56,84 Q54,84 53,82 Q52,78 52,72 L52,48"
-        fill="none" stroke={NEON_BLUE} strokeWidth="0.6"
-        style={{ filter: `drop-shadow(0 0 2px ${NEON_BLUE})` }} />
-
-      {/* Pé esquerdo */}
-      <ellipse cx="42" cy="85" rx="3.5" ry="1.5"
-        fill="none" stroke={NEON_BLUE} strokeWidth="0.5" />
-
-      {/* Pé direito */}
-      <ellipse cx="58" cy="85" rx="3.5" ry="1.5"
-        fill="none" stroke={NEON_BLUE} strokeWidth="0.5" />
-
-      {/* Linhas internas de detalhe holográfico */}
-      <line x1="40" y1="22" x2="60" y2="22" stroke={NEON_CYAN} strokeWidth="0.2" strokeDasharray="1 2" opacity="0.4" />
-      <line x1="39" y1="33" x2="61" y2="33" stroke={NEON_CYAN} strokeWidth="0.2" strokeDasharray="1 2" opacity="0.4" />
-      <line x1="38" y1="44" x2="62" y2="44" stroke={NEON_CYAN} strokeWidth="0.2" strokeDasharray="1 2" opacity="0.4" />
-    </g>
-  );
-}
-
-// ─── Efeito de scan horizontal ────────────────────────────────────────────────
-
-function ScanLine() {
-  return (
-    <motion.rect
-      x="30"
-      y="0"
-      width="40"
-      height="0.8"
-      fill={`url(#scanGrad)`}
-      initial={{ y: 5 }}
-      animate={{ y: [5, 88, 5] }}
-      transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
-      opacity={0.6}
-    />
-  );
+interface Props {
+  data: AnthropometricAssessment;
 }
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 
-export function BodyHologramView({ assessment }: BodyHologramViewProps) {
-  const points = buildPoints(assessment);
+export function BodyHologramView({ data }: Props) {
+  // Mapeamento de coordenadas (x, y em % do container) para os pontos de medida
+  // O SVG usa viewBox="0 0 100 200", então y% mapeia diretamente para a altura
+  const anchors = [
+    { label: "Pescoço",     value: data.circumNeck,                     unit: "cm", x: 50, y: 15,  side: "right" },
+    { label: "Tórax",       value: data.circumChest,                    unit: "cm", x: 50, y: 28,  side: "left"  },
+    { label: "Cintura",     value: data.circumWaist,                    unit: "cm", x: 50, y: 38,  side: "right" },
+    { label: "Abdômen",     value: data.circumAbdomen,                  unit: "cm", x: 50, y: 43,  side: "left"  },
+    { label: "Quadril",     value: data.circumHip,                      unit: "cm", x: 50, y: 52,  side: "right" },
+    { label: "Braço",       value: data.circumNonDominantArmRelaxed,    unit: "cm", x: 28, y: 30,  side: "left"  },
+    { label: "Coxa",        value: data.circumNonDominantProximalThigh, unit: "cm", x: 42, y: 65,  side: "left"  },
+    { label: "Panturrilha", value: data.circumNonDominantCalf,          unit: "cm", x: 40, y: 80,  side: "left"  },
+  ].filter((a) => a.value != null && a.value !== undefined);
 
   return (
-    <div className="relative w-full flex flex-col items-center select-none">
-      {/* Fundo escuro com gradiente */}
+    <div className="relative w-full aspect-[3/4] bg-slate-950 rounded-3xl overflow-hidden border border-cyan-500/30 shadow-[0_0_20px_rgba(6,182,212,0.15)]">
+
+      {/* ── Grade Tecnológica de Fundo ── */}
       <div
-        className="w-full rounded-2xl overflow-hidden relative"
+        className="absolute inset-0 opacity-20"
         style={{
-          background: "linear-gradient(160deg, #020c18 0%, #041428 60%, #060820 100%)",
-          boxShadow: `0 0 40px rgba(0,180,255,0.15), inset 0 0 60px rgba(0,100,200,0.05)`,
-          minHeight: 480,
+          backgroundImage:
+            "linear-gradient(#0ea5e9 1px, transparent 1px), linear-gradient(90deg, #0ea5e9 1px, transparent 1px)",
+          backgroundSize: "20px 20px",
         }}
+      />
+
+      {/* ── Brilho central radial ── */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background:
+            "radial-gradient(ellipse 60% 70% at 50% 45%, rgba(6,182,212,0.07) 0%, transparent 70%)",
+        }}
+      />
+
+      {/* ── Scan Line Animation ── */}
+      <motion.div
+        className="absolute w-full h-[2px] bg-cyan-400 shadow-[0_0_15px_#22d3ee,0_0_30px_#22d3ee] z-10"
+        animate={{ top: ["0%", "100%", "0%"] }}
+        transition={{ duration: 5, repeat: Infinity, ease: "linear" }}
+      />
+
+      {/* ── Título / badge ── */}
+      <motion.div
+        className="absolute top-3 left-4 z-20"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.3 }}
       >
-        {/* Grade de fundo */}
+        <span className="text-[9px] font-mono tracking-[3px] text-cyan-400/70 uppercase">
+          Análise Corporal · DiNutri
+        </span>
+      </motion.div>
+
+      {/* ── Indicador de status (ponto piscando) ── */}
+      <motion.div
+        className="absolute top-4 right-4 z-20 w-2 h-2 rounded-full bg-cyan-400"
+        style={{ boxShadow: "0 0 6px #22d3ee" }}
+        animate={{ opacity: [1, 0.2, 1] }}
+        transition={{ duration: 1.2, repeat: Infinity }}
+      />
+
+      {/* ── Área principal: SVG + Labels ── */}
+      <div className="relative h-full w-full flex items-center justify-center px-2 pt-8 pb-20">
+
+        {/* Silhueta SVG Humana Anatômica */}
         <svg
-          className="absolute inset-0 w-full h-full opacity-10"
-          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 100 200"
+          className="h-full drop-shadow-[0_0_10px_rgba(34,211,238,0.6)]"
+          style={{ maxWidth: "45%" }}
         >
+          {/* ── Definições (filtros e gradientes) ── */}
           <defs>
-            <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
-              <path d="M 20 0 L 0 0 0 20" fill="none" stroke={NEON_BLUE} strokeWidth="0.4" />
-            </pattern>
-          </defs>
-          <rect width="100%" height="100%" fill="url(#grid)" />
-        </svg>
-
-        {/* Círculos de brilho decorativos */}
-        <motion.div
-          className="absolute rounded-full pointer-events-none"
-          style={{
-            width: 200,
-            height: 200,
-            top: "20%",
-            left: "50%",
-            transform: "translateX(-50%)",
-            background: "radial-gradient(circle, rgba(0,180,255,0.08) 0%, transparent 70%)",
-          }}
-          animate={{ scale: [1, 1.15, 1], opacity: [0.6, 1, 0.6] }}
-          transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-        />
-
-        {/* SVG principal */}
-        <svg
-          viewBox="0 0 100 95"
-          className="relative z-10 w-full"
-          style={{ maxHeight: 520 }}
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <defs>
-            {/* Gradiente do scan */}
-            <linearGradient id="scanGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%"   stopColor={NEON_CYAN} stopOpacity="0" />
-              <stop offset="50%"  stopColor={NEON_CYAN} stopOpacity="0.8" />
-              <stop offset="100%" stopColor={NEON_CYAN} stopOpacity="0" />
-            </linearGradient>
-
-            {/* Filtro de brilho */}
-            <filter id="glow">
-              <feGaussianBlur stdDeviation="1.5" result="coloredBlur" />
+            <filter id="neonGlow">
+              <feGaussianBlur stdDeviation="1.2" result="coloredBlur" />
               <feMerge>
                 <feMergeNode in="coloredBlur" />
                 <feMergeNode in="SourceGraphic" />
               </feMerge>
             </filter>
+            <linearGradient id="bodyGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%"   stopColor="#22d3ee" stopOpacity="0.9" />
+              <stop offset="100%" stopColor="#0ea5e9" stopOpacity="0.7" />
+            </linearGradient>
           </defs>
 
-          {/* Scan animado */}
-          <ScanLine />
+          {/* ── Silhueta humana frontal (path anatômico) ── */}
+          <g filter="url(#neonGlow)" fill="none" stroke="url(#bodyGrad)" strokeWidth="1.2" strokeLinejoin="round" strokeLinecap="round">
 
-          {/* Silhueta */}
-          <motion.g
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.7, ease: "easeOut" }}
-            style={{ transformOrigin: "50% 50%" }}
-          >
-            <BodySilhouette />
-          </motion.g>
+            {/* Cabeça */}
+            <ellipse cx="50" cy="12" rx="8" ry="10" />
 
-          {/* Linhas de medida */}
-          {points.map((p, i) => (
-            <MeasureLine key={p.id} point={p} index={i} total={points.length} />
-          ))}
+            {/* Pescoço */}
+            <path d="M45,21 L45,26 Q50,28 55,26 L55,21" />
+
+            {/* Ombros e tronco superior */}
+            <path d="M45,26 Q38,27 33,30 L30,45 Q29,50 31,52 L35,52 Q37,50 37,46 L37,38" />
+            <path d="M55,26 Q62,27 67,30 L70,45 Q71,50 69,52 L65,52 Q63,50 63,46 L63,38" />
+
+            {/* Tronco central */}
+            <path d="M37,38 Q38,55 40,62 L42,75 Q44,80 50,80 Q56,80 58,75 L60,62 Q62,55 63,38" />
+
+            {/* Linha da cintura */}
+            <path d="M38,52 Q50,55 62,52" strokeWidth="0.6" strokeDasharray="2 1" opacity="0.5" />
+
+            {/* Linha do quadril */}
+            <path d="M40,62 Q50,65 60,62" strokeWidth="0.6" strokeDasharray="2 1" opacity="0.5" />
+
+            {/* Braço esquerdo */}
+            <path d="M33,30 Q28,35 26,45 Q25,52 27,58 Q28,62 31,62 Q34,62 35,58 Q36,52 36,46" />
+
+            {/* Braço direito */}
+            <path d="M67,30 Q72,35 74,45 Q75,52 73,58 Q72,62 69,62 Q66,62 65,58 Q64,52 64,46" />
+
+            {/* Mão esquerda */}
+            <ellipse cx="29" cy="64" rx="3" ry="4" />
+
+            {/* Mão direita */}
+            <ellipse cx="71" cy="64" rx="3" ry="4" />
+
+            {/* Perna esquerda */}
+            <path d="M42,75 Q40,88 39,100 Q38,112 39,124 Q40,130 43,132 Q46,133 48,130 Q50,126 49,114 L48,100 L47,80" />
+
+            {/* Perna direita */}
+            <path d="M58,75 Q60,88 61,100 Q62,112 61,124 Q60,130 57,132 Q54,133 52,130 Q50,126 51,114 L52,100 L53,80" />
+
+            {/* Pé esquerdo */}
+            <path d="M39,124 Q36,130 35,135 Q34,138 37,139 Q44,140 48,138 Q50,136 49,132" />
+
+            {/* Pé direito */}
+            <path d="M61,124 Q64,130 65,135 Q66,138 63,139 Q56,140 52,138 Q50,136 51,132" />
+
+            {/* Linha central do tronco (detalhe holográfico) */}
+            <line x1="50" y1="26" x2="50" y2="75" strokeWidth="0.4" strokeDasharray="3 2" opacity="0.4" />
+
+            {/* Clavículas */}
+            <path d="M45,26 Q47,25 50,25 Q53,25 55,26" strokeWidth="0.6" opacity="0.6" />
+          </g>
+
+          {/* ── Pontos de ancoragem e linhas de medida ── */}
+          {anchors.map((point, i) => {
+            const lineEndX = point.side === "right" ? point.x + 22 : point.x - 22;
+            return (
+              <g key={i}>
+                {/* Ponto pulsante */}
+                <motion.circle
+                  cx={point.x}
+                  cy={point.y}
+                  fill="#22d3ee"
+                  initial={{ r: 0, opacity: 0 }}
+                  animate={{ r: [1.2, 2.2, 1.2], opacity: 1 }}
+                  transition={{
+                    delay: 0.5 + i * 0.18,
+                    duration: 2,
+                    repeat: Infinity,
+                    repeatDelay: 1,
+                  }}
+                  style={{ filter: "drop-shadow(0 0 3px #22d3ee)" }}
+                />
+
+                {/* Linha de medida tracejada */}
+                <motion.line
+                  x1={point.x}
+                  y1={point.y}
+                  x2={lineEndX}
+                  y2={point.y}
+                  stroke="#22d3ee"
+                  strokeWidth="0.5"
+                  strokeDasharray="2 1"
+                  initial={{ pathLength: 0, opacity: 0 }}
+                  animate={{ pathLength: 1, opacity: 0.8 }}
+                  transition={{ delay: 0.5 + i * 0.18, duration: 0.5 }}
+                  style={{ filter: "drop-shadow(0 0 2px #22d3ee)" }}
+                />
+              </g>
+            );
+          })}
         </svg>
 
-        {/* Rodapé com peso e gordura */}
-        <div className="relative z-10 px-4 pb-4 flex flex-wrap gap-2 justify-center">
-          {assessment.weightKg != null && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 1.8, duration: 0.5 }}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg"
-              style={{
-                background: "rgba(0,20,40,0.85)",
-                border: `1px solid ${NEON_BLUE}`,
-                boxShadow: `0 0 8px ${GLOW_BLUE}`,
-              }}
-            >
-              <span style={{ color: NEON_CYAN, fontSize: 11, fontFamily: "monospace" }}>PESO</span>
-              <span style={{ color: NEON_BLUE, fontSize: 15, fontWeight: 700, fontFamily: "monospace" }}>
-                {assessment.weightKg} kg
-              </span>
-            </motion.div>
-          )}
-
-          {assessment.manualBodyFatPercent != null && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 2.0, duration: 0.5 }}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg"
-              style={{
-                background: "rgba(20,0,40,0.85)",
-                border: `1px solid ${NEON_PURPLE}`,
-                boxShadow: `0 0 8px rgba(168,85,247,0.3)`,
-              }}
-            >
-              <span style={{ color: "#C084FC", fontSize: 11, fontFamily: "monospace" }}>GORDURA</span>
-              <span style={{ color: NEON_PURPLE, fontSize: 15, fontWeight: 700, fontFamily: "monospace" }}>
-                {assessment.manualBodyFatPercent}%
-              </span>
-              {assessment.manualBodyFatClassification && (
-                <span style={{ color: "#C084FC", fontSize: 10, fontFamily: "monospace" }}>
-                  · {assessment.manualBodyFatClassification}
-                </span>
-              )}
-            </motion.div>
-          )}
-        </div>
-
-        {/* Canto decorativo — título */}
-        <motion.div
-          className="absolute top-3 left-4 z-20"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.2 }}
-        >
-          <p style={{ color: NEON_CYAN, fontSize: 9, fontFamily: "monospace", letterSpacing: 2, opacity: 0.7 }}>
-            ANÁLISE CORPORAL · DiNutri
-          </p>
-        </motion.div>
-
-        <motion.div
-          className="absolute top-3 right-4 z-20"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.3 }}
-        >
+        {/* ── Labels HTML Flutuantes ── */}
+        {anchors.map((point, i) => (
           <motion.div
+            key={i}
+            initial={{ opacity: 0, x: point.side === "right" ? 20 : -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.7 + i * 0.18, duration: 0.4 }}
+            className="absolute text-[10px] font-mono p-1.5 bg-slate-900/90 border border-cyan-500/50 rounded-lg backdrop-blur-sm shadow-[0_0_10px_rgba(34,211,238,0.2)]"
             style={{
-              width: 6,
-              height: 6,
-              borderRadius: "50%",
-              background: NEON_CYAN,
-              boxShadow: `0 0 6px ${NEON_CYAN}`,
+              top: `${point.y}%`,
+              [point.side === "right" ? "left" : "right"]: "4%",
+              transform: "translateY(-50%)",
+              minWidth: 64,
             }}
-            animate={{ opacity: [1, 0.2, 1] }}
-            transition={{ duration: 1.2, repeat: Infinity }}
-          />
-        </motion.div>
+          >
+            <div className="text-cyan-400/70 uppercase text-[8px] tracking-wider leading-none mb-0.5">
+              {point.label}
+            </div>
+            <div className="font-bold text-xs text-cyan-300 leading-none">
+              {point.value} {point.unit}
+            </div>
+          </motion.div>
+        ))}
       </div>
 
-      {/* Legenda */}
-      {points.length === 0 && (
-        <p className="text-center text-xs mt-4" style={{ color: NEON_CYAN, fontFamily: "monospace", opacity: 0.6 }}>
-          Nenhuma circunferência registrada nesta avaliação.
-        </p>
-      )}
+      {/* ── Rodapé com Resumo (Peso e %BF) ── */}
+      <div className="absolute bottom-3 left-3 right-3 flex gap-2 z-20">
+        {data.weightKg != null && (
+          <SummaryCard
+            icon={<Weight className="w-3 h-3" />}
+            label="Peso"
+            value={`${data.weightKg} kg`}
+            color="cyan"
+            delay={1.8}
+          />
+        )}
+        {data.manualBodyFatPercent != null && (
+          <SummaryCard
+            icon={<Percent className="w-3 h-3" />}
+            label="Gordura"
+            value={`${data.manualBodyFatPercent}%`}
+            color="orange"
+            delay={2.0}
+            subtitle={data.manualBodyFatClassification ?? undefined}
+          />
+        )}
+      </div>
     </div>
+  );
+}
+
+// ─── Sub-componente: cartão de resumo ─────────────────────────────────────────
+
+interface SummaryCardProps {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  color: "cyan" | "orange";
+  delay?: number;
+  subtitle?: string;
+}
+
+function SummaryCard({ icon, label, value, color, delay = 0, subtitle }: SummaryCardProps) {
+  const colorMap = {
+    cyan:   { border: "border-cyan-500/50",   text: "text-cyan-400",   value: "text-cyan-300"   },
+    orange: { border: "border-orange-500/50", text: "text-orange-400", value: "text-orange-300" },
+  };
+  const c = colorMap[color];
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay, duration: 0.4 }}
+      className={`flex-1 bg-slate-900/90 border rounded-xl p-2 backdrop-blur-md ${c.border}`}
+    >
+      <div className={`flex items-center gap-1.5 opacity-70 mb-0.5 ${c.text}`}>
+        {icon}
+        <span className="text-[8px] uppercase font-bold tracking-wider">{label}</span>
+      </div>
+      <div className={`text-sm font-black ${c.value}`}>{value}</div>
+      {subtitle && (
+        <div className={`text-[8px] opacity-60 mt-0.5 ${c.text}`}>{subtitle}</div>
+      )}
+    </motion.div>
   );
 }
