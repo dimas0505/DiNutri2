@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useInvalidatePatientData } from "@/hooks/useInvalidatePatientData";
-import { Download, FileText, ClipboardList, Percent, Ruler, TrendingUp, Weight, Sparkles } from "lucide-react";
+import { Download, FileText, ClipboardList, Percent, Ruler, TrendingUp, Weight } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { MobileLayout } from "@/components/layout/mobile-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
