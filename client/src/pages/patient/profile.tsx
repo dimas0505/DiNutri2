@@ -1,20 +1,15 @@
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useInvalidatePatientData } from "@/hooks/useInvalidatePatientData";
 import { apiRequest } from "@/lib/queryClient";
 import { MobileLayout } from "@/components/layout/mobile-layout";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   User, Mail, Calendar, Ruler, Weight,
-  Activity, Target, Clipboard, TrendingUp, Percent,
+  Activity, Target,
 } from "lucide-react";
-import type { Patient, AnthropometricAssessment } from "@shared/schema";
+import type { Patient } from "@shared/schema";
 import { PushNotificationManager } from "@/components/PushNotificationManager";
-// Importações mantidas para reativação futura do cálculo automático Durnin & Womersley
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { calculateDurninBodyFat, calculateAgeFromBirthDate } from "@/utils/durnin-body-fat";
 
 export default function PatientProfilePage() {
   const invalidatePatientData = useInvalidatePatientData();
@@ -28,16 +23,6 @@ export default function PatientProfilePage() {
     queryKey: ["/api/patient/my-profile"],
     queryFn: async () => {
       const res = await apiRequest("GET", "/api/patient/my-profile");
-      if (!res.ok) return null;
-      return res.json();
-    },
-    retry: false,
-  });
-
-  const { data: latestAnthro, isLoading: anthroLoading } = useQuery<AnthropometricAssessment>({
-    queryKey: ["/api/my-anthropometry/latest"],
-    queryFn: async () => {
-      const res = await apiRequest("GET", "/api/my-anthropometry/latest");
       if (!res.ok) return null;
       return res.json();
     },
@@ -85,32 +70,9 @@ export default function PatientProfilePage() {
         { icon: Calendar, label: "Data de Nascimento",   value: formatDate(patient.birthDate),                         color: "bg-fuchsia-50 text-fuchsia-600" },
         { icon: User,     label: "Sexo",                 value: getSexLabel(patient.sex),                              color: "bg-purple-50 text-purple-600" },
         { icon: Ruler,    label: "Altura",                value: patient.heightCm ? `${patient.heightCm} cm` : "Não informado", color: "bg-violet-50 text-violet-600" },
-        { icon: Weight,   label: "Peso",                 value: latestAnthro?.weightKg != null ? `${latestAnthro.weightKg} kg` : (patient.weightKg ? `${patient.weightKg} kg` : "Não informado"), color: "bg-fuchsia-50 text-fuchsia-600" },
+        { icon: Weight,   label: "Peso",                 value: patient.weightKg ? `${patient.weightKg} kg` : "Não informado", color: "bg-fuchsia-50 text-fuchsia-600" },
         { icon: Target,   label: "Objetivo",             value: getGoalLabel(patient.goal),                            color: "bg-purple-50 text-purple-600" },
       ]
-    : [];
-
-  const circumferenceItems = latestAnthro
-    ? [
-        { label: "Pescoço",                  value: latestAnthro.circumNeck,                      unit: "cm" },
-        { label: "Tórax",                    value: latestAnthro.circumChest,                     unit: "cm" },
-        { label: "Cintura",                  value: latestAnthro.circumWaist,                     unit: "cm" },
-        { label: "Abdômen",                  value: latestAnthro.circumAbdomen,                   unit: "cm" },
-        { label: "Quadril",                  value: latestAnthro.circumHip,                       unit: "cm" },
-        { label: "Braço n. dom. relaxado",   value: latestAnthro.circumNonDominantArmRelaxed,     unit: "cm" },
-        { label: "Braço n. dom. contraído",  value: latestAnthro.circumNonDominantArmContracted,  unit: "cm" },
-        { label: "Coxa proximal n. dom.",    value: latestAnthro.circumNonDominantProximalThigh,  unit: "cm" },
-        { label: "Panturrilha n. dom.",      value: latestAnthro.circumNonDominantCalf,           unit: "cm" },
-      ].filter(i => i.value != null)
-    : [];
-
-  const foldItems = latestAnthro
-    ? [
-        { label: "Bicipital",      value: latestAnthro.foldBiceps,       unit: "mm" },
-        { label: "Tricipital",     value: latestAnthro.foldTriceps,      unit: "mm" },
-        { label: "Subescapular",   value: latestAnthro.foldSubscapular,  unit: "mm" },
-        { label: "Suprailíaca",    value: latestAnthro.foldSuprailiac,   unit: "mm" },
-      ].filter(i => i.value != null)
     : [];
 
   return (
@@ -159,7 +121,7 @@ export default function PatientProfilePage() {
 
               {/* Métricas rápidas */}
               {(() => {
-                const displayWeight = latestAnthro?.weightKg ?? (patient.weightKg ? parseFloat(patient.weightKg) : null);
+                const displayWeight = patient.weightKg ? parseFloat(patient.weightKg) : null;
                 return (patient.heightCm || displayWeight) ? (
                   <div className="flex-shrink-0 flex flex-col gap-2">
                     {patient.heightCm && (
@@ -181,233 +143,37 @@ export default function PatientProfilePage() {
           </div>
         )}
 
-        {/* ── Tabs ── */}
         <div className="px-4 mt-5">
           {patientLoading ? (
             <div className="space-y-3">
               {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-14 w-full rounded-xl" />)}
             </div>
           ) : (
-            <Tabs defaultValue="personal" className="w-full">
-              {/* Tab switcher */}
-              <TabsList className="w-full grid grid-cols-2 mb-5 h-11 rounded-xl bg-purple-50 p-1 gap-1">
-                <TabsTrigger
-                  value="personal"
-                  className="rounded-lg text-sm font-medium transition-all
-                             data-[state=active]:bg-white data-[state=active]:text-purple-700
-                             data-[state=active]:shadow-sm data-[state=inactive]:text-purple-400"
-                >
-                  Dados Pessoais
-                </TabsTrigger>
-                <TabsTrigger
-                  value="measures"
-                  className="rounded-lg text-sm font-medium transition-all
-                             data-[state=active]:bg-white data-[state=active]:text-purple-700
-                             data-[state=active]:shadow-sm data-[state=inactive]:text-purple-400"
-                >
-                  Últimas Medidas
-                </TabsTrigger>
-              </TabsList>
-
-              {/* ── Aba Dados Pessoais ── */}
-              <TabsContent value="personal">
-                <div className="space-y-2.5">
-                  {/* Card de Notificações Push */}
-                  <PushNotificationManager />
-                  {personalItems.map((item) => {
-                    const Icon = item.icon;
-                    return (
-                      <div
-                        key={item.label}
-                        className="flex items-center gap-3.5 px-4 py-3.5 rounded-xl
-                                   bg-white border border-gray-100 shadow-sm
-                                   hover:shadow-md hover:border-purple-100 transition-all duration-200"
-                      >
-                        {/* Ícone com fundo colorido */}
-                        <div className={`flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center ${item.color}`}>
-                          <Icon className="h-4 w-4" />
-                        </div>
-
-                        {/* Label e valor */}
-                        <div className="flex-1 min-w-0 flex flex-col gap-0.5">
-                          <span className="text-xs text-muted-foreground font-medium">{item.label}</span>
-                          <span className="text-sm font-semibold text-foreground break-words">
-                            {item.value}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </TabsContent>
-
-              {/* ── Aba Últimas Medidas ── */}
-              <TabsContent value="measures">
-                {anthroLoading ? (
-                  <div className="space-y-3">
-                    {[1, 2, 3].map(i => <Skeleton key={i} className="h-20 w-full rounded-xl" />)}
-                  </div>
-                ) : !latestAnthro ? (
-                  <div className="flex flex-col items-center justify-center py-14 text-center gap-3">
-                    <div className="w-16 h-16 rounded-2xl bg-purple-50 flex items-center justify-center shadow-sm">
-                      <Clipboard className="h-7 w-7 text-purple-300" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold text-foreground">
-                        Nenhuma avaliação disponível
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Seu nutricionista irá registrar suas medidas em breve.
-                      </p>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-5">
-
-                    {/* Cabeçalho da avaliação */}
-                    <div className="flex items-center justify-between px-4 py-3.5 rounded-xl
-                                    bg-white border border-gray-100 shadow-sm">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-lg bg-purple-50 flex items-center justify-center">
-                          <TrendingUp className="h-4 w-4 text-purple-600" />
-                        </div>
-                        <div>
-                          <p className="text-xs text-muted-foreground">Avaliação</p>
-                          <p className="text-sm font-semibold text-foreground leading-tight">
-                            {latestAnthro.title}
-                          </p>
-                        </div>
-                      </div>
-                      <Badge
-                        variant="secondary"
-                        className="text-xs bg-purple-50 text-purple-700 border border-purple-100 font-medium"
-                      >
-                        {latestAnthro.createdAt
-                          ? new Date(latestAnthro.createdAt).toLocaleDateString("pt-BR")
-                          : ""}
-                      </Badge>
+            <div className="space-y-2.5">
+              <PushNotificationManager />
+              {personalItems.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <div
+                    key={item.label}
+                    className="flex items-center gap-3.5 px-4 py-3.5 rounded-xl
+                               bg-white border border-gray-100 shadow-sm
+                               hover:shadow-md hover:border-purple-100 transition-all duration-200"
+                  >
+                    <div className={`flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center ${item.color}`}>
+                      <Icon className="h-4 w-4" />
                     </div>
 
-                    {/* Circunferências */}
-                    {circumferenceItems.length > 0 && (
-                      <div>
-                        <div className="flex items-center gap-2 mb-3">
-                          <div className="w-1 h-4 rounded-full bg-purple-500" />
-                          <p className="text-xs font-bold text-foreground uppercase tracking-widest">
-                            Circunferências
-                          </p>
-                        </div>
-                        <div className="grid grid-cols-2 gap-2.5">
-                          {circumferenceItems.map(item => (
-                            <div
-                              key={item.label}
-                              className="rounded-xl bg-white border border-gray-100 shadow-sm px-3.5 py-3
-                                         hover:border-purple-100 hover:shadow-md transition-all duration-200"
-                            >
-                              <p className="text-[11px] text-muted-foreground leading-tight mb-1">{item.label}</p>
-                              <p className="text-base font-bold text-foreground leading-none">
-                                {item.value}
-                                <span className="text-xs font-normal text-muted-foreground ml-1">{item.unit}</span>
-                              </p>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Dobras Cutâneas */}
-                    {foldItems.length > 0 && (
-                      <div>
-                        <div className="flex items-center gap-2 mb-3">
-                          <div className="w-1 h-4 rounded-full bg-fuchsia-500" />
-                          <p className="text-xs font-bold text-foreground uppercase tracking-widest">
-                            Dobras Cutâneas
-                          </p>
-                        </div>
-                        <div className="grid grid-cols-2 gap-2.5">
-                          {foldItems.map(item => (
-                            <div
-                              key={item.label}
-                              className="rounded-xl bg-white border border-gray-100 shadow-sm px-3.5 py-3
-                                         hover:border-fuchsia-100 hover:shadow-md transition-all duration-200"
-                            >
-                              <p className="text-[11px] text-muted-foreground leading-tight mb-1">{item.label}</p>
-                              <p className="text-base font-bold text-foreground leading-none">
-                                {item.value}
-                                <span className="text-xs font-normal text-muted-foreground ml-1">{item.unit}</span>
-                              </p>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Card de % Gordura Corporal
-                         Exibido quando o nutricionista preenche os valores manuais.
-                         Prioridade: valores manuais (preenchidos pelo nutricionista) >
-                         cálculo automático Durnin & Womersley (adormecido quando manual está preenchido).
-                         O card é exibido independentemente de haver dobras cutâneas cadastradas. */}
-                    {(() => {
-                      if (!latestAnthro) return null;
-                      // 1º) Verificar se há valores manuais preenchidos pelo nutricionista
-                      const hasManual =
-                        latestAnthro.manualBodyFatPercent != null &&
-                        !isNaN(latestAnthro.manualBodyFatPercent);
-
-                      if (hasManual) {
-                        return (
-                          <div className="mt-1 rounded-2xl overflow-hidden shadow-sm"
-                               style={{ background: "linear-gradient(135deg, #F97316 0%, #FBBF24 100%)" }}>
-                            <div className="px-4 py-3">
-                              <div className="flex items-center gap-2 mb-2">
-                                <div className="w-7 h-7 rounded-lg bg-white/20 flex items-center justify-center">
-                                  <Percent className="h-4 w-4 text-white" />
-                                </div>
-                                <p className="text-white font-bold text-xs uppercase tracking-wide">
-                                  % Gordura Corporal
-                                </p>
-                              </div>
-                              <div className="flex items-end justify-between">
-                                <div>
-                                  <p className="text-white/80 text-[10px] uppercase font-medium">Resultado</p>
-                                  <p className="text-white font-bold text-4xl leading-none">
-                                    {latestAnthro.manualBodyFatPercent}
-                                    <span className="text-xl font-normal ml-0.5">%</span>
-                                  </p>
-                                </div>
-                                {latestAnthro.manualBodyFatClassification && (
-                                  <div className="text-right">
-                                    <p className="text-white/80 text-[10px] uppercase font-medium">Classificação</p>
-                                    <p className="text-white font-semibold text-sm">{latestAnthro.manualBodyFatClassification}</p>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      }
-
-                      // 2º) Fallback: cálculo automático Durnin & Womersley (adormecido — não exibido ao paciente)
-                      // O código abaixo está intencionalmente comentado para preservar a lógica
-                      // e ser reativado futuramente quando os campos manuais forem removidos.
-                      // const age = calculateAgeFromBirthDate(patient?.birthDate);
-                      // const sex = patient?.sex as "M" | "F" | "Outro" | null | undefined;
-                      // const result = calculateDurninBodyFat(
-                      //   latestAnthro?.foldTriceps, latestAnthro?.foldBiceps,
-                      //   latestAnthro?.foldSubscapular, latestAnthro?.foldSuprailiac,
-                      //   sex, age, "siri",
-                      //   latestAnthro?.weightKg ? parseFloat(latestAnthro.weightKg.toString()) : null
-                      // );
-                      // if (!result) return null;
-                      // ... card com result.bodyFatPercent e result.classification
-
-                      return null;
-                    })()}
-
+                    <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+                      <span className="text-xs text-muted-foreground font-medium">{item.label}</span>
+                      <span className="text-sm font-semibold text-foreground break-words">
+                        {item.value}
+                      </span>
+                    </div>
                   </div>
-                )}
-              </TabsContent>
-            </Tabs>
+                );
+              })}
+            </div>
           )}
         </div>
       </div>

@@ -40,7 +40,7 @@ const dashboardCards: DashboardCard[] = [
   },
   {
     title: "Meu Perfil",
-    subtitle: "Dados pessoais e medidas",
+    subtitle: "Dados pessoais da sua conta",
     href: "/profile",
     icon: User,
     iconBg: "bg-[#E8F0FF]",
