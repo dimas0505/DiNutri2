@@ -5,7 +5,7 @@
 // de qualquer permissão de notificação push do sistema operacional.
 // Acessado pelo botão de sininho no dashboard do paciente.
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Bell, BellRing, CheckCheck, X, ExternalLink, MessageSquare, ClipboardList, UtensilsCrossed, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useInboxNotifications } from '@/hooks/useInboxNotifications';
@@ -62,11 +62,31 @@ function NotificationIcon({ type }: { type: InAppNotification['type'] }) {
 interface InboxPanelProps {
   isOpen: boolean;
   onClose: () => void;
+  autoOpenNotificationId?: string | null;
 }
 
-export function InboxPanel({ isOpen, onClose }: InboxPanelProps) {
+export function InboxPanel({ isOpen, onClose, autoOpenNotificationId = null }: InboxPanelProps) {
   const { notifications, unreadCount, isLoading, markAsRead, markAllAsRead } = useInboxNotifications();
   const [, setLocation] = useLocation();
+  const [selectedNotification, setSelectedNotification] = useState<InAppNotification | null>(null);
+
+  const autoOpenNotification = useMemo(() => {
+    if (!autoOpenNotificationId) return null;
+    return notifications.find((notif) => notif.id === autoOpenNotificationId) ?? null;
+  }, [autoOpenNotificationId, notifications]);
+
+  useEffect(() => {
+    if (!isOpen || !autoOpenNotification) return;
+    setSelectedNotification(autoOpenNotification);
+  }, [isOpen, autoOpenNotification]);
+
+  useEffect(() => {
+    if (!selectedNotification) return;
+    const syncedNotification = notifications.find((notif) => notif.id === selectedNotification.id);
+    if (syncedNotification) {
+      setSelectedNotification(syncedNotification);
+    }
+  }, [notifications, selectedNotification]);
 
   if (!isOpen) return null;
 
@@ -74,10 +94,14 @@ export function InboxPanel({ isOpen, onClose }: InboxPanelProps) {
     if (!notif.isRead) {
       markAsRead(notif.id);
     }
-    if (notif.url) {
-      onClose();
-      setLocation(notif.url);
-    }
+    setSelectedNotification(notif);
+  };
+
+  const handleOpenDetails = () => {
+    if (!selectedNotification?.url) return;
+    onClose();
+    setSelectedNotification(null);
+    setLocation(selectedNotification.url);
   };
 
   return (
@@ -188,6 +212,55 @@ export function InboxPanel({ isOpen, onClose }: InboxPanelProps) {
           )}
         </div>
       </div>
+
+      {selectedNotification && (
+        <>
+          <div
+            className="fixed inset-0 z-[65] bg-black/45"
+            onClick={() => setSelectedNotification(null)}
+          />
+
+          <div className="fixed z-[70] left-1/2 top-1/2 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-white shadow-2xl p-5">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <NotificationIcon type={selectedNotification.type} />
+                <div>
+                  <h3 className="text-sm font-bold text-gray-900">{selectedNotification.title}</h3>
+                  <p className="text-[11px] text-gray-400">{formatRelativeTime(selectedNotification.createdAt)}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedNotification(null)}
+                className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-gray-500"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <p className="text-sm text-gray-600 leading-relaxed mt-4">{selectedNotification.body}</p>
+
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setSelectedNotification(null)}
+                className="px-4 py-2 text-sm rounded-lg bg-gray-100 text-gray-700"
+              >
+                Fechar
+              </button>
+              {selectedNotification.url && (
+                <button
+                  type="button"
+                  onClick={handleOpenDetails}
+                  className="px-4 py-2 text-sm rounded-lg bg-[#7C3AED] text-white"
+                >
+                  Ver detalhes
+                </button>
+              )}
+            </div>
+          </div>
+        </>
+      )}
     </>
   );
 }
@@ -202,7 +275,22 @@ interface InboxBellButtonProps {
 
 export function InboxBellButton({ className }: InboxBellButtonProps) {
   const [open, setOpen] = useState(false);
-  const { unreadCount } = useInboxNotifications();
+  const { unreadCount, notifications } = useInboxNotifications();
+  const [autoOpenNotificationId, setAutoOpenNotificationId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!notifications.length) return;
+
+    const firstUnread = notifications.find((notif) => !notif.isRead);
+    if (!firstUnread) return;
+
+    const storageKey = `inbox-auto-open:${firstUnread.id}`;
+    if (sessionStorage.getItem(storageKey)) return;
+
+    setOpen(true);
+    setAutoOpenNotificationId(firstUnread.id);
+    sessionStorage.setItem(storageKey, '1');
+  }, [notifications]);
 
   return (
     <>
@@ -229,7 +317,14 @@ export function InboxBellButton({ className }: InboxBellButtonProps) {
           </span>
         )}
       </button>
-      <InboxPanel isOpen={open} onClose={() => setOpen(false)} />
+      <InboxPanel
+        isOpen={open}
+        onClose={() => {
+          setOpen(false);
+          setAutoOpenNotificationId(null);
+        }}
+        autoOpenNotificationId={autoOpenNotificationId}
+      />
     </>
   );
 }
