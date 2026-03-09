@@ -93,6 +93,7 @@ export default function AssessmentsPage() {
     <MobileLayout title="Minhas Avaliações" showBackButton>
       <div className="p-4 space-y-4">
         <Tabs defaultValue="anthro" className="w-full">
+          {/* ── Barra de abas: 3 colunas ── */}
           <TabsList className="w-full grid grid-cols-3 h-11 rounded-xl bg-purple-50 p-1 gap-1">
             <TabsTrigger
               value="anthro"
@@ -102,10 +103,10 @@ export default function AssessmentsPage() {
             </TabsTrigger>
             <TabsTrigger
               value="hologram"
-              className="rounded-lg text-sm font-medium data-[state=active]:bg-white data-[state=active]:text-purple-700 data-[state=inactive]:text-purple-400 flex items-center gap-1"
+              className="rounded-lg text-sm font-medium data-[state=active]:bg-white data-[state=active]:text-purple-700 data-[state=inactive]:text-purple-400 flex items-center justify-center gap-1"
             >
-              <Scan className="h-3.5 w-3.5" />
-              Corpo 3D
+              <Scan className="h-3.5 w-3.5 shrink-0" />
+              <span>Corpo 3D</span>
             </TabsTrigger>
             <TabsTrigger
               value="reports"
@@ -115,7 +116,9 @@ export default function AssessmentsPage() {
             </TabsTrigger>
           </TabsList>
 
-          {/* ── Aba: Dados Antropométricos ── */}
+          {/* ══════════════════════════════════════════════
+              ABA: Dados Antropométricos (inalterada)
+          ══════════════════════════════════════════════ */}
           <TabsContent value="anthro" className="mt-4">
             <p className="text-sm text-muted-foreground mb-4">
               Última avaliação antropométrica registrada pelo seu nutricionista.
@@ -230,12 +233,12 @@ export default function AssessmentsPage() {
             )}
           </TabsContent>
 
-          {/* ── Aba: Visualização Holográfica ── */}
+          {/* ══════════════════════════════════════════════
+              ABA: Corpo 3D — Visualização Holográfica
+          ══════════════════════════════════════════════ */}
           <TabsContent value="hologram" className="mt-4">
             {anthroLoading ? (
-              <div className="space-y-3">
-                <Skeleton className="h-96 w-full rounded-2xl" />
-              </div>
+              <Skeleton className="w-full rounded-2xl" style={{ aspectRatio: "3/4" }} />
             ) : !latestAnthro ? (
               <Card className="border border-border/70">
                 <CardContent className="flex flex-col items-center justify-center py-12 text-center">
@@ -250,10 +253,12 @@ export default function AssessmentsPage() {
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <p className="text-xs text-muted-foreground">
-                    Visualização interativa · {latestAnthro.title}
+                    {latestAnthro.title}
                   </p>
                   <Badge variant="secondary" className="text-xs bg-purple-50 text-purple-700 border border-purple-100 font-medium">
-                    {latestAnthro.createdAt ? new Date(latestAnthro.createdAt).toLocaleDateString("pt-BR") : ""}
+                    {latestAnthro.createdAt
+                      ? new Date(latestAnthro.createdAt).toLocaleDateString("pt-BR")
+                      : ""}
                   </Badge>
                 </div>
                 <BodyHologramView data={latestAnthro} />
@@ -261,7 +266,9 @@ export default function AssessmentsPage() {
             )}
           </TabsContent>
 
-          {/* ── Aba: Relatórios ── */}
+          {/* ══════════════════════════════════════════════
+              ABA: Relatórios (inalterada)
+          ══════════════════════════════════════════════ */}
           <TabsContent value="reports" className="mt-4">
             <p className="text-sm text-muted-foreground mb-4">
               Arquivos e avaliações enviados pelo seu nutricionista.
