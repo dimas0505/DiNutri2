@@ -6,6 +6,9 @@
  * medidas antropométricas realmente presentes na avaliação.
  *
  * Princípio: a imagem é soberana. O código apenas adiciona overlays.
+ *
+ * Imagem base: body-hologram.png (1024×1536px, proporção 2:3)
+ * Coordenadas calibradas pixel a pixel pelo usuário.
  */
 
 import { motion, useReducedMotion } from "framer-motion";
@@ -21,9 +24,8 @@ interface BodyHologramViewProps {
 
 // ─── Constantes visuais ───────────────────────────────────────────────────────
 
-/** Cor neon ciano — consistente com a imagem base */
 const NEON = "#22d3ee";
-const NEON_DIM = "rgba(34,211,238,0.7)";
+const NEON_DIM = "rgba(34,211,238,0.65)";
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 
@@ -32,27 +34,20 @@ export function BodyHologramView({ data }: BodyHologramViewProps) {
   const activePoints = getActivePoints(data);
 
   return (
-    <div
+    <motion.div
       className="relative w-full rounded-2xl overflow-hidden"
       style={{
         background: "#020d1a",
-        border: "1px solid rgba(34,211,238,0.2)",
-        boxShadow: "0 0 24px rgba(6,182,212,0.12)",
-        // Proporção da imagem: ~750×1000px → 3:4
-        aspectRatio: "3 / 4",
+        border: "1px solid rgba(34,211,238,0.18)",
+        boxShadow: "0 0 28px rgba(6,182,212,0.10)",
+        // Proporção da imagem: 1024×1536 → 2:3
+        aspectRatio: "2 / 3",
       }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.5 }}
       aria-label="Visualização holográfica das medidas corporais"
     >
-      {/* ── Grade tecnológica de fundo ── */}
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          backgroundImage:
-            "linear-gradient(rgba(14,165,233,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(14,165,233,0.08) 1px, transparent 1px)",
-          backgroundSize: "24px 24px",
-        }}
-      />
-
       {/* ── Imagem base holográfica ── */}
       <img
         src="/body-hologram.png"
@@ -71,9 +66,11 @@ export function BodyHologramView({ data }: BodyHologramViewProps) {
         aria-hidden="true"
       >
         {activePoints.map((point, i) => {
-          // Extremidade da linha (label side)
-          const lineEndX = point.side === "right" ? point.anchor.x + 18 : point.anchor.x - 18;
-          const lineEndY = point.anchor.y;
+          // A linha vai do ponto de ancoragem até a borda da área do label
+          const offset = 14; // distância horizontal da linha
+          const lineEndX = point.side === "right"
+            ? point.anchor.x + offset
+            : point.anchor.x - offset;
 
           return (
             <g key={point.id}>
@@ -82,16 +79,16 @@ export function BodyHologramView({ data }: BodyHologramViewProps) {
                 x1={point.anchor.x}
                 y1={point.anchor.y}
                 x2={lineEndX}
-                y2={lineEndY}
+                y2={point.anchor.y}
                 stroke={NEON}
-                strokeWidth="0.35"
-                strokeDasharray="1.5 1"
+                strokeWidth="0.3"
+                strokeDasharray="1.2 0.8"
                 strokeLinecap="round"
                 initial={{ pathLength: 0, opacity: 0 }}
-                animate={{ pathLength: 1, opacity: 0.75 }}
+                animate={{ pathLength: 1, opacity: 0.7 }}
                 transition={{
-                  delay: shouldReduceMotion ? 0 : 0.3 + i * 0.12,
-                  duration: shouldReduceMotion ? 0 : 0.5,
+                  delay: shouldReduceMotion ? 0 : 0.4 + i * 0.1,
+                  duration: shouldReduceMotion ? 0 : 0.45,
                   ease: "easeOut",
                 }}
               />
@@ -100,22 +97,22 @@ export function BodyHologramView({ data }: BodyHologramViewProps) {
               <motion.circle
                 cx={point.anchor.x}
                 cy={point.anchor.y}
-                r="0.9"
+                r="0.8"
                 fill={NEON}
                 initial={{ opacity: 0, scale: 0 }}
                 animate={
                   shouldReduceMotion
                     ? { opacity: 1, scale: 1 }
                     : {
-                        opacity: [0, 1, 0.7, 1],
-                        scale: [0, 1.4, 1, 1.2],
+                        opacity: [0, 1, 0.6, 1],
+                        scale: [0, 1.5, 1, 1.3],
                       }
                 }
                 transition={{
-                  delay: shouldReduceMotion ? 0 : 0.3 + i * 0.12,
-                  duration: shouldReduceMotion ? 0.1 : 0.6,
+                  delay: shouldReduceMotion ? 0 : 0.4 + i * 0.1,
+                  duration: shouldReduceMotion ? 0.1 : 0.55,
                   repeat: shouldReduceMotion ? 0 : Infinity,
-                  repeatDelay: 2.5,
+                  repeatDelay: 3,
                   repeatType: "loop",
                 }}
                 style={{ filter: `drop-shadow(0 0 2px ${NEON})` }}
@@ -134,11 +131,11 @@ export function BodyHologramView({ data }: BodyHologramViewProps) {
             key={point.id}
             role="note"
             aria-label={`${point.label}: ${point.value} ${point.unit}`}
-            initial={{ opacity: 0, x: isRight ? 12 : -12 }}
+            initial={{ opacity: 0, x: isRight ? 10 : -10 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{
-              delay: shouldReduceMotion ? 0 : 0.5 + i * 0.12,
-              duration: shouldReduceMotion ? 0 : 0.35,
+              delay: shouldReduceMotion ? 0 : 0.55 + i * 0.1,
+              duration: shouldReduceMotion ? 0 : 0.3,
               ease: "easeOut",
             }}
             className="absolute"
@@ -146,40 +143,39 @@ export function BodyHologramView({ data }: BodyHologramViewProps) {
               zIndex: 3,
               top: `${point.anchor.y}%`,
               // Posiciona o label fora do corpo, no lado correto
-              [isRight ? "left" : "right"]: isRight
-                ? `${point.anchor.x + 20}%`
-                : `${100 - point.anchor.x + 20}%`,
+              // O offset de 14% no SVG + margem para o label não sobrepor a linha
+              ...(isRight
+                ? { left: `${point.anchor.x + 15}%` }
+                : { right: `${100 - point.anchor.x + 15}%` }),
               transform: "translateY(-50%)",
-              // Garante que não saia da área visível
-              maxWidth: "28%",
+              maxWidth: "26%",
+              minWidth: 52,
             }}
           >
             <div
-              className="px-2.5 py-1.5 rounded-full text-left"
+              className="px-2 py-1.5 rounded-full"
               style={{
-                background: "linear-gradient(135deg, rgba(224,242,254,0.92) 0%, rgba(186,230,253,0.88) 100%)",
+                background: "linear-gradient(135deg, rgba(224,242,254,0.94) 0%, rgba(186,230,253,0.90) 100%)",
                 border: `1px solid ${NEON_DIM}`,
-                boxShadow: `0 0 10px rgba(34,211,238,0.18), inset 0 1px 0 rgba(255,255,255,0.6)`,
-                backdropFilter: "blur(4px)",
+                boxShadow: `0 0 8px rgba(34,211,238,0.15), inset 0 1px 0 rgba(255,255,255,0.65)`,
+                backdropFilter: "blur(3px)",
                 whiteSpace: "nowrap",
               }}
             >
               <div
-                className="font-bold leading-none"
+                className="font-black leading-none"
                 style={{
-                  fontSize: "clamp(9px, 1.8vw, 12px)",
+                  fontSize: "clamp(8px, 1.7vw, 11px)",
                   color: "#0c4a6e",
-                  letterSpacing: "0.01em",
                 }}
               >
                 {point.value} {point.unit}
               </div>
               <div
-                className="leading-none mt-0.5 opacity-70 uppercase"
+                className="leading-none mt-0.5 opacity-75 uppercase tracking-wide"
                 style={{
-                  fontSize: "clamp(7px, 1.3vw, 9px)",
+                  fontSize: "clamp(6px, 1.1vw, 8px)",
                   color: "#075985",
-                  letterSpacing: "0.06em",
                 }}
               >
                 {point.label}
@@ -197,7 +193,7 @@ export function BodyHologramView({ data }: BodyHologramViewProps) {
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{
-            delay: shouldReduceMotion ? 0 : 1.4,
+            delay: shouldReduceMotion ? 0 : 1.5,
             duration: shouldReduceMotion ? 0 : 0.4,
           }}
         >
@@ -227,11 +223,11 @@ export function BodyHologramView({ data }: BodyHologramViewProps) {
         style={{ zIndex: 4 }}
       >
         <span
-          className="font-mono uppercase tracking-widest"
+          className="font-mono uppercase"
           style={{
-            fontSize: "clamp(7px, 1.5vw, 9px)",
+            fontSize: "clamp(7px, 1.4vw, 9px)",
             color: NEON_DIM,
-            letterSpacing: "0.2em",
+            letterSpacing: "0.18em",
           }}
         >
           Análise Corporal
@@ -248,10 +244,10 @@ export function BodyHologramView({ data }: BodyHologramViewProps) {
           background: NEON,
           boxShadow: `0 0 6px ${NEON}`,
         }}
-        animate={shouldReduceMotion ? {} : { opacity: [1, 0.25, 1] }}
-        transition={{ duration: 1.4, repeat: Infinity }}
+        animate={shouldReduceMotion ? {} : { opacity: [1, 0.2, 1] }}
+        transition={{ duration: 1.5, repeat: Infinity }}
       />
-    </div>
+    </motion.div>
   );
 }
 
@@ -268,14 +264,14 @@ interface SummaryPillProps {
 function SummaryPill({ icon, label, value, color, subtitle }: SummaryPillProps) {
   const styles = {
     cyan: {
-      bg: "linear-gradient(135deg, rgba(224,242,254,0.92) 0%, rgba(186,230,253,0.88) 100%)",
-      border: "rgba(34,211,238,0.5)",
+      bg: "linear-gradient(135deg, rgba(224,242,254,0.94) 0%, rgba(186,230,253,0.90) 100%)",
+      border: "rgba(34,211,238,0.45)",
       labelColor: "#075985",
       valueColor: "#0c4a6e",
     },
     orange: {
-      bg: "linear-gradient(135deg, rgba(255,237,213,0.92) 0%, rgba(254,215,170,0.88) 100%)",
-      border: "rgba(251,146,60,0.5)",
+      bg: "linear-gradient(135deg, rgba(255,237,213,0.94) 0%, rgba(254,215,170,0.90) 100%)",
+      border: "rgba(251,146,60,0.45)",
       labelColor: "#9a3412",
       valueColor: "#7c2d12",
     },
@@ -287,7 +283,7 @@ function SummaryPill({ icon, label, value, color, subtitle }: SummaryPillProps) 
       style={{
         background: styles.bg,
         border: `1px solid ${styles.border}`,
-        boxShadow: "0 2px 8px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.5)",
+        boxShadow: "0 2px 8px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.55)",
         backdropFilter: "blur(6px)",
       }}
     >
@@ -298,7 +294,7 @@ function SummaryPill({ icon, label, value, color, subtitle }: SummaryPillProps) 
         {icon}
         <span
           className="uppercase font-bold tracking-wider"
-          style={{ fontSize: "clamp(7px, 1.3vw, 9px)" }}
+          style={{ fontSize: "clamp(7px, 1.2vw, 9px)" }}
         >
           {label}
         </span>
@@ -306,7 +302,7 @@ function SummaryPill({ icon, label, value, color, subtitle }: SummaryPillProps) 
       <div
         className="font-black leading-none"
         style={{
-          fontSize: "clamp(11px, 2.2vw, 14px)",
+          fontSize: "clamp(11px, 2.1vw, 14px)",
           color: styles.valueColor,
         }}
       >
@@ -316,7 +312,7 @@ function SummaryPill({ icon, label, value, color, subtitle }: SummaryPillProps) 
         <div
           className="mt-0.5 opacity-60"
           style={{
-            fontSize: "clamp(7px, 1.2vw, 8px)",
+            fontSize: "clamp(7px, 1.1vw, 8px)",
             color: styles.labelColor,
           }}
         >
