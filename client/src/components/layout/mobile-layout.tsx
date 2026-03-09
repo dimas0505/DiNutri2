@@ -145,6 +145,7 @@ export function DefaultMobileDrawer({ onProfileClick }: DefaultMobileDrawerProps
           { label: "Pacientes", href: "/patients", icon: Users, action: "navigate" },
           { label: "Nova Prescrição", href: "/patients/new", icon: FileText, action: "navigate" },
           { label: "Enviar Notificação", href: "/notifications/send", icon: Bell, action: "navigate" },
+          { label: "Relatório Notificações", href: "/notifications/report", icon: Bell, action: "navigate" },
         ]
       : []),
     ...(isPatient
