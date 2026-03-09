@@ -3,7 +3,7 @@ import { Link } from 'wouter';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Bell, Download, Loader2, LineChart } from "lucide-react";
+import { ArrowLeft, Bell, Download, Loader2, LineChart } from "lucide-react";
 
 export default function ReportsPage() {
   const [isDownloading, setIsDownloading] = useState(false);
@@ -54,11 +54,19 @@ export default function ReportsPage() {
 
   return (
     <div className="space-y-6 px-4 py-4 md:px-0 md:py-0">
-      <div>
-        <h1 className="text-2xl md:text-3xl font-bold">Relatórios</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Centralize aqui os relatórios de acesso e de notificações dos seus pacientes.
-        </p>
+      <div className="flex items-center justify-between gap-2">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold">Relatórios</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Centralize aqui os relatórios de acesso e de notificações dos seus pacientes.
+          </p>
+        </div>
+        <Link href="/">
+          <Button variant="outline" size="sm">
+            <ArrowLeft className="mr-1 h-4 w-4" />
+            Voltar
+          </Button>
+        </Link>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
