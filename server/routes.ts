@@ -10,7 +10,7 @@ import { z } from "zod";
 import { handleUpload, type HandleUploadBody } from '@vercel/blob/client';
 import { put } from '@vercel/blob';
 import multer from 'multer';
-import { eq, and, desc, or, sql } from 'drizzle-orm';
+import { eq, and, desc, or, sql, inArray } from 'drizzle-orm';
 import { anamnesisRecords, foodDiaryEntries, prescriptions, users, patients, subscriptions, activityLog, patientDocuments, anthropometricAssessments, pushSubscriptions, inAppNotifications } from '../shared/schema.js';
 import { db } from './db.js';
 import sharp from 'sharp';
@@ -1911,6 +1911,100 @@ export async function setupRoutes(app: Express): Promise<void> {
     } catch (error) {
       console.error('[PushNotifications] Erro ao enviar mensagem:', error);
       res.status(500).json({ message: 'Falha ao enviar notificação.' });
+    }
+  });
+
+  // GET: Relatório de notificações para o nutricionista
+  app.get('/api/push/report', isAuthenticated, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'nutritionist' && req.user.role !== 'admin') {
+        return res.status(403).json({ message: 'Acesso negado. Apenas nutricionistas.' });
+      }
+
+      const nutritionistPatients = await db
+        .select({
+          id: patients.id,
+          name: patients.name,
+          email: patients.email,
+          userId: patients.userId,
+        })
+        .from(patients)
+        .where(eq(patients.ownerId, req.user.id));
+
+      const patientUserIds = nutritionistPatients
+        .map((patient) => patient.userId)
+        .filter((userId): userId is string => Boolean(userId));
+
+      const pushByUserId = new Map<string, number>();
+      const inAppByUserId = new Map<string, { count: number; lastReceivedAt: Date | null }>();
+
+      if (patientUserIds.length > 0) {
+        const pushStats = await db
+          .select({
+            userId: pushSubscriptions.userId,
+            total: sql<number>`count(*)::int`,
+          })
+          .from(pushSubscriptions)
+          .where(inArray(pushSubscriptions.userId, patientUserIds))
+          .groupBy(pushSubscriptions.userId);
+
+        pushStats.forEach((row) => {
+          pushByUserId.set(row.userId, row.total);
+        });
+
+        const inAppStats = await db
+          .select({
+            userId: inAppNotifications.userId,
+            total: sql<number>`count(*)::int`,
+            lastReceivedAt: sql<Date | null>`max(${inAppNotifications.createdAt})`,
+          })
+          .from(inAppNotifications)
+          .where(
+            and(
+              inArray(inAppNotifications.userId, patientUserIds),
+              eq(inAppNotifications.type, 'message')
+            )
+          )
+          .groupBy(inAppNotifications.userId);
+
+        inAppStats.forEach((row) => {
+          inAppByUserId.set(row.userId, {
+            count: row.total,
+            lastReceivedAt: row.lastReceivedAt,
+          });
+        });
+      }
+
+      const report = nutritionistPatients.map((patient) => {
+        const userId = patient.userId;
+        const pushCount = userId ? (pushByUserId.get(userId) ?? 0) : 0;
+        const messageStats = userId ? inAppByUserId.get(userId) : undefined;
+
+        return {
+          patientId: patient.id,
+          patientName: patient.name,
+          patientEmail: patient.email,
+          userId,
+          hasAccount: Boolean(userId),
+          hasPushEnabled: pushCount > 0,
+          pushSubscriptions: pushCount,
+          messagesReceived: messageStats?.count ?? 0,
+          lastMessageReceivedAt: messageStats?.lastReceivedAt ?? null,
+        };
+      });
+
+      return res.json({
+        totals: {
+          patients: report.length,
+          withAccount: report.filter((item) => item.hasAccount).length,
+          withPushEnabled: report.filter((item) => item.hasPushEnabled).length,
+          receivedMessages: report.filter((item) => item.messagesReceived > 0).length,
+        },
+        report,
+      });
+    } catch (error) {
+      console.error('[PushNotifications] Erro ao gerar relatório:', error);
+      res.status(500).json({ message: 'Falha ao gerar relatório de notificações.' });
     }
   });
 

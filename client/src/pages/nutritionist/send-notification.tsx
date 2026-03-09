@@ -273,6 +273,15 @@ export default function SendNotificationPage() {
             </div>
           )}
 
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full"
+          onClick={() => setLocation("/reports")}
+        >
+          Ir para central de relatórios
+        </Button>
+
           {/* Botão de envio */}
           <Button
             type="submit"
