@@ -19,9 +19,33 @@ import { logActivity } from './activity-logger.js';
 import { sendPushToUser, sendPushToAllPatients, getVapidPublicKey } from './push-notifications.js';
 import { createInAppNotification, createInAppNotificationForAllPatients } from './in-app-notifications.js';
 import ExcelJS from 'exceljs';
-import { format } from 'date-fns';
 
 const SALT_ROUNDS = 10;
+const BRAZIL_TIMEZONE = 'America/Sao_Paulo';
+
+function formatDateInBrazilTimezone(value: Date | string | null | undefined, includeTime = false): string {
+  if (!value) return 'N/A';
+
+  const parsedDate = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(parsedDate.getTime())) return 'N/A';
+
+  const formatter = new Intl.DateTimeFormat('pt-BR', {
+    timeZone: BRAZIL_TIMEZONE,
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    ...(includeTime
+      ? {
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: false,
+        }
+      : {}),
+  });
+
+  return formatter.format(parsedDate);
+}
 
 // Configure multer for in-memory file uploads
 const upload = multer({
@@ -1474,7 +1498,7 @@ export async function setupRoutes(app: Express): Promise<void> {
         ? await db
             .select()
             .from(subscriptions)
-            .where(sql`${subscriptions.patientId} = ANY(ARRAY[${sql.raw(patientIds.map(id => `'${id}'`).join(','))}]::text[])`)
+            .where(inArray(subscriptions.patientId, patientIds))
             .orderBy(subscriptions.patientId, desc(subscriptions.createdAt))
         : [];
 
@@ -1491,7 +1515,7 @@ export async function setupRoutes(app: Express): Promise<void> {
         ? await db
             .select()
             .from(activityLog)
-            .where(sql`${activityLog.userId} = ANY(ARRAY[${sql.raw(userIds.map(id => `'${id}'`).join(','))}]::text[])`)
+            .where(inArray(activityLog.userId, userIds))
             .orderBy(activityLog.userId, desc(activityLog.createdAt))
         : [];
 
@@ -1538,8 +1562,10 @@ export async function setupRoutes(app: Express): Promise<void> {
       reportData.forEach(data => {
         worksheet.addRow({
           ...data,
-          planExpiresAt: data.planExpiresAt ? format(new Date(data.planExpiresAt), 'dd/MM/yyyy') : 'N/A',
-          lastActivityTimestamp: data.lastActivityTimestamp ? format(new Date(data.lastActivityTimestamp), 'dd/MM/yyyy HH:mm:ss') : 'Nenhum acesso',
+          planExpiresAt: formatDateInBrazilTimezone(data.planExpiresAt),
+          lastActivityTimestamp: data.lastActivityTimestamp
+            ? formatDateInBrazilTimezone(data.lastActivityTimestamp, true)
+            : 'Nenhum acesso',
         });
       });
       
