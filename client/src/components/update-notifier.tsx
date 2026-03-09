@@ -20,6 +20,18 @@ export function UpdateNotifier() {
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return;
 
+    const checkForUpdates = async () => {
+      try {
+        const registration = await navigator.serviceWorker.getRegistration();
+        if (registration) {
+          await registration.update();
+          console.log('[UpdateNotifier] Update check completed.');
+        }
+      } catch (error) {
+        console.warn('[UpdateNotifier] Update check failed:', error);
+      }
+    };
+
     const handleControllerChange = () => {
       // Evita reloads múltiplos caso o evento dispare mais de uma vez
       if (isReloading.current) return;
@@ -77,22 +89,36 @@ export function UpdateNotifier() {
       });
     });
 
-    // Verifica atualizações periodicamente a cada 30 minutos
-    // Isso garante que usuários com o app aberto por longos períodos recebam atualizações
-    const intervalId = setInterval(async () => {
-      try {
-        const registration = await navigator.serviceWorker.getRegistration();
-        if (registration) {
-          await registration.update();
-          console.log('[UpdateNotifier] Periodic update check completed.');
-        }
-      } catch (error) {
-        console.warn('[UpdateNotifier] Periodic update check failed:', error);
+    // Verifica logo no mount para reduzir tempo até detectar um novo deploy.
+    checkForUpdates();
+
+    // Verifica atualizações periodicamente (mais agressivo para reduzir necessidade de refresh manual)
+    const intervalId = setInterval(checkForUpdates, 5 * 60 * 1000);
+
+    // Também verifica quando o app volta ao foco/foreground ou a conexão retorna.
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        checkForUpdates();
       }
-    }, 30 * 60 * 1000);
+    };
+
+    const handleWindowFocus = () => {
+      checkForUpdates();
+    };
+
+    const handleOnline = () => {
+      checkForUpdates();
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleWindowFocus);
+    window.addEventListener('online', handleOnline);
 
     return () => {
       clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleWindowFocus);
+      window.removeEventListener('online', handleOnline);
       if (controllerChangeListenerAdded.current) {
         navigator.serviceWorker.removeEventListener('controllerchange', handleControllerChange);
       }

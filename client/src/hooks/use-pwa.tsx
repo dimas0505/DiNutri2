@@ -97,7 +97,7 @@ export function registerServiceWorker(): Promise<ServiceWorkerRegistration | nul
   // is handled exclusively by the UpdateNotifier component to avoid
   // duplicate SKIP_WAITING calls that would cause a double-reload loop.
   return navigator.serviceWorker
-    .register('/sw.js')
+    .register('/sw.js', { updateViaCache: 'none' })
     .then((registration) => {
       console.log('Service Worker registered successfully:', registration);
       return registration;
