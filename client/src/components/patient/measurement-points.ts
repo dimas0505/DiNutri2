@@ -12,12 +12,18 @@ export interface MeasurementPoint {
   /** Unidade de medida */
   unit: string;
   /**
-   * Posição do ponto de ancoragem sobre a imagem, em % (0-100).
+   * Posição do ponto de ancoragem em % RELATIVO À IMAGEM (não ao container).
    *
-   * Coordenadas calibradas pixel a pixel sobre a imagem body-hologram.png
-   * (1024×1536px) usando a imagem de mapeamento fornecida pelo usuário.
-   * x=0 → borda esquerda, x=100 → borda direita
-   * y=0 → topo, y=100 → base
+   * A imagem body-hologram.png tem 1024×1536px (proporção 2:3).
+   * x=0 → borda esquerda da imagem, x=100 → borda direita da imagem
+   * y=0 → topo da imagem, y=100 → base da imagem
+   *
+   * O componente converte essas coordenadas para % do container
+   * usando a função imgToContainer(), levando em conta o espaço
+   * lateral que a imagem ocupa (IMG_WIDTH_FRACTION).
+   *
+   * Coordenadas calibradas pixel a pixel pelo usuário na imagem
+   * de mapeamento (1000431922.png, 1024×1536px).
    */
   anchor: { x: number; y: number };
   /**
@@ -32,11 +38,19 @@ export interface MeasurementPoint {
 
 // ─── Mapa de pontos anatômicos ────────────────────────────────────────────────
 //
-// Coordenadas extraídas pixel a pixel da imagem de mapeamento do usuário
-// (1000431922.png, 1024×1536px). Cada ponto corresponde à ponta interna
-// da seta azul, ou seja, onde ela toca o corpo na imagem.
+// Coordenadas em % relativas à imagem body-hologram.png (1024×1536px).
+// Calibradas com base na imagem de mapeamento do usuário.
 //
-// Verificado visualmente com imagem de debug (debug_manual.png).
+// Referência de pixels na imagem original:
+//   Pescoço         → (510, 325)  = x=49.8%, y=21.2%
+//   Braço Contraído → (370, 415)  = x=36.1%, y=27.0%
+//   Tórax           → (560, 500)  = x=54.7%, y=32.6%
+//   Braço Relaxado  → (365, 570)  = x=35.6%, y=37.1%
+//   Abdômen         → (560, 700)  = x=54.7%, y=45.6%
+//   Cintura         → (415, 720)  = x=40.5%, y=46.9%
+//   Quadril         → (570, 820)  = x=55.7%, y=53.4%
+//   Coxa Proximal   → (400, 870)  = x=39.1%, y=56.6%
+//   Panturrilha     → (390, 1050) = x=38.1%, y=68.4%
 
 export const MEASUREMENT_POINTS: MeasurementPoint[] = [
   {
@@ -44,7 +58,7 @@ export const MEASUREMENT_POINTS: MeasurementPoint[] = [
     label: "Pescoço",
     field: "circumNeck",
     unit: "cm",
-    anchor: { x: 49.8, y: 21.2 }, // ponta da seta direita tocando o pescoço
+    anchor: { x: 49.8, y: 21.2 },
     side: "right",
     priority: 1,
   },
@@ -53,7 +67,7 @@ export const MEASUREMENT_POINTS: MeasurementPoint[] = [
     label: "Braço Contraído",
     field: "circumNonDominantArmContracted",
     unit: "cm",
-    anchor: { x: 36.1, y: 27.0 }, // ponta da seta esquerda no braço superior
+    anchor: { x: 36.1, y: 27.0 },
     side: "left",
     priority: 2,
   },
@@ -62,7 +76,7 @@ export const MEASUREMENT_POINTS: MeasurementPoint[] = [
     label: "Tórax",
     field: "circumChest",
     unit: "cm",
-    anchor: { x: 54.7, y: 32.6 }, // ponta da seta direita no peitoral
+    anchor: { x: 54.7, y: 32.6 },
     side: "right",
     priority: 3,
   },
@@ -71,7 +85,7 @@ export const MEASUREMENT_POINTS: MeasurementPoint[] = [
     label: "Braço Relaxado",
     field: "circumNonDominantArmRelaxed",
     unit: "cm",
-    anchor: { x: 35.6, y: 37.1 }, // ponta da seta esquerda no braço médio
+    anchor: { x: 35.6, y: 37.1 },
     side: "left",
     priority: 4,
   },
@@ -80,7 +94,7 @@ export const MEASUREMENT_POINTS: MeasurementPoint[] = [
     label: "Abdômen",
     field: "circumAbdomen",
     unit: "cm",
-    anchor: { x: 54.7, y: 45.6 }, // ponta da seta direita no abdômen
+    anchor: { x: 54.7, y: 45.6 },
     side: "right",
     priority: 5,
   },
@@ -89,7 +103,7 @@ export const MEASUREMENT_POINTS: MeasurementPoint[] = [
     label: "Cintura",
     field: "circumWaist",
     unit: "cm",
-    anchor: { x: 40.5, y: 46.9 }, // ponta da seta esquerda na cintura
+    anchor: { x: 40.5, y: 46.9 },
     side: "left",
     priority: 6,
   },
@@ -98,7 +112,7 @@ export const MEASUREMENT_POINTS: MeasurementPoint[] = [
     label: "Quadril",
     field: "circumHip",
     unit: "cm",
-    anchor: { x: 55.7, y: 53.4 }, // ponta da seta direita no quadril
+    anchor: { x: 55.7, y: 53.4 },
     side: "right",
     priority: 7,
   },
@@ -107,7 +121,7 @@ export const MEASUREMENT_POINTS: MeasurementPoint[] = [
     label: "Coxa Proximal",
     field: "circumNonDominantProximalThigh",
     unit: "cm",
-    anchor: { x: 39.1, y: 56.6 }, // ponta da seta esquerda na coxa proximal
+    anchor: { x: 39.1, y: 56.6 },
     side: "left",
     priority: 8,
   },
@@ -116,7 +130,7 @@ export const MEASUREMENT_POINTS: MeasurementPoint[] = [
     label: "Panturrilha",
     field: "circumNonDominantCalf",
     unit: "cm",
-    anchor: { x: 38.1, y: 68.4 }, // ponta da seta esquerda na panturrilha
+    anchor: { x: 38.1, y: 68.4 },
     side: "left",
     priority: 9,
   },
