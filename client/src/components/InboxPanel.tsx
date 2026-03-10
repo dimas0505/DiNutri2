@@ -91,8 +91,6 @@ export function InboxPanel({ isOpen, onClose, autoOpenNotificationId = null }: I
   if (!isOpen) return null;
 
   const handleNotificationClick = (notif: InAppNotification) => {
-    // Agora não marca como lido automaticamente ao abrir o popup
-    // para permitir que o usuário use o botão "Marcar como lido"
     setSelectedNotification(notif);
   };
 
@@ -268,10 +266,13 @@ export function InboxPanel({ isOpen, onClose, autoOpenNotificationId = null }: I
                   <button
                     type="button"
                     onClick={() => {
+                      // Salva imediatamente que o usuário interagiu com esta notificação
+                      sessionStorage.setItem(`inbox-dismissed:${selectedNotification.id}`, '1');
+                      // Bloqueia qualquer auto-abertura para o resto desta sessão
+                      sessionStorage.setItem('inbox-auto-open-locked', '1');
+                      
                       markAsRead(selectedNotification.id);
                       setSelectedNotification(null);
-                      // Marca no sessionStorage que o usuário já interagiu com esta notificação nesta sessão
-                      sessionStorage.setItem(`inbox-dismissed:${selectedNotification.id}`, '1');
                     }}
                     className="w-full py-3.5 px-4 rounded-xl bg-emerald-50 text-emerald-700 font-bold text-sm border border-emerald-100 hover:bg-emerald-100 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
                   >
@@ -310,7 +311,12 @@ export function InboxBellButton({ className }: InboxBellButtonProps) {
   const [autoOpenNotificationId, setAutoOpenNotificationId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!notifications.length) return;
+    // Se não houver notificações ou o usuário já estiver com o painel aberto, não faz nada
+    if (!notifications.length || open) return;
+
+    // Trava Global de Sessão: Se o usuário já interagiu com o painel nesta sessão, 
+    // impedimos QUALQUER abertura automática futura para evitar loops.
+    if (sessionStorage.getItem('inbox-auto-open-locked')) return;
 
     const firstUnread = notifications.find((notif) => !notif.isRead);
     if (!firstUnread) return;
@@ -323,18 +329,35 @@ export function InboxBellButton({ className }: InboxBellButtonProps) {
     const dismissedKey = `inbox-dismissed:${firstUnread.id}`;
     if (sessionStorage.getItem(dismissedKey)) return;
 
+    // Se passou em todas as travas, abre o popup
     setOpen(true);
     setAutoOpenNotificationId(firstUnread.id);
     
     // Marca que a auto-abertura já ocorreu para este ID nesta sessão
     sessionStorage.setItem(autoOpenKey, '1');
-  }, [notifications]);
+  }, [notifications, open]);
+
+  const handleClose = () => {
+    setOpen(false);
+    
+    // Se o usuário fechar o painel que abriu automaticamente, 
+    // marcamos como descartado e BLOQUEAMOS novas auto-aberturas nesta sessão.
+    if (autoOpenNotificationId) {
+      sessionStorage.setItem(`inbox-dismissed:${autoOpenNotificationId}`, '1');
+      sessionStorage.setItem('inbox-auto-open-locked', '1');
+      setAutoOpenNotificationId(null);
+    }
+  };
 
   return (
     <>
       <button
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          // Quando o usuário abre manualmente, também bloqueamos a auto-abertura
+          sessionStorage.setItem('inbox-auto-open-locked', '1');
+          setOpen(true);
+        }}
         className={cn(
           'relative w-10 h-10 rounded-full bg-white/20 flex items-center justify-center',
           className
@@ -357,15 +380,7 @@ export function InboxBellButton({ className }: InboxBellButtonProps) {
       </button>
       <InboxPanel
         isOpen={open}
-        onClose={() => {
-          setOpen(false);
-          // Se o usuário fechar o painel que abriu automaticamente, 
-          // marcamos como descartado para não reabrir na mesma sessão
-          if (autoOpenNotificationId) {
-            sessionStorage.setItem(`inbox-dismissed:${autoOpenNotificationId}`, '1');
-            setAutoOpenNotificationId(null);
-          }
-        }}
+        onClose={handleClose}
         autoOpenNotificationId={autoOpenNotificationId}
       />
     </>
