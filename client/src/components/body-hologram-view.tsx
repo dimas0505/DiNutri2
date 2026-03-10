@@ -130,34 +130,48 @@ export function BodyHologramView({ assessment }: BodyHologramViewProps) {
         draggable={false}
       />
 
-      {/* Botão de toggle — canto superior direito */}
-      <motion.button
-        onClick={toggleViewMode}
-        className="absolute top-3 right-3 z-30 p-2 rounded-lg"
-        style={{
-          background: "rgba(1,8,22,0.85)",
-          border: `1px solid ${themeColor}44`,
-          color: themeColor,
-          cursor: "pointer",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          width: 36,
-          height: 36,
-        }}
-        whileHover={{
-          scale: 1.1,
-          boxShadow: `0 0 12px ${themeColor}66`,
-        }}
-        whileTap={{ scale: 0.95 }}
-        title={
-          viewMode === "perimeters"
-            ? "Alternar para Dobras Cutâneas"
-            : "Alternar para Perímetros"
-        }
-      >
-        <RotateCcw size={18} />
-      </motion.button>
+      {/* Botão de toggle com legenda dinâmica — canto superior direito */}
+      <div className="absolute top-3 right-3 z-30 flex flex-col items-center gap-1">
+        <motion.button
+          onClick={toggleViewMode}
+          className="p-2 rounded-lg"
+          style={{
+            background: "rgba(1,8,22,0.85)",
+            border: `1px solid ${themeColor}44`,
+            color: themeColor,
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: 36,
+            height: 36,
+          }}
+          whileHover={{
+            scale: 1.1,
+            boxShadow: `0 0 12px ${themeColor}66`,
+          }}
+          whileTap={{ scale: 0.95 }}
+          title={
+            viewMode === "perimeters"
+              ? "Alternar para Dobras Cutâneas"
+              : "Alternar para Perímetros"
+          }
+        >
+          <RotateCcw size={18} />
+        </motion.button>
+        {/* Legenda dinâmica — indica a ação ao clicar */}
+        <div
+          className="text-[9px] font-semibold uppercase tracking-wider"
+          style={{
+            color: themeColor,
+            opacity: 0.6,
+            whiteSpace: "nowrap",
+            letterSpacing: "0.5px",
+          }}
+        >
+          {viewMode === "perimeters" ? "Ver Dobras" : "Ver Perímetros"}
+        </div>
+      </div>
 
       {/* SVG overlay — viewBox 100×150 alinhado à proporção 2:3 da imagem */}
       <motion.svg
