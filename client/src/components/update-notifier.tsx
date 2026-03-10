@@ -25,7 +25,7 @@ export function UpdateNotifier() {
     // Debounce: evita múltiplas verificações em sequência rápida (ex: focus + visibility)
     const checkForUpdates = async () => {
       const now = Date.now();
-      if (now - lastCheckRef.current < 10_000) return; // mínimo 10s entre checks
+      if (now - lastCheckRef.current < 5_000) return; // mínimo 10s entre checks
       lastCheckRef.current = now;
 
       try {
@@ -106,7 +106,7 @@ export function UpdateNotifier() {
     checkForUpdates();
 
     // Polling a cada 2 minutos (mais agressivo que 5 min para captar deploys rápido)
-    const intervalId = setInterval(checkForUpdates, 1 * 60 * 1000);
+    const intervalId = setInterval(checkForUpdates, 30 * 1000);
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {

@@ -26,7 +26,9 @@ self.addEventListener('install', (event) => {
         console.log('[SW] Error caching static assets:', error);
       })
   );
-  // NÃO chamar skipWaiting() aqui — o UpdateNotifier controla a ativação
+  // Força a ativação imediata assim que o novo worker for instalado.
+  // Isso garante que o evento 'controllerchange' no cliente dispare o mais rápido possível.
+  self.skipWaiting();
 });
 
 // ─── Activate ───
@@ -38,6 +40,7 @@ self.addEventListener('activate', (event) => {
         return Promise.all(
           cacheNames
             .filter((name) => {
+              // Limpeza agressiva: remove QUALQUER cache que não seja o atual
               return name.startsWith('dinutri-') &&
                      name !== STATIC_CACHE &&
                      name !== DYNAMIC_CACHE;
@@ -50,6 +53,7 @@ self.addEventListener('activate', (event) => {
       })
       .then(() => {
         console.log('[SW] Cache cleanup completed, claiming clients');
+        // Reivindica o controle de todas as abas abertas imediatamente
         return self.clients.claim();
       })
   );
