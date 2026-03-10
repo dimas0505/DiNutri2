@@ -107,8 +107,15 @@ export function BodyHologramView({ assessment }: BodyHologramViewProps) {
               <feMergeNode in="SourceGraphic" />
             </feMerge>
           </filter>
-          {/* Filtro de glow suave para linhas */}
-          <filter id="line-glow" x="-50%" y="-300%" width="200%" height="700%">
+          {/* Filtro de glow para linhas — userSpaceOnUse evita corte em paths com height=0 */}
+          <filter
+            id="line-glow"
+            filterUnits="userSpaceOnUse"
+            x="-2"
+            y="-2"
+            width="104"
+            height="154"
+          >
             <feGaussianBlur stdDeviation="0.4" result="blur" />
             <feMerge>
               <feMergeNode in="blur" />
