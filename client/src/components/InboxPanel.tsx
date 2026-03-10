@@ -270,6 +270,8 @@ export function InboxPanel({ isOpen, onClose, autoOpenNotificationId = null }: I
                     onClick={() => {
                       markAsRead(selectedNotification.id);
                       setSelectedNotification(null);
+                      // Marca no sessionStorage que o usuário já interagiu com esta notificação nesta sessão
+                      sessionStorage.setItem(`inbox-dismissed:${selectedNotification.id}`, '1');
                     }}
                     className="w-full py-3.5 px-4 rounded-xl bg-emerald-50 text-emerald-700 font-bold text-sm border border-emerald-100 hover:bg-emerald-100 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
                   >
@@ -306,7 +308,6 @@ export function InboxBellButton({ className }: InboxBellButtonProps) {
   const [open, setOpen] = useState(false);
   const { unreadCount, notifications } = useInboxNotifications();
   const [autoOpenNotificationId, setAutoOpenNotificationId] = useState<string | null>(null);
-  const [userDismissedNotificationId, setUserDismissedNotificationId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!notifications.length) return;
@@ -314,16 +315,20 @@ export function InboxBellButton({ className }: InboxBellButtonProps) {
     const firstUnread = notifications.find((notif) => !notif.isRead);
     if (!firstUnread) return;
 
-    // Não reabrir se o usuário acabou de descartar essa notificação
-    if (userDismissedNotificationId === firstUnread.id) return;
+    // 1. Verifica se o usuário já abriu esta notificação automaticamente nesta sessão
+    const autoOpenKey = `inbox-auto-open:${firstUnread.id}`;
+    if (sessionStorage.getItem(autoOpenKey)) return;
 
-    const storageKey = `inbox-auto-open:${firstUnread.id}`;
-    if (sessionStorage.getItem(storageKey)) return;
+    // 2. Verifica se o usuário já descartou/marcou como lido esta notificação nesta sessão
+    const dismissedKey = `inbox-dismissed:${firstUnread.id}`;
+    if (sessionStorage.getItem(dismissedKey)) return;
 
     setOpen(true);
     setAutoOpenNotificationId(firstUnread.id);
-    sessionStorage.setItem(storageKey, '1');
-  }, [notifications, userDismissedNotificationId]);
+    
+    // Marca que a auto-abertura já ocorreu para este ID nesta sessão
+    sessionStorage.setItem(autoOpenKey, '1');
+  }, [notifications]);
 
   return (
     <>
@@ -354,10 +359,11 @@ export function InboxBellButton({ className }: InboxBellButtonProps) {
         isOpen={open}
         onClose={() => {
           setOpen(false);
-          setAutoOpenNotificationId(null);
-          // Marca que o usuário fechou o painel, evitando reabertura imediata
+          // Se o usuário fechar o painel que abriu automaticamente, 
+          // marcamos como descartado para não reabrir na mesma sessão
           if (autoOpenNotificationId) {
-            setUserDismissedNotificationId(autoOpenNotificationId);
+            sessionStorage.setItem(`inbox-dismissed:${autoOpenNotificationId}`, '1');
+            setAutoOpenNotificationId(null);
           }
         }}
         autoOpenNotificationId={autoOpenNotificationId}
