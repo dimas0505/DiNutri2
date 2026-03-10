@@ -95,7 +95,7 @@ export function BodyHologramView({ assessment }: BodyHologramViewProps) {
 
   return (
     <div
-      className="relative w-full select-none overflow-hidden rounded-2xl"
+      className="relative w-full select-none overflow-hidden rounded-none sm:rounded-2xl"
       style={{
         background:
           "linear-gradient(180deg, #020d1a 0%, #031525 60%, #020d1a 100%)",
@@ -130,11 +130,9 @@ export function BodyHologramView({ assessment }: BodyHologramViewProps) {
         draggable={false}
       />
 
- feature/reorder-assessments-tabs
       {/* Botão de toggle com legenda dinâmica — canto superior direito */}
 
       {/* Botão de toggle com legenda discreta — canto superior direito */}
- main
       <div className="absolute top-3 right-3 z-30 flex flex-col items-center gap-1">
         <motion.button
           onClick={toggleViewMode}
