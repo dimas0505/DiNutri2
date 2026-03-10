@@ -306,6 +306,7 @@ export function InboxBellButton({ className }: InboxBellButtonProps) {
   const [open, setOpen] = useState(false);
   const { unreadCount, notifications } = useInboxNotifications();
   const [autoOpenNotificationId, setAutoOpenNotificationId] = useState<string | null>(null);
+  const [userDismissedNotificationId, setUserDismissedNotificationId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!notifications.length) return;
@@ -313,13 +314,16 @@ export function InboxBellButton({ className }: InboxBellButtonProps) {
     const firstUnread = notifications.find((notif) => !notif.isRead);
     if (!firstUnread) return;
 
+    // Não reabrir se o usuário acabou de descartar essa notificação
+    if (userDismissedNotificationId === firstUnread.id) return;
+
     const storageKey = `inbox-auto-open:${firstUnread.id}`;
     if (sessionStorage.getItem(storageKey)) return;
 
     setOpen(true);
     setAutoOpenNotificationId(firstUnread.id);
     sessionStorage.setItem(storageKey, '1');
-  }, [notifications]);
+  }, [notifications, userDismissedNotificationId]);
 
   return (
     <>
@@ -351,6 +355,10 @@ export function InboxBellButton({ className }: InboxBellButtonProps) {
         onClose={() => {
           setOpen(false);
           setAutoOpenNotificationId(null);
+          // Marca que o usuário fechou o painel, evitando reabertura imediata
+          if (autoOpenNotificationId) {
+            setUserDismissedNotificationId(autoOpenNotificationId);
+          }
         }}
         autoOpenNotificationId={autoOpenNotificationId}
       />
