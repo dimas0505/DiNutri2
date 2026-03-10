@@ -117,14 +117,14 @@ export default function AssessmentsPage() {
           </TabsList>
 
           {/* ── Aba: Corpo 3D ── */}
-          <TabsContent value="body3d" className="mt-4">
-            <p className="text-sm text-muted-foreground mb-4">
+          <TabsContent value="body3d" className="mt-4 -mx-4 px-0">
+            <p className="text-sm text-muted-foreground mb-4 px-4">
               Visualização holográfica das suas medidas corporais sobre a silhueta anatômica.
             </p>
             {anthroLoading ? (
-              <Skeleton className="w-full rounded-2xl" style={{ aspectRatio: "2/3" }} />
+              <Skeleton className="w-full rounded-none sm:rounded-2xl" style={{ aspectRatio: "2/3" }} />
             ) : !latestAnthro ? (
-              <Card className="border border-border/70">
+              <Card className="border border-border/70 mx-4">
                 <CardContent className="flex flex-col items-center justify-center py-12 text-center">
                   <Scan className="h-12 w-12 text-muted-foreground/50 mb-4" />
                   <p className="text-muted-foreground font-medium">Nenhuma avaliação disponível</p>
