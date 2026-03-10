@@ -27,81 +27,72 @@ export interface MeasurementPoint {
 
 /**
  * Pontos de ancoragem calibrados a partir da imagem de referência.
- * Cada ponto corresponde à ponta da seta azul que toca o corpo.
+ * Cada ponto corresponde à localização anatômica na silhueta holográfica.
  *
- * Pixel → SVG:
- *  Pescoço          px(467,271)  → svg(45.6, 26.5)
- *  Braço Contraído  px(429,367)  → svg(41.9, 35.8)  [ombro esquerdo]
- *  Tórax            px(530,430)  → svg(51.8, 42.1)  [peitoral]
- *  Braço Relaxado   px(419,500)  → svg(40.9, 48.8)  [braço esquerdo]
- *  Cintura          px(439,610)  → svg(42.9, 59.6)
- *  Abdômen          px(520,625)  → svg(50.8, 61.0)
- *  Quadril          px(520,760)  → svg(50.8, 74.2)
- *  Coxa Proximal    px(439,897)  → svg(42.9, 87.6)
- *  Panturrilha      px(420,1060) → svg(41.0,103.5)
+ * Coordenadas rastreadas pixel a pixel — v3 (alinhamento corrigido).
  */
 export const MEASUREMENT_POINTS: MeasurementPoint[] = [
   {
     key: "circumNeck",
     label: "Pescoço",
-    x: 45.6,
-    y: 26.5,
+    x: 54.7,
+    y: 32.2,
     side: "right",
   },
   {
     key: "circumNonDominantArmContracted",
     label: "Braço Contraído",
-    x: 41.9,
-    y: 35.8,
+    x: 36.3,
+    y: 43.3,
     side: "left",
   },
   {
     key: "circumChest",
     label: "Tórax",
-    x: 51.8,
-    y: 42.1,
+    x: 44.1,
+    y: 42.3,
     side: "right",
   },
   {
     key: "circumNonDominantArmRelaxed",
     label: "Braço Relaxado",
-    x: 40.9,
-    y: 48.8,
+    x: 36.0,
+    y: 64.4,
     side: "left",
   },
   {
     key: "circumWaist",
     label: "Cintura",
-    x: 42.9,
-    y: 59.6,
+    x: 48.7,
+    y: 54.1,
     side: "left",
   },
   {
     key: "circumAbdomen",
     label: "Abdômen",
-    x: 50.8,
-    y: 61.0,
+    x: 49.6,
+    y: 59.6,
     side: "right",
   },
   {
     key: "circumHip",
     label: "Quadril",
-    x: 50.8,
-    y: 74.2,
+    x: 55.3,
+    y: 69.9,
     side: "right",
   },
   {
     key: "circumNonDominantProximalThigh",
     label: "Coxa Proximal",
-    x: 42.9,
-    y: 87.6,
+    x: 43.4,
+    y: 75.8,
     side: "left",
   },
   {
     key: "circumNonDominantCalf",
     label: "Panturrilha",
-    x: 41.0,
-    y: 103.5,
+    x: 46.9,
+    y: 92.5,
     side: "left",
   },
 ];
