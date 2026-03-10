@@ -2,12 +2,17 @@
  * BodyHologramView
  *
  * Componente de visualização holográfica das medidas antropométricas.
- * Usa um SVG overlay com viewBox="0 0 100 150" alinhado à proporção da imagem
- * base (1024×1536 px → razão 2:3), garantindo que todos os elementos fiquem
- * perfeitamente sobrepostos à silhueta independentemente do tamanho da tela.
  *
- * Apenas as medidas efetivamente preenchidas são exibidas.
+ * Arquitetura:
+ * - Imagem base (body-hologram.png) como fundo absoluto, soberana
+ * - SVG overlay com viewBox="0 0 100 150" e preserveAspectRatio="xMidYMid meet"
+ *   alinhado à proporção 2:3 da imagem (1024×1536 px)
+ * - Pontos de ancoragem em coordenadas SVG calibradas pixel a pixel
+ * - Linhas horizontais do ponto de ancoragem até a borda lateral
+ * - Labels em cápsula SVG sempre dentro do viewBox
+ *
  * Animações via Framer Motion (já instalado no projeto).
+ * Zero dependências novas.
  */
 
 import { useState, useEffect } from "react";
@@ -19,28 +24,32 @@ interface BodyHologramViewProps {
   assessment: AnthropometricAssessment;
 }
 
+// Paleta neon
 const NEON = "#00e5ff";
-const NEON_DIM = "#00e5ff88";
+const NEON_DIM = "#00e5ff55";
 
 // Dimensões do viewBox SVG — proporção 2:3 (igual à imagem 1024×1536)
 const VB_W = 100;
 const VB_H = 150;
 
-// Largura reservada para o label em unidades do viewBox
-const LABEL_W = 22;
-// Margem lateral mínima do label até a borda do SVG
-const LABEL_MARGIN = 1.5;
-// Comprimento fixo da linha de conexão
-const LINE_LEN = 8;
+// Largura da cápsula de label
+const LABEL_W = 23;
+// Altura da cápsula de label
+const LABEL_H = 9;
+// Margem da borda lateral até o label
+const EDGE_MARGIN = 1;
+// Comprimento da linha do ponto até a cápsula
+const LINE_GAP = 0.8; // pequeno gap entre ponto e início da linha
 
 export function BodyHologramView({ assessment }: BodyHologramViewProps) {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    const timer = setTimeout(() => setReady(true), 200);
+    const timer = setTimeout(() => setReady(true), 150);
     return () => clearTimeout(timer);
   }, []);
 
+  // Filtra apenas pontos com valor preenchido
   const activePoints = MEASUREMENT_POINTS.filter((point) => {
     const value = (assessment as Record<string, unknown>)[point.key];
     return value != null && value !== "";
@@ -55,23 +64,24 @@ export function BodyHologramView({ assessment }: BodyHologramViewProps) {
     <div
       className="relative w-full select-none overflow-hidden rounded-2xl"
       style={{
-        background: "linear-gradient(180deg, #020d1a 0%, #031525 60%, #020d1a 100%)",
+        background:
+          "linear-gradient(180deg, #020d1a 0%, #031525 60%, #020d1a 100%)",
         aspectRatio: "2/3",
       }}
     >
-      {/* Grade tecnológica de fundo */}
+      {/* Grade tecnológica */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
           backgroundImage: `
-            linear-gradient(rgba(0,180,255,0.06) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(0,180,255,0.06) 1px, transparent 1px)
+            linear-gradient(rgba(0,180,255,0.05) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(0,180,255,0.05) 1px, transparent 1px)
           `,
-          backgroundSize: "32px 32px",
+          backgroundSize: "28px 28px",
         }}
       />
 
-      {/* Imagem base — soberana, nunca substituída por código */}
+      {/* Imagem base — soberana */}
       <img
         src="/body-hologram.png"
         alt="Silhueta holográfica do corpo humano"
@@ -80,7 +90,7 @@ export function BodyHologramView({ assessment }: BodyHologramViewProps) {
         draggable={false}
       />
 
-      {/* SVG overlay — viewBox alinhado à proporção 2:3 da imagem */}
+      {/* SVG overlay — viewBox 100×150 alinhado à proporção 2:3 da imagem */}
       <svg
         viewBox={`0 0 ${VB_W} ${VB_H}`}
         preserveAspectRatio="xMidYMid meet"
@@ -89,13 +99,24 @@ export function BodyHologramView({ assessment }: BodyHologramViewProps) {
         xmlns="http://www.w3.org/2000/svg"
       >
         <defs>
-          <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-            <feGaussianBlur stdDeviation="0.8" result="blur" />
+          {/* Filtro de glow neon */}
+          <filter id="neon-glow" x="-80%" y="-80%" width="260%" height="260%">
+            <feGaussianBlur stdDeviation="0.6" result="blur" />
             <feMerge>
               <feMergeNode in="blur" />
               <feMergeNode in="SourceGraphic" />
             </feMerge>
           </filter>
+          {/* Gradiente da linha esquerda */}
+          <linearGradient id="line-grad-left" x1="100%" y1="0%" x2="0%" y2="0%">
+            <stop offset="0%" stopColor={NEON} stopOpacity="0" />
+            <stop offset="100%" stopColor={NEON} stopOpacity="0.9" />
+          </linearGradient>
+          {/* Gradiente da linha direita */}
+          <linearGradient id="line-grad-right" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor={NEON} stopOpacity="0" />
+            <stop offset="100%" stopColor={NEON} stopOpacity="0.9" />
+          </linearGradient>
         </defs>
 
         {ready &&
@@ -105,58 +126,55 @@ export function BodyHologramView({ assessment }: BodyHologramViewProps) {
             ] as number;
             const isLeft = point.side === "left";
 
-            // Ponto de ancoragem no corpo (em unidades do viewBox)
-            const px = (point.x / 100) * VB_W;
-            const py = (point.y / 100) * VB_H;
+            // Coordenadas do ponto de ancoragem no corpo
+            const px = point.x;
+            const py = point.y;
 
-            // Extremidade da linha (lado oposto ao label)
-            const lineEndX = isLeft ? px - LINE_LEN : px + LINE_LEN;
-
-            // Posição X do label
+            // Posição X da borda do label
             const labelX = isLeft
-              ? LABEL_MARGIN
-              : VB_W - LABEL_MARGIN - LABEL_W;
+              ? EDGE_MARGIN
+              : VB_W - EDGE_MARGIN - LABEL_W;
+            const labelY = py - LABEL_H / 2;
 
-            // Centro vertical do label
-            const labelCY = py;
-            const labelH = 8;
-            const labelY = labelCY - labelH / 2;
+            // Linha: do ponto de ancoragem até a borda do label
+            const lineX1 = isLeft ? px - LINE_GAP : px + LINE_GAP;
+            const lineX2 = isLeft
+              ? EDGE_MARGIN + LABEL_W
+              : VB_W - EDGE_MARGIN - LABEL_W;
 
-            // Linha vai do ponto até a borda do label
-            const lineStartX = px;
-            const lineFinishX = isLeft
-              ? LABEL_MARGIN + LABEL_W
-              : VB_W - LABEL_MARGIN - LABEL_W;
-
-            const delay = index * 0.13;
+            const delay = index * 0.11;
 
             return (
               <g key={point.key}>
-                {/* Ponto de ancoragem pulsante */}
+                {/* Ponto de ancoragem — círculo central */}
                 <motion.circle
                   cx={px}
                   cy={py}
-                  r={1.2}
+                  r={1.4}
                   fill={NEON}
-                  filter="url(#glow)"
+                  filter="url(#neon-glow)"
                   initial={{ scale: 0, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
-                  transition={{ delay, duration: 0.3 }}
+                  transition={{ delay, duration: 0.25, ease: "easeOut" }}
                   style={{ transformOrigin: `${px}px ${py}px` }}
                 />
-                {/* Anel pulsante externo */}
+
+                {/* Anel pulsante */}
                 <motion.circle
                   cx={px}
                   cy={py}
-                  r={2.5}
+                  r={3}
                   fill="none"
                   stroke={NEON}
                   strokeWidth={0.4}
-                  initial={{ scale: 0.5, opacity: 0.8 }}
-                  animate={{ scale: [0.8, 2, 0.8], opacity: [0.7, 0, 0.7] }}
+                  initial={{ scale: 0.4, opacity: 0 }}
+                  animate={{
+                    scale: [0.6, 2.2, 0.6],
+                    opacity: [0.8, 0, 0.8],
+                  }}
                   transition={{
-                    delay: delay + 0.3,
-                    duration: 2,
+                    delay: delay + 0.25,
+                    duration: 2.2,
                     repeat: Infinity,
                     ease: "easeInOut",
                   }}
@@ -165,17 +183,19 @@ export function BodyHologramView({ assessment }: BodyHologramViewProps) {
 
                 {/* Linha de conexão */}
                 <motion.line
-                  x1={lineStartX}
+                  x1={lineX1}
                   y1={py}
-                  x2={lineFinishX}
+                  x2={lineX2}
                   y2={py}
-                  stroke={NEON}
-                  strokeWidth={0.35}
-                  strokeOpacity={0.85}
-                  filter="url(#glow)"
+                  stroke={isLeft ? "url(#line-grad-left)" : "url(#line-grad-right)"}
+                  strokeWidth={0.4}
                   initial={{ pathLength: 0, opacity: 0 }}
                   animate={{ pathLength: 1, opacity: 1 }}
-                  transition={{ delay: delay + 0.2, duration: 0.4, ease: "easeOut" }}
+                  transition={{
+                    delay: delay + 0.18,
+                    duration: 0.38,
+                    ease: "easeOut",
+                  }}
                 />
 
                 {/* Cápsula do label */}
@@ -183,45 +203,47 @@ export function BodyHologramView({ assessment }: BodyHologramViewProps) {
                   x={labelX}
                   y={labelY}
                   width={LABEL_W}
-                  height={labelH}
-                  rx={labelH / 2}
-                  fill="rgba(0,10,30,0.82)"
+                  height={LABEL_H}
+                  rx={LABEL_H / 2}
+                  fill="rgba(1,8,22,0.88)"
                   stroke={NEON_DIM}
-                  strokeWidth={0.3}
-                  initial={{ opacity: 0, x: isLeft ? 4 : -4 }}
+                  strokeWidth={0.35}
+                  initial={{ opacity: 0, x: isLeft ? 5 : -5 }}
                   animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: delay + 0.45, duration: 0.3 }}
+                  transition={{ delay: delay + 0.42, duration: 0.28 }}
                 />
 
                 {/* Valor em cm */}
                 <motion.text
-                  x={isLeft ? labelX + LABEL_W / 2 : labelX + LABEL_W / 2}
-                  y={labelY + 3.2}
+                  x={labelX + LABEL_W / 2}
+                  y={labelY + 3.6}
                   textAnchor="middle"
+                  dominantBaseline="auto"
                   fill={NEON}
-                  fontSize={2.8}
+                  fontSize={3.0}
                   fontWeight="700"
-                  fontFamily="system-ui, sans-serif"
-                  filter="url(#glow)"
+                  fontFamily="system-ui, -apple-system, sans-serif"
+                  filter="url(#neon-glow)"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  transition={{ delay: delay + 0.5, duration: 0.25 }}
+                  transition={{ delay: delay + 0.48, duration: 0.22 }}
                 >
                   {value} cm
                 </motion.text>
 
                 {/* Nome da medida */}
                 <motion.text
-                  x={isLeft ? labelX + LABEL_W / 2 : labelX + LABEL_W / 2}
-                  y={labelY + 6.2}
+                  x={labelX + LABEL_W / 2}
+                  y={labelY + 7.0}
                   textAnchor="middle"
+                  dominantBaseline="auto"
                   fill="#7dd3fc"
-                  fontSize={2.2}
+                  fontSize={2.3}
                   fontWeight="500"
-                  fontFamily="system-ui, sans-serif"
+                  fontFamily="system-ui, -apple-system, sans-serif"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 0.9 }}
-                  transition={{ delay: delay + 0.55, duration: 0.25 }}
+                  transition={{ delay: delay + 0.52, duration: 0.22 }}
                 >
                   {point.label}
                 </motion.text>
@@ -230,14 +252,14 @@ export function BodyHologramView({ assessment }: BodyHologramViewProps) {
           })}
       </svg>
 
-      {/* Rodapé com peso e % gordura */}
+      {/* Rodapé: Peso e % Gordura */}
       {hasFooter && (
         <motion.div
-          initial={{ opacity: 0, y: 10 }}
+          initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{
-            delay: activePoints.length * 0.13 + 0.6,
-            duration: 0.4,
+            delay: activePoints.length * 0.11 + 0.55,
+            duration: 0.38,
           }}
           style={{
             position: "absolute",
@@ -249,14 +271,14 @@ export function BodyHologramView({ assessment }: BodyHologramViewProps) {
             gap: 8,
             padding: "10px 12px",
             background:
-              "linear-gradient(to top, rgba(2,13,26,0.97) 70%, transparent)",
+              "linear-gradient(to top, rgba(2,13,26,0.97) 65%, transparent)",
           }}
         >
           {assessment.weightKg != null && (
             <div
               style={{
                 flex: 1,
-                background: "rgba(0,229,255,0.08)",
+                background: "rgba(0,229,255,0.07)",
                 border: `1px solid ${NEON}44`,
                 borderRadius: 12,
                 padding: "8px 12px",
@@ -284,7 +306,9 @@ export function BodyHologramView({ assessment }: BodyHologramViewProps) {
                 }}
               >
                 {assessment.weightKg}
-                <span style={{ fontSize: 11, fontWeight: 500, marginLeft: 2 }}>
+                <span
+                  style={{ fontSize: 11, fontWeight: 500, marginLeft: 2 }}
+                >
                   kg
                 </span>
               </p>
@@ -295,8 +319,8 @@ export function BodyHologramView({ assessment }: BodyHologramViewProps) {
               <div
                 style={{
                   flex: 1,
-                  background: "rgba(249,115,22,0.10)",
-                  border: "1px solid rgba(249,115,22,0.35)",
+                  background: "rgba(249,115,22,0.09)",
+                  border: "1px solid rgba(249,115,22,0.32)",
                   borderRadius: 12,
                   padding: "8px 12px",
                   textAlign: "center",
@@ -323,13 +347,20 @@ export function BodyHologramView({ assessment }: BodyHologramViewProps) {
                   }}
                 >
                   {assessment.manualBodyFatPercent}
-                  <span style={{ fontSize: 11, fontWeight: 500, marginLeft: 1 }}>
+                  <span
+                    style={{ fontSize: 11, fontWeight: 500, marginLeft: 1 }}
+                  >
                     %
                   </span>
                 </p>
                 {assessment.manualBodyFatClassification && (
                   <p
-                    style={{ color: "#fdba74", fontSize: 9, fontWeight: 500, marginTop: 1 }}
+                    style={{
+                      color: "#fdba74",
+                      fontSize: 9,
+                      fontWeight: 500,
+                      marginTop: 1,
+                    }}
                   >
                     {assessment.manualBodyFatClassification}
                   </p>

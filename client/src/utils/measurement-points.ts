@@ -1,9 +1,10 @@
 /**
  * Mapa de pontos anatômicos para a visualização holográfica do corpo humano.
  *
- * Coordenadas em % relativas à imagem base (body-hologram.png — 1024×1536 px).
- * O SVG overlay usa viewBox="0 0 100 150" com preserveAspectRatio="xMidYMid meet",
- * portanto x ∈ [0,100] e y ∈ [0,150].
+ * Coordenadas em unidades do SVG viewBox="0 0 100 150",
+ * calibradas pixel a pixel a partir da imagem de referência (1000431922.png — 1024×1536 px).
+ *
+ * Conversão: svgX = pixelX / 1024 × 100 | svgY = pixelY / 1536 × 150
  *
  * Cada ponto define:
  *  - key: campo correspondente em AnthropometricAssessment
@@ -25,84 +26,82 @@ export interface MeasurementPoint {
 }
 
 /**
- * Coordenadas calibradas a partir da imagem de referência (1000431922.png).
- * Imagem: 1024×1536 px → SVG viewBox: 100×150.
- * Conversão: svgX = pixelX / 1024 * 100 ; svgY = pixelY / 1536 * 150
+ * Pontos de ancoragem calibrados a partir da imagem de referência.
+ * Cada ponto corresponde à ponta da seta azul que toca o corpo.
  *
- * Pontos de ancoragem (onde a seta toca o corpo na imagem de referência):
- *
- *  Pescoço          → px ≈ (530, 268)  → svgX=51.8, svgY=26.2
- *  Braço Contraído  → px ≈ (370, 415)  → svgX=36.1, svgY=40.5
- *  Tórax            → px ≈ (585, 505)  → svgX=57.1, svgY=49.3
- *  Braço Relaxado   → px ≈ (348, 560)  → svgX=34.0, svgY=54.7
- *  Cintura          → px ≈ (390, 680)  → svgX=38.1, svgY=66.4
- *  Abdômen          → px ≈ (615, 680)  → svgX=60.1, svgY=66.4
- *  Quadril          → px ≈ (615, 810)  → svgX=60.1, svgY=79.1
- *  Coxa Proximal    → px ≈ (390, 920)  → svgX=38.1, svgY=89.8
- *  Panturrilha      → px ≈ (370, 1150) → svgX=36.1, svgY=112.3
+ * Pixel → SVG:
+ *  Pescoço          px(467,271)  → svg(45.6, 26.5)
+ *  Braço Contraído  px(429,367)  → svg(41.9, 35.8)  [ombro esquerdo]
+ *  Tórax            px(530,430)  → svg(51.8, 42.1)  [peitoral]
+ *  Braço Relaxado   px(419,500)  → svg(40.9, 48.8)  [braço esquerdo]
+ *  Cintura          px(439,610)  → svg(42.9, 59.6)
+ *  Abdômen          px(520,625)  → svg(50.8, 61.0)
+ *  Quadril          px(520,760)  → svg(50.8, 74.2)
+ *  Coxa Proximal    px(439,897)  → svg(42.9, 87.6)
+ *  Panturrilha      px(420,1060) → svg(41.0,103.5)
  */
 export const MEASUREMENT_POINTS: MeasurementPoint[] = [
   {
     key: "circumNeck",
     label: "Pescoço",
-    x: 51.8,
-    y: 26.2,
+    x: 45.6,
+    y: 26.5,
     side: "right",
   },
   {
     key: "circumNonDominantArmContracted",
     label: "Braço Contraído",
-    x: 36.1,
-    y: 40.5,
+    x: 41.9,
+    y: 35.8,
     side: "left",
   },
   {
     key: "circumChest",
     label: "Tórax",
-    x: 57.1,
-    y: 49.3,
+    x: 51.8,
+    y: 42.1,
     side: "right",
   },
   {
     key: "circumNonDominantArmRelaxed",
     label: "Braço Relaxado",
-    x: 34.0,
-    y: 54.7,
+    x: 40.9,
+    y: 48.8,
     side: "left",
   },
   {
     key: "circumWaist",
     label: "Cintura",
-    x: 38.1,
-    y: 66.4,
+    x: 42.9,
+    y: 59.6,
     side: "left",
   },
   {
     key: "circumAbdomen",
     label: "Abdômen",
-    x: 60.1,
-    y: 66.4,
+    x: 50.8,
+    y: 61.0,
     side: "right",
   },
   {
     key: "circumHip",
     label: "Quadril",
-    x: 60.1,
-    y: 79.1,
+    x: 50.8,
+    y: 74.2,
     side: "right",
   },
   {
     key: "circumNonDominantProximalThigh",
     label: "Coxa Proximal",
-    x: 38.1,
-    y: 89.8,
+    x: 42.9,
+    y: 87.6,
     side: "left",
   },
   {
     key: "circumNonDominantCalf",
     label: "Panturrilha",
-    x: 36.1,
-    y: 112.3,
+    x: 41.0,
+    y: 103.5,
     side: "left",
   },
 ];
