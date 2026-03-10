@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import type { AnthropometricAssessment, PatientDocument } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
+import { BodyHologramView } from "@/components/body-hologram-view";
 
 export default function AssessmentsPage() {
   const invalidatePatientData = useInvalidatePatientData();
@@ -92,9 +93,12 @@ export default function AssessmentsPage() {
     <MobileLayout title="Minhas Avaliações" showBackButton>
       <div className="p-4 space-y-4">
         <Tabs defaultValue="anthro" className="w-full">
-          <TabsList className="w-full grid grid-cols-2 h-11 rounded-xl bg-purple-50 p-1 gap-1">
+          <TabsList className="w-full grid grid-cols-3 h-11 rounded-xl bg-purple-50 p-1 gap-1">
             <TabsTrigger value="anthro" className="rounded-lg text-sm font-medium data-[state=active]:bg-white data-[state=active]:text-purple-700 data-[state=inactive]:text-purple-400">
               Dados Antropométricos
+            </TabsTrigger>
+            <TabsTrigger value="body3d" className="rounded-lg text-sm font-medium data-[state=active]:bg-white data-[state=active]:text-purple-700 data-[state=inactive]:text-purple-400">
+              Corpo 3D
             </TabsTrigger>
             <TabsTrigger value="reports" className="rounded-lg text-sm font-medium data-[state=active]:bg-white data-[state=active]:text-purple-700 data-[state=inactive]:text-purple-400">
               Relatórios
@@ -212,6 +216,28 @@ export default function AssessmentsPage() {
                   </Card>
                 )}
               </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="body3d" className="mt-4">
+            {anthroLoading ? (
+              <div className="space-y-3">
+                {[1, 2, 3].map((i) => (
+                  <Skeleton key={i} className="h-20 w-full rounded-xl" />
+                ))}
+              </div>
+            ) : !latestAnthro ? (
+              <Card className="border border-border/70">
+                <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+                  <Ruler className="h-12 w-12 text-muted-foreground/50 mb-4" />
+                  <p className="text-muted-foreground font-medium">Nenhuma avaliação disponível</p>
+                  <p className="text-sm text-muted-foreground/70 mt-1">
+                    Seu nutricionista irá registrar suas medidas em breve.
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              <BodyHologramView assessment={latestAnthro} />
             )}
           </TabsContent>
 
