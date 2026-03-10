@@ -54,15 +54,24 @@ export function UpdateNotifier() {
         navigator.serviceWorker.addEventListener('controllerchange', handleControllerChange);
       }
 
-      const { id } = toast({
-        title: 'Atualizando o aplicativo...',
-        description: 'Uma nova versão está disponível. A página será recarregada em instantes.',
-      });
+      // Se já estamos tentando recarregar, não mostre outro toast
+      if (isReloading.current) return;
 
-      setTimeout(() => dismiss(id), 4000);
+      toast({
+        title: 'Nova atualização instalada!',
+        description: 'O aplicativo foi atualizado para a versão mais recente e será recarregado.',
+      });
 
       // Instrui o SW em espera a assumir o controle imediatamente
       worker.postMessage({ action: 'SKIP_WAITING' });
+      
+      // Fallback: se o controllerchange não disparar em 3 segundos, force o reload
+      setTimeout(() => {
+        if (!isReloading.current) {
+          console.log('[UpdateNotifier] Timeout waiting for controllerchange, forcing reload...');
+          handleControllerChange();
+        }
+      }, 3000);
     };
 
     const checkForWaitingWorker = (registration: ServiceWorkerRegistration) => {
@@ -97,7 +106,7 @@ export function UpdateNotifier() {
     checkForUpdates();
 
     // Polling a cada 2 minutos (mais agressivo que 5 min para captar deploys rápido)
-    const intervalId = setInterval(checkForUpdates, 2 * 60 * 1000);
+    const intervalId = setInterval(checkForUpdates, 1 * 60 * 1000);
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
