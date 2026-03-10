@@ -76,7 +76,7 @@ export function DNutriBottomNav({ className, onItemClick, activeItem = "home" }:
           >
             <ShieldCheck className="h-5 w-5" />
             {/* Full text display without truncation */}
-            <span className="text-[9px] leading-tight">Meu Plano</span>
+            <span className="text-[9px] leading-tight">Minha Assinatura</span>
           </button>
         </div>
 
