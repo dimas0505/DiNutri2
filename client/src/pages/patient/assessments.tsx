@@ -92,15 +92,8 @@ export default function AssessmentsPage() {
   return (
     <MobileLayout title="Minhas Avaliações" showBackButton>
       <div className="p-4 space-y-4">
-        <Tabs defaultValue="anthro" className="w-full">
+        <Tabs defaultValue="body3d" className="w-full">
           <TabsList className="w-full grid grid-cols-3 h-auto min-h-11 rounded-xl bg-purple-50 p-1 gap-1">
-            <TabsTrigger
-              value="anthro"
-              aria-label="Dados Antropométricos"
-              className="rounded-lg text-xs font-medium leading-tight whitespace-normal text-center py-1.5 data-[state=active]:bg-white data-[state=active]:text-purple-700 data-[state=inactive]:text-purple-400"
-            >
-              Dados Antrop.
-            </TabsTrigger>
             <TabsTrigger
               value="body3d"
               className="rounded-lg text-xs font-medium leading-tight whitespace-normal text-center py-1.5 data-[state=active]:bg-white data-[state=active]:text-purple-700 data-[state=inactive]:text-purple-400 flex items-center justify-center gap-1"
@@ -109,12 +102,41 @@ export default function AssessmentsPage() {
               Corpo 3D
             </TabsTrigger>
             <TabsTrigger
+              value="anthro"
+              aria-label="Dados Antropométricos"
+              className="rounded-lg text-xs font-medium leading-tight whitespace-normal text-center py-1.5 data-[state=active]:bg-white data-[state=active]:text-purple-700 data-[state=inactive]:text-purple-400"
+            >
+              Dados Antrop.
+            </TabsTrigger>
+            <TabsTrigger
               value="reports"
               className="rounded-lg text-xs font-medium leading-tight whitespace-normal text-center py-1.5 data-[state=active]:bg-white data-[state=active]:text-purple-700 data-[state=inactive]:text-purple-400"
             >
               Relatórios
             </TabsTrigger>
           </TabsList>
+
+          {/* ── Aba: Corpo 3D ── */}
+          <TabsContent value="body3d" className="mt-4">
+            <p className="text-sm text-muted-foreground mb-4">
+              Visualização holográfica das suas medidas corporais sobre a silhueta anatômica.
+            </p>
+            {anthroLoading ? (
+              <Skeleton className="w-full rounded-2xl" style={{ aspectRatio: "2/3" }} />
+            ) : !latestAnthro ? (
+              <Card className="border border-border/70">
+                <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+                  <Scan className="h-12 w-12 text-muted-foreground/50 mb-4" />
+                  <p className="text-muted-foreground font-medium">Nenhuma avaliação disponível</p>
+                  <p className="text-sm text-muted-foreground/70 mt-1">
+                    Seu nutricionista irá registrar suas medidas para ativar a visualização.
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              <BodyHologramView assessment={latestAnthro} />
+            )}
+          </TabsContent>
 
           {/* ── Aba: Dados Antropométricos ── */}
           <TabsContent value="anthro" className="mt-4">
@@ -228,28 +250,6 @@ export default function AssessmentsPage() {
                   </Card>
                 )}
               </div>
-            )}
-          </TabsContent>
-
-          {/* ── Aba: Corpo 3D ── */}
-          <TabsContent value="body3d" className="mt-4">
-            <p className="text-sm text-muted-foreground mb-4">
-              Visualização holográfica das suas medidas corporais sobre a silhueta anatômica.
-            </p>
-            {anthroLoading ? (
-              <Skeleton className="w-full rounded-2xl" style={{ aspectRatio: "2/3" }} />
-            ) : !latestAnthro ? (
-              <Card className="border border-border/70">
-                <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-                  <Scan className="h-12 w-12 text-muted-foreground/50 mb-4" />
-                  <p className="text-muted-foreground font-medium">Nenhuma avaliação disponível</p>
-                  <p className="text-sm text-muted-foreground/70 mt-1">
-                    Seu nutricionista irá registrar suas medidas para ativar a visualização.
-                  </p>
-                </CardContent>
-              </Card>
-            ) : (
-              <BodyHologramView assessment={latestAnthro} />
             )}
           </TabsContent>
 
