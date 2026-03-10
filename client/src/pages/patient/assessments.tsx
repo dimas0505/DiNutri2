@@ -93,23 +93,24 @@ export default function AssessmentsPage() {
     <MobileLayout title="Minhas Avaliações" showBackButton>
       <div className="p-4 space-y-4">
         <Tabs defaultValue="anthro" className="w-full">
-          <TabsList className="w-full grid grid-cols-3 h-11 rounded-xl bg-purple-50 p-1 gap-1">
+          <TabsList className="w-full grid grid-cols-3 h-auto min-h-11 rounded-xl bg-purple-50 p-1 gap-1">
             <TabsTrigger
               value="anthro"
-              className="rounded-lg text-sm font-medium data-[state=active]:bg-white data-[state=active]:text-purple-700 data-[state=inactive]:text-purple-400"
+              aria-label="Dados Antropométricos"
+              className="rounded-lg text-xs font-medium leading-tight whitespace-normal text-center py-1.5 data-[state=active]:bg-white data-[state=active]:text-purple-700 data-[state=inactive]:text-purple-400"
             >
-              Dados Antropométricos
+              Dados Antrop.
             </TabsTrigger>
             <TabsTrigger
               value="body3d"
-              className="rounded-lg text-sm font-medium data-[state=active]:bg-white data-[state=active]:text-purple-700 data-[state=inactive]:text-purple-400 flex items-center justify-center gap-1"
+              className="rounded-lg text-xs font-medium leading-tight whitespace-normal text-center py-1.5 data-[state=active]:bg-white data-[state=active]:text-purple-700 data-[state=inactive]:text-purple-400 flex items-center justify-center gap-1"
             >
-              <Scan className="h-3.5 w-3.5" />
+              <Scan className="h-3.5 w-3.5 shrink-0" />
               Corpo 3D
             </TabsTrigger>
             <TabsTrigger
               value="reports"
-              className="rounded-lg text-sm font-medium data-[state=active]:bg-white data-[state=active]:text-purple-700 data-[state=inactive]:text-purple-400"
+              className="rounded-lg text-xs font-medium leading-tight whitespace-normal text-center py-1.5 data-[state=active]:bg-white data-[state=active]:text-purple-700 data-[state=inactive]:text-purple-400"
             >
               Relatórios
             </TabsTrigger>
