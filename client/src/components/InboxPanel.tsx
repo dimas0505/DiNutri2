@@ -91,9 +91,8 @@ export function InboxPanel({ isOpen, onClose, autoOpenNotificationId = null }: I
   if (!isOpen) return null;
 
   const handleNotificationClick = (notif: InAppNotification) => {
-    if (!notif.isRead) {
-      markAsRead(notif.id);
-    }
+    // Agora não marca como lido automaticamente ao abrir o popup
+    // para permitir que o usuário use o botão "Marcar como lido"
     setSelectedNotification(notif);
   };
 
@@ -215,48 +214,80 @@ export function InboxPanel({ isOpen, onClose, autoOpenNotificationId = null }: I
 
       {selectedNotification && (
         <>
+          {/* Overlay do Modal de Detalhes */}
           <div
-            className="fixed inset-0 z-[65] bg-black/45"
+            className="fixed inset-0 z-[65] bg-black/60 backdrop-blur-[2px] animate-in fade-in duration-200"
             onClick={() => setSelectedNotification(null)}
           />
 
-          <div className="fixed z-[70] left-1/2 top-1/2 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-white shadow-2xl p-5">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <NotificationIcon type={selectedNotification.type} />
-                <div>
-                  <h3 className="text-sm font-bold text-gray-900">{selectedNotification.title}</h3>
-                  <p className="text-[11px] text-gray-400">{formatRelativeTime(selectedNotification.createdAt)}</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setSelectedNotification(null)}
-                className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-gray-500"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <p className="text-sm text-gray-600 leading-relaxed mt-4">{selectedNotification.body}</p>
-
-            <div className="mt-5 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setSelectedNotification(null)}
-                className="px-4 py-2 text-sm rounded-lg bg-gray-100 text-gray-700"
-              >
-                Fechar
-              </button>
-              {selectedNotification.url && (
+          {/* Modal de Detalhes Redesenhado */}
+          <div className="fixed z-[70] left-1/2 top-1/2 w-[calc(100%-2.5rem)] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-[28px] bg-white shadow-[0_20px_50px_rgba(0,0,0,0.2)] overflow-hidden animate-in zoom-in-95 fade-in duration-300">
+            {/* Header com Cor de Destaque Sutil baseada no tipo */}
+            <div className="relative h-24 bg-gradient-to-br from-purple-50 to-indigo-50 flex items-center justify-center">
+              <div className="absolute top-4 right-4">
                 <button
                   type="button"
-                  onClick={handleOpenDetails}
-                  className="px-4 py-2 text-sm rounded-lg bg-[#7C3AED] text-white"
+                  onClick={() => setSelectedNotification(null)}
+                  className="w-8 h-8 rounded-full bg-white/80 backdrop-blur-sm flex items-center justify-center text-gray-400 hover:text-gray-600 shadow-sm transition-all"
                 >
-                  Ver detalhes
+                  <X className="w-4 h-4" />
                 </button>
-              )}
+              </div>
+              <div className="w-16 h-16 rounded-2xl bg-white shadow-md flex items-center justify-center scale-110">
+                <NotificationIcon type={selectedNotification.type} />
+              </div>
+            </div>
+
+            <div className="px-6 pt-5 pb-7 text-center">
+              <h3 className="text-lg font-extrabold text-gray-900 leading-tight mb-1">
+                {selectedNotification.title}
+              </h3>
+              <p className="text-[11px] font-semibold text-purple-500 uppercase tracking-wider mb-4">
+                {formatRelativeTime(selectedNotification.createdAt)}
+              </p>
+              
+              <div className="bg-gray-50 rounded-2xl p-4 mb-6">
+                <p className="text-sm text-gray-600 leading-relaxed">
+                  {selectedNotification.body}
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-2.5">
+                {selectedNotification.url && (
+                  <button
+                    type="button"
+                    onClick={handleOpenDetails}
+                    className="w-full py-3.5 px-4 rounded-xl bg-[#7C3AED] text-white font-bold text-sm shadow-[0_4px_12px_rgba(124,58,237,0.3)] hover:bg-[#6D28D9] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    Ver Detalhes
+                  </button>
+                )}
+                
+                {!selectedNotification.isRead ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      markAsRead(selectedNotification.id);
+                      setSelectedNotification(null);
+                      // Marca no sessionStorage que o usuário já interagiu com esta notificação nesta sessão
+                      sessionStorage.setItem(`inbox-dismissed:${selectedNotification.id}`, '1');
+                    }}
+                    className="w-full py-3.5 px-4 rounded-xl bg-emerald-50 text-emerald-700 font-bold text-sm border border-emerald-100 hover:bg-emerald-100 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                  >
+                    <CheckCheck className="w-4 h-4" />
+                    Marcar como Lido
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedNotification(null)}
+                    className="w-full py-3.5 px-4 rounded-xl bg-gray-100 text-gray-600 font-bold text-sm hover:bg-gray-200 active:scale-[0.98] transition-all"
+                  >
+                    Fechar
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </>
@@ -284,12 +315,19 @@ export function InboxBellButton({ className }: InboxBellButtonProps) {
     const firstUnread = notifications.find((notif) => !notif.isRead);
     if (!firstUnread) return;
 
-    const storageKey = `inbox-auto-open:${firstUnread.id}`;
-    if (sessionStorage.getItem(storageKey)) return;
+    // 1. Verifica se o usuário já abriu esta notificação automaticamente nesta sessão
+    const autoOpenKey = `inbox-auto-open:${firstUnread.id}`;
+    if (sessionStorage.getItem(autoOpenKey)) return;
+
+    // 2. Verifica se o usuário já descartou/marcou como lido esta notificação nesta sessão
+    const dismissedKey = `inbox-dismissed:${firstUnread.id}`;
+    if (sessionStorage.getItem(dismissedKey)) return;
 
     setOpen(true);
     setAutoOpenNotificationId(firstUnread.id);
-    sessionStorage.setItem(storageKey, '1');
+    
+    // Marca que a auto-abertura já ocorreu para este ID nesta sessão
+    sessionStorage.setItem(autoOpenKey, '1');
   }, [notifications]);
 
   return (
@@ -321,7 +359,12 @@ export function InboxBellButton({ className }: InboxBellButtonProps) {
         isOpen={open}
         onClose={() => {
           setOpen(false);
-          setAutoOpenNotificationId(null);
+          // Se o usuário fechar o painel que abriu automaticamente, 
+          // marcamos como descartado para não reabrir na mesma sessão
+          if (autoOpenNotificationId) {
+            sessionStorage.setItem(`inbox-dismissed:${autoOpenNotificationId}`, '1');
+            setAutoOpenNotificationId(null);
+          }
         }}
         autoOpenNotificationId={autoOpenNotificationId}
       />
