@@ -2,25 +2,32 @@ import { useEffect, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 
 /**
- * Componente responsável por detectar e aplicar atualizações do Service Worker.
+ * UpdateNotifier — Componente responsável por detectar e aplicar atualizações
+ * do Service Worker de forma automática e transparente.
  *
- * Problemas corrigidos nesta versão:
- * 1. Não detectava novas versões durante a sessão (só verificava no mount).
- * 2. O listener de 'controllerchange' era adicionado múltiplas vezes,
- *    podendo causar reloads em loop.
- * 3. Não verificava periodicamente se há uma nova versão disponível.
+ * Estratégia de detecção:
+ * 1. Verifica atualizações imediatamente ao montar.
+ * 2. Verifica a cada 2 minutos (intervalo reduzido para captar deploys rápido).
+ * 3. Verifica quando o app volta ao foco (visibilitychange / focus).
+ * 4. Verifica quando a conexão retorna (online).
+ * 5. Quando detecta um SW "waiting", envia SKIP_WAITING automaticamente
+ *    e recarrega a página assim que o novo controller assumir.
  */
 export function UpdateNotifier() {
   const { toast, dismiss } = useToast();
-  // Ref para garantir que o listener de controllerchange seja adicionado apenas uma vez
   const controllerChangeListenerAdded = useRef(false);
-  // Ref para evitar que o reload seja chamado múltiplas vezes
   const isReloading = useRef(false);
+  const lastCheckRef = useRef(0);
 
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return;
 
+    // Debounce: evita múltiplas verificações em sequência rápida (ex: focus + visibility)
     const checkForUpdates = async () => {
+      const now = Date.now();
+      if (now - lastCheckRef.current < 10_000) return; // mínimo 10s entre checks
+      lastCheckRef.current = now;
+
       try {
         const registration = await navigator.serviceWorker.getRegistration();
         if (registration) {
@@ -33,7 +40,6 @@ export function UpdateNotifier() {
     };
 
     const handleControllerChange = () => {
-      // Evita reloads múltiplos caso o evento dispare mais de uma vez
       if (isReloading.current) return;
       isReloading.current = true;
       console.log('[UpdateNotifier] Controller changed, reloading page...');
@@ -43,7 +49,6 @@ export function UpdateNotifier() {
     const applyUpdate = (worker: ServiceWorker) => {
       console.log('[UpdateNotifier] Applying update from waiting service worker...');
 
-      // Registra o listener de controllerchange apenas uma vez
       if (!controllerChangeListenerAdded.current) {
         controllerChangeListenerAdded.current = true;
         navigator.serviceWorker.addEventListener('controllerchange', handleControllerChange);
@@ -80,7 +85,6 @@ export function UpdateNotifier() {
 
         console.log('[UpdateNotifier] New service worker found, monitoring state...');
         newWorker.addEventListener('statechange', () => {
-          // Quando o novo SW termina de instalar e fica "waiting", aplica a atualização
           if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
             console.log('[UpdateNotifier] New service worker installed and waiting.');
             applyUpdate(newWorker);
@@ -89,13 +93,12 @@ export function UpdateNotifier() {
       });
     });
 
-    // Verifica logo no mount para reduzir tempo até detectar um novo deploy.
+    // Verifica logo no mount
     checkForUpdates();
 
-    // Verifica atualizações periodicamente (mais agressivo para reduzir necessidade de refresh manual)
-    const intervalId = setInterval(checkForUpdates, 5 * 60 * 1000);
+    // Polling a cada 2 minutos (mais agressivo que 5 min para captar deploys rápido)
+    const intervalId = setInterval(checkForUpdates, 2 * 60 * 1000);
 
-    // Também verifica quando o app volta ao foco/foreground ou a conexão retorna.
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         checkForUpdates();
@@ -125,6 +128,5 @@ export function UpdateNotifier() {
     };
   }, [toast, dismiss]);
 
-  // Componente puramente lógico — não renderiza nada na tela
   return null;
 }

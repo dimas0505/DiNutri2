@@ -1,153 +1,148 @@
-const CACHE_NAME = 'dinutri-v2'; // Updated: nova logo da marca (Mar 2026)
+const CACHE_NAME = 'dinutri-v2';
 const STATIC_CACHE = `${CACHE_NAME}-static`;
 const DYNAMIC_CACHE = `${CACHE_NAME}-dynamic`;
 
-// Assets to cache on install
+// Apenas assets verdadeiramente estáticos (ícones, manifest).
+// IMPORTANTE: NÃO incluir '/' aqui — o index.html DEVE sempre vir da rede
+// para garantir que referências a novos bundles (com hash) sejam carregadas.
 const STATIC_ASSETS = [
-  '/',
   '/manifest.json',
-  // Icons
   '/icon-192x192.png',
   '/icon-512x512.png',
   '/logo_dinutri.png',
   '/nova_logo_dinutri.png'
 ];
 
-// Install event - cache static assets
+// ─── Install ───
 self.addEventListener('install', (event) => {
-  console.log('Service Worker installing with cache:', CACHE_NAME);
+  console.log('[SW] Installing with cache:', CACHE_NAME);
   event.waitUntil(
     caches.open(STATIC_CACHE)
       .then((cache) => {
-        console.log('Caching static assets');
-        return cache.addAll(STATIC_ASSETS); // Cache '/' on install for offline fallback
+        console.log('[SW] Caching static assets');
+        return cache.addAll(STATIC_ASSETS);
       })
       .catch((error) => {
-        console.log('Error caching static assets:', error);
+        console.log('[SW] Error caching static assets:', error);
       })
   );
-  // Don't skip waiting immediately - wait for user action
+  // NÃO chamar skipWaiting() aqui — o UpdateNotifier controla a ativação
 });
 
-// Activate event - clean up old caches
+// ─── Activate ───
 self.addEventListener('activate', (event) => {
-  console.log('Service Worker activating with cache:', CACHE_NAME);
+  console.log('[SW] Activating with cache:', CACHE_NAME);
   event.waitUntil(
     caches.keys()
       .then((cacheNames) => {
         return Promise.all(
           cacheNames
-            .filter((cacheName) => {
-              // Delete all caches that start with 'dinutri-' but are not the current ones
-              return cacheName.startsWith('dinutri-') &&
-                     cacheName !== STATIC_CACHE &&
-                     cacheName !== DYNAMIC_CACHE;
+            .filter((name) => {
+              return name.startsWith('dinutri-') &&
+                     name !== STATIC_CACHE &&
+                     name !== DYNAMIC_CACHE;
             })
-            .map((cacheName) => {
-              console.log('Deleting old cache:', cacheName);
-              return caches.delete(cacheName);
+            .map((name) => {
+              console.log('[SW] Deleting old cache:', name);
+              return caches.delete(name);
             })
         );
       })
       .then(() => {
-        console.log('Cache cleanup completed');
-        // Take control of all existing clients immediately
+        console.log('[SW] Cache cleanup completed, claiming clients');
         return self.clients.claim();
       })
   );
 });
 
-// Fetch event - serve from cache, fallback to network
+// ─── Fetch ───
 self.addEventListener('fetch', (event) => {
   const { request } = event;
 
-  // Skip non-GET requests and Chrome extension requests
+  // Ignorar requests não-GET e extensões do Chrome
   if (request.method !== 'GET' || request.url.startsWith('chrome-extension://')) {
     return;
   }
 
-  // Handle API requests with network-first strategy
-  if (request.url.includes('/api/')) {
+  const url = new URL(request.url);
+
+  // ── API requests: Network-only (sem cache de respostas API) ──
+  if (url.pathname.startsWith('/api/')) {
     event.respondWith(
-      fetch(request)
-        .then((response) => {
-          // Clone response for caching
-          const responseClone = response.clone();
-          caches.open(DYNAMIC_CACHE)
-            .then((cache) => {
-              cache.put(request, responseClone);
-            });
-          return response;
-        })
-        .catch(() => {
-          // Fallback to cache if network fails
-          return caches.match(request);
-        })
+      fetch(request).catch(() => caches.match(request))
     );
     return;
   }
-  
-  // Network-first for navigation requests (HTML pages)
+
+  // ── Navigation (HTML): Network-first SEMPRE ──
+  // Isso é CRÍTICO: garante que o index.html atualizado (com referências
+  // aos novos bundles JS/CSS com hash) seja servido após cada deploy.
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request)
         .then((networkResponse) => {
-          // Cache the new page for offline access
           const responseClone = networkResponse.clone();
           caches.open(STATIC_CACHE).then((cache) => {
-            cache.put(request.url, responseClone);
+            cache.put(request, responseClone);
           });
           return networkResponse;
         })
         .catch(() => {
-          // If network fails, serve the cached HTML
-          return caches.match(request.url) || caches.match('/');
+          return caches.match(request).then((cached) => cached || caches.match('/'));
         })
     );
     return;
   }
 
-  // Handle other static assets with cache-first strategy
-  event.respondWith(
-    caches.match(request)
-      .then((response) => {
-        // Return from cache if found
-        if (response) {
-          return response;
-        }
-
-        // If not in cache, fetch from network and cache it
-        return fetch(request)
-          .then((fetchResponse) => {
-            // Cache successful responses
-            if (fetchResponse.status === 200) {
-              const responseClone = fetchResponse.clone();
-              caches.open(DYNAMIC_CACHE)
-                .then((cache) => {
-                  cache.put(request, responseClone);
-                });
-            }
-            return fetchResponse;
-          });
+  // ── Assets com hash do Vite (ex: /assets/index-a1b2c3d4.js): Cache-first ──
+  // Esses arquivos são IMUTÁVEIS — o hash no nome muda quando o conteúdo muda.
+  // É seguro servir do cache porque o novo index.html referencia os novos hashes.
+  if (url.pathname.startsWith('/assets/') && /[-_.][a-f0-9]{8,}\./i.test(url.pathname)) {
+    event.respondWith(
+      caches.match(request).then((cached) => {
+        if (cached) return cached;
+        return fetch(request).then((networkResponse) => {
+          if (networkResponse.status === 200) {
+            const responseClone = networkResponse.clone();
+            caches.open(STATIC_CACHE).then((cache) => {
+              cache.put(request, responseClone);
+            });
+          }
+          return networkResponse;
+        });
       })
+    );
+    return;
+  }
+
+  // ── Outros assets estáticos (ícones, fontes, imagens sem hash): Network-first ──
+  // Evita que versões antigas fiquem presas no cache indefinidamente.
+  event.respondWith(
+    fetch(request)
+      .then((networkResponse) => {
+        if (networkResponse.status === 200) {
+          const responseClone = networkResponse.clone();
+          caches.open(DYNAMIC_CACHE).then((cache) => {
+            cache.put(request, responseClone);
+          });
+        }
+        return networkResponse;
+      })
+      .catch(() => caches.match(request))
   );
 });
 
-// Background sync for offline functionality
+// ─── Background sync ───
 self.addEventListener('sync', (event) => {
   if (event.tag === 'background-sync') {
-    console.log('Background sync triggered');
-    event.waitUntil(
-      // Implement offline sync logic here
-      Promise.resolve()
-    );
+    console.log('[SW] Background sync triggered');
+    event.waitUntil(Promise.resolve());
   }
 });
 
-// Push notification handler
+// ─── Push notifications ───
 self.addEventListener('push', (event) => {
-  console.log('Push message received');
-
+  console.log('[SW] Push message received');
   if (event.data) {
     const data = event.data.json();
     const options = {
@@ -161,30 +156,21 @@ self.addEventListener('push', (event) => {
         type: data.type || 'message',
       },
       actions: [
-        {
-          action: 'explore',
-          title: 'Ver detalhes',
-        },
-        {
-          action: 'close',
-          title: 'Fechar',
-        }
+        { action: 'explore', title: 'Ver detalhes' },
+        { action: 'close', title: 'Fechar' }
       ]
     };
-
     event.waitUntil(
       self.registration.showNotification(data.title || 'DiNutri', options)
     );
   }
 });
 
-// Notification click handler
+// ─── Notification click ───
 self.addEventListener('notificationclick', (event) => {
-  console.log('Notification click received:', event.notification.data);
-
+  console.log('[SW] Notification click received:', event.notification.data);
   event.notification.close();
 
-  // Determinar a URL de destino com base no tipo de notificação
   let targetUrl = '/';
   if (event.notification.data) {
     const data = typeof event.notification.data === 'string'
@@ -201,7 +187,6 @@ self.addEventListener('notificationclick', (event) => {
 
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-      // Se o app já está aberto, focar e navegar
       for (const client of clientList) {
         if ('focus' in client) {
           client.focus();
@@ -209,7 +194,6 @@ self.addEventListener('notificationclick', (event) => {
           return;
         }
       }
-      // Se não está aberto, abrir nova janela
       if (clients.openWindow) {
         return clients.openWindow(targetUrl);
       }
@@ -217,18 +201,32 @@ self.addEventListener('notificationclick', (event) => {
   );
 });
 
-// Message handler for update commands
+// ─── Message handler ───
 self.addEventListener('message', (event) => {
-  console.log('Message received in SW:', event.data);
+  console.log('[SW] Message received:', event.data);
 
   if (event.data && event.data.action === 'SKIP_WAITING') {
-    console.log('SKIP_WAITING message received, updating service worker...');
+    console.log('[SW] SKIP_WAITING received, activating new version...');
     self.skipWaiting().then(() => {
-      console.log('Service worker skipped waiting successfully');
-      // Notify all clients that the new SW is ready
-      self.clients.matchAll().then((clients) => {
-        clients.forEach((client) => {
+      console.log('[SW] Skipped waiting successfully');
+      self.clients.matchAll().then((allClients) => {
+        allClients.forEach((client) => {
           client.postMessage({ action: 'SW_UPDATED' });
+        });
+      });
+    });
+  }
+
+  // Comando para limpar todos os caches manualmente
+  if (event.data && event.data.action === 'CLEAR_ALL_CACHES') {
+    console.log('[SW] Clearing all caches...');
+    caches.keys().then((names) => {
+      return Promise.all(names.map((name) => caches.delete(name)));
+    }).then(() => {
+      console.log('[SW] All caches cleared');
+      self.clients.matchAll().then((allClients) => {
+        allClients.forEach((client) => {
+          client.postMessage({ action: 'CACHES_CLEARED' });
         });
       });
     });

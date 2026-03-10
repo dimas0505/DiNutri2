@@ -33,8 +33,29 @@ export function serveStatic(app: Express) {
     return;
   }
 
-  app.use(express.static(distPath));
+  // Assets com hash do Vite (/assets/*) — cache imutável de 1 ano
+  app.use('/assets', express.static(path.join(distPath, 'assets'), {
+    maxAge: '1y',
+    immutable: true,
+  }));
+
+  // sw.js — nunca cachear (o browser precisa sempre buscar a versão mais recente)
+  app.get('/sw.js', (_req, res) => {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Content-Type', 'application/javascript');
+    res.sendFile(path.resolve(distPath, 'sw.js'));
+  });
+
+  // Demais arquivos estáticos — cache curto (5 min) para ícones, fontes, etc.
+  app.use(express.static(distPath, {
+    maxAge: '5m',
+  }));
+
+  // SPA fallback — index.html NUNCA deve ser cacheado
   app.use("*", (_req, res) => {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
     res.sendFile(path.resolve(distPath, "index.html"));
   });
 }
