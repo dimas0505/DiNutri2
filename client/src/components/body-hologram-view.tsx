@@ -10,6 +10,8 @@
  * - Pontos de ancoragem em coordenadas SVG calibradas pixel a pixel
  * - Linhas horizontais do ponto de ancoragem até a borda lateral
  * - Labels em cápsula SVG sempre dentro do viewBox
+ * - Toggle entre "Perímetros" (azul/cyan) e "Dobras Cutâneas" (vermelho neon)
+ * - Animação de flip 3D ao alternar modos
  *
  * Animações via Framer Motion (já instalado no projeto).
  * Zero dependências novas.
@@ -17,16 +19,23 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { MEASUREMENT_POINTS } from "@/utils/measurement-points";
+import { RotateCcw } from "lucide-react";
+import { MEASUREMENT_POINTS, SKINFOLD_POINTS } from "@/utils/measurement-points";
 import type { AnthropometricAssessment } from "@shared/schema";
 
 interface BodyHologramViewProps {
   assessment: AnthropometricAssessment;
 }
 
-// Paleta neon
-const NEON = "#00e5ff";
-const NEON_DIM = "#00e5ff55";
+type ViewMode = "perimeters" | "skinfolds";
+
+// Paleta neon — Perímetros (Cyan)
+const NEON_PERIMETERS = "#00e5ff";
+const NEON_PERIMETERS_DIM = "#00e5ff55";
+
+// Paleta neon — Dobras Cutâneas (Vermelho)
+const NEON_SKINFOLDS = "#ff1744";
+const NEON_SKINFOLDS_DIM = "#ff174455";
 
 // Dimensões do viewBox SVG — proporção 2:3 (igual à imagem 1024×1536)
 const VB_W = 100;
@@ -43,14 +52,19 @@ const LINE_GAP = 0.8; // pequeno gap entre ponto e início da linha
 
 export function BodyHologramView({ assessment }: BodyHologramViewProps) {
   const [ready, setReady] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>("perimeters");
 
   useEffect(() => {
     const timer = setTimeout(() => setReady(true), 150);
     return () => clearTimeout(timer);
   }, []);
 
+  // Seleciona os pontos de medição baseado no modo de visualização
+  const pointsToUse =
+    viewMode === "perimeters" ? MEASUREMENT_POINTS : SKINFOLD_POINTS;
+
   // Filtra apenas pontos com valor preenchido
-  const activePoints = MEASUREMENT_POINTS.filter((point) => {
+  const activePoints = pointsToUse.filter((point) => {
     const value = (assessment as Record<string, unknown>)[point.key];
     return value != null && value !== "";
   });
@@ -59,6 +73,25 @@ export function BodyHologramView({ assessment }: BodyHologramViewProps) {
     assessment.weightKg != null ||
     (assessment.manualBodyFatPercent != null &&
       !Number.isNaN(assessment.manualBodyFatPercent));
+
+  // Define a cor temática baseada no modo
+  const themeColor =
+    viewMode === "perimeters" ? NEON_PERIMETERS : NEON_SKINFOLDS;
+  const themeColorDim =
+    viewMode === "perimeters" ? NEON_PERIMETERS_DIM : NEON_SKINFOLDS_DIM;
+
+  // Define o filtro CSS para a imagem base
+  const imageFilter =
+    viewMode === "perimeters"
+      ? "none"
+      : "hue-rotate(160deg) saturate(1.5) brightness(0.7)";
+
+  // Define a unidade de medida
+  const unit = viewMode === "perimeters" ? "cm" : "mm";
+
+  const toggleViewMode = () => {
+    setViewMode((prev) => (prev === "perimeters" ? "skinfolds" : "perimeters"));
+  };
 
   return (
     <div
@@ -82,21 +115,61 @@ export function BodyHologramView({ assessment }: BodyHologramViewProps) {
       />
 
       {/* Imagem base — soberana */}
-      <img
+      <motion.img
+        key={`body-hologram-${viewMode}`}
         src="/body-hologram.png"
         alt="Silhueta holográfica do corpo humano"
         className="absolute inset-0 w-full h-full object-contain pointer-events-none"
-        style={{ zIndex: 1 }}
+        style={{
+          zIndex: 1,
+          filter: imageFilter,
+        }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.3 }}
         draggable={false}
       />
 
+      {/* Botão de toggle — canto superior direito */}
+      <motion.button
+        onClick={toggleViewMode}
+        className="absolute top-3 right-3 z-30 p-2 rounded-lg"
+        style={{
+          background: "rgba(1,8,22,0.85)",
+          border: `1px solid ${themeColor}44`,
+          color: themeColor,
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          width: 36,
+          height: 36,
+        }}
+        whileHover={{
+          scale: 1.1,
+          boxShadow: `0 0 12px ${themeColor}66`,
+        }}
+        whileTap={{ scale: 0.95 }}
+        title={
+          viewMode === "perimeters"
+            ? "Alternar para Dobras Cutâneas"
+            : "Alternar para Perímetros"
+        }
+      >
+        <RotateCcw size={18} />
+      </motion.button>
+
       {/* SVG overlay — viewBox 100×150 alinhado à proporção 2:3 da imagem */}
-      <svg
+      <motion.svg
+        key={`svg-overlay-${viewMode}`}
         viewBox={`0 0 ${VB_W} ${VB_H}`}
         preserveAspectRatio="xMidYMid meet"
         className="absolute inset-0 w-full h-full pointer-events-none"
         style={{ zIndex: 10 }}
         xmlns="http://www.w3.org/2000/svg"
+        initial={{ rotateY: 180, opacity: 0 }}
+        animate={{ rotateY: 0, opacity: 1 }}
+        transition={{ duration: 0.5, ease: "easeOut" }}
       >
         <defs>
           {/* Filtro de glow neon */}
@@ -156,7 +229,7 @@ export function BodyHologramView({ assessment }: BodyHologramViewProps) {
                   cx={px}
                   cy={py}
                   r={1.4}
-                  fill={NEON}
+                  fill={themeColor}
                   filter="url(#neon-glow)"
                   initial={{ scale: 0, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
@@ -170,7 +243,7 @@ export function BodyHologramView({ assessment }: BodyHologramViewProps) {
                   cy={py}
                   r={3}
                   fill="none"
-                  stroke={NEON}
+                  stroke={themeColor}
                   strokeWidth={0.4}
                   initial={{ scale: 0.4, opacity: 0 }}
                   animate={{
@@ -189,7 +262,7 @@ export function BodyHologramView({ assessment }: BodyHologramViewProps) {
                 {/* Linha de conexão — do ponto até o card */}
                 <motion.path
                   d={`M ${lineX1},${py} L ${lineX2},${py}`}
-                  stroke={NEON}
+                  stroke={themeColor}
                   strokeWidth={0.55}
                   strokeOpacity={0.85}
                   fill="none"
@@ -211,20 +284,20 @@ export function BodyHologramView({ assessment }: BodyHologramViewProps) {
                   height={LABEL_H}
                   rx={LABEL_H / 2}
                   fill="rgba(1,8,22,0.88)"
-                  stroke={NEON_DIM}
+                  stroke={themeColorDim}
                   strokeWidth={0.35}
                   initial={{ opacity: 0, x: isLeft ? 5 : -5 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: delay + 0.42, duration: 0.28 }}
                 />
 
-                {/* Valor em cm */}
+                {/* Valor com unidade */}
                 <motion.text
                   x={labelX + LABEL_W / 2}
                   y={labelY + 3.6}
                   textAnchor="middle"
                   dominantBaseline="auto"
-                  fill={NEON}
+                  fill={themeColor}
                   fontSize={3.0}
                   fontWeight="700"
                   fontFamily="system-ui, -apple-system, sans-serif"
@@ -233,7 +306,7 @@ export function BodyHologramView({ assessment }: BodyHologramViewProps) {
                   animate={{ opacity: 1 }}
                   transition={{ delay: delay + 0.48, duration: 0.22 }}
                 >
-                  {value} cm
+                  {value} {unit}
                 </motion.text>
 
                 {/* Nome da medida */}
@@ -242,7 +315,11 @@ export function BodyHologramView({ assessment }: BodyHologramViewProps) {
                   y={labelY + 7.0}
                   textAnchor="middle"
                   dominantBaseline="auto"
-                  fill="#7dd3fc"
+                  fill={
+                    viewMode === "perimeters"
+                      ? "#7dd3fc"
+                      : "#ff6b9d"
+                  }
                   fontSize={2.3}
                   fontWeight="500"
                   fontFamily="system-ui, -apple-system, sans-serif"
@@ -255,7 +332,7 @@ export function BodyHologramView({ assessment }: BodyHologramViewProps) {
               </g>
             );
           })}
-      </svg>
+      </motion.svg>
 
       {/* Rodapé: Peso e % Gordura */}
       {hasFooter && (
@@ -284,7 +361,7 @@ export function BodyHologramView({ assessment }: BodyHologramViewProps) {
               style={{
                 flex: 1,
                 background: "rgba(0,229,255,0.07)",
-                border: `1px solid ${NEON}44`,
+                border: `1px solid ${NEON_PERIMETERS}44`,
                 borderRadius: 12,
                 padding: "8px 12px",
                 textAlign: "center",
@@ -304,10 +381,10 @@ export function BodyHologramView({ assessment }: BodyHologramViewProps) {
               </p>
               <p
                 style={{
-                  color: NEON,
+                  color: NEON_PERIMETERS,
                   fontSize: 18,
                   fontWeight: 800,
-                  textShadow: `0 0 8px ${NEON}`,
+                  textShadow: `0 0 8px ${NEON_PERIMETERS}`,
                 }}
               >
                 {assessment.weightKg}

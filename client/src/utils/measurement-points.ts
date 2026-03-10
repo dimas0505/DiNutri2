@@ -96,3 +96,34 @@ export const MEASUREMENT_POINTS: MeasurementPoint[] = [
     side: "left",
   },
 ];
+
+export const SKINFOLD_POINTS: MeasurementPoint[] = [
+  {
+    key: "foldBiceps",
+    label: "Bicipital",
+    x: 39.8,
+    y: 46,
+    side: "left",
+  },
+  {
+    key: "foldTriceps",
+    label: "Tricipital",
+    x: 64.4,
+    y: 44.4,
+    side: "right",
+  },
+  {
+    key: "foldSubscapular",
+    label: "Subescapular",
+    x: 40,
+    y: 33.8,
+    side: "left",
+  },
+  {
+    key: "foldSuprailiac",
+    label: "Suprailíaca",
+    x: 45,
+    y: 53.6,
+    side: "left",
+  },
+];
