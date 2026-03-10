@@ -130,7 +130,7 @@ export function BodyHologramView({ assessment }: BodyHologramViewProps) {
         draggable={false}
       />
 
-      {/* Botão de toggle com legenda discreta — canto superior direito */}
+      {/* Botão de toggle com legenda dinâmica — canto superior direito */}
       <div className="absolute top-3 right-3 z-30 flex flex-col items-center gap-1">
         <motion.button
           onClick={toggleViewMode}
