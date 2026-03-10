@@ -107,16 +107,14 @@ export function BodyHologramView({ assessment }: BodyHologramViewProps) {
               <feMergeNode in="SourceGraphic" />
             </feMerge>
           </filter>
-          {/* Gradiente da linha esquerda */}
-          <linearGradient id="line-grad-left" x1="100%" y1="0%" x2="0%" y2="0%">
-            <stop offset="0%" stopColor={NEON} stopOpacity="0" />
-            <stop offset="100%" stopColor={NEON} stopOpacity="0.9" />
-          </linearGradient>
-          {/* Gradiente da linha direita */}
-          <linearGradient id="line-grad-right" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor={NEON} stopOpacity="0" />
-            <stop offset="100%" stopColor={NEON} stopOpacity="0.9" />
-          </linearGradient>
+          {/* Filtro de glow suave para linhas */}
+          <filter id="line-glow" x="-50%" y="-300%" width="200%" height="700%">
+            <feGaussianBlur stdDeviation="0.4" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
         </defs>
 
         {ready &&
@@ -181,14 +179,14 @@ export function BodyHologramView({ assessment }: BodyHologramViewProps) {
                   style={{ transformOrigin: `${px}px ${py}px` }}
                 />
 
-                {/* Linha de conexão */}
-                <motion.line
-                  x1={lineX1}
-                  y1={py}
-                  x2={lineX2}
-                  y2={py}
-                  stroke={isLeft ? "url(#line-grad-left)" : "url(#line-grad-right)"}
-                  strokeWidth={0.4}
+                {/* Linha de conexão — do ponto até o card */}
+                <motion.path
+                  d={`M ${lineX1},${py} L ${lineX2},${py}`}
+                  stroke={NEON}
+                  strokeWidth={0.55}
+                  strokeOpacity={0.85}
+                  fill="none"
+                  filter="url(#line-glow)"
                   initial={{ pathLength: 0, opacity: 0 }}
                   animate={{ pathLength: 1, opacity: 1 }}
                   transition={{
