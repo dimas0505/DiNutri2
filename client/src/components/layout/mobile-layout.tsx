@@ -151,7 +151,7 @@ export function DefaultMobileDrawer({ onProfileClick }: DefaultMobileDrawerProps
     ...(isPatient
       ? [
           { label: "Início", href: "/dashboard", icon: Home, action: "navigate" },
-          { label: "Meu Plano", href: "/my-plan", icon: ShieldCheck, action: "navigate" },
+          { label: "Minha Assinatura", href: "/my-plan", icon: ShieldCheck, action: "navigate" },
           { label: "Prescrições", href: "/patient/prescriptions", icon: FileText, action: "navigate" },
           { label: "Avaliações", href: "/assessments", icon: ClipboardList, action: "navigate" },
           { label: "Diário", href: "/diary", icon: BookOpen, action: "navigate" },

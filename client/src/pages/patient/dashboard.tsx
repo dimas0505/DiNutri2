@@ -31,7 +31,7 @@ const dashboardCards: DashboardCard[] = [
     iconColor: "text-[#8B5CF6]",
   },
   {
-    title: "Meu Plano",
+    title: "Minha Assinatura",
     subtitle: "Status da sua assinatura",
     href: "/my-plan",
     icon: ShieldCheck,

@@ -161,7 +161,7 @@ export default function MyPlanPage() {
         <CardHeader className="bg-gradient-to-br from-slate-50 to-slate-100 border-b">
           <CardTitle className="flex items-center gap-2 text-2xl font-bold text-slate-800">
             <ShieldCheck className="h-7 w-7 text-primary" />
-            Meu Plano
+            Minha Assinatura
           </CardTitle>
           <CardDescription>Visualize o status do seu plano e faça a renovação.</CardDescription>
         </CardHeader>
@@ -237,7 +237,7 @@ export default function MyPlanPage() {
 
   if (isMobile) {
     return (
-      <MobileLayout title="Meu Plano" showBackButton>
+      <MobileLayout title="Minha Assinatura" showBackButton>
         <main className="p-4">{content}</main>
       </MobileLayout>
     );
@@ -247,7 +247,7 @@ export default function MyPlanPage() {
     <div className="min-h-screen bg-background">
       <header className="bg-card border-b border-border px-4 py-3">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <h1 className="text-xl font-semibold">Meu Plano</h1>
+          <h1 className="text-xl font-semibold">Minha Assinatura</h1>
         </div>
       </header>
       <main className="max-w-4xl mx-auto p-6">
