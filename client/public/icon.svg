@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Fundo roxo total, sem padding -->
+  <rect width="512" height="512" fill="#8A2BE2"/>
+  <!-- Folha/ícone nutricional acima do texto -->
+  <g transform="translate(256, 170)">
+    <!-- Caule -->
+    <line x1="0" y1="60" x2="0" y2="-20" stroke="white" stroke-width="8" stroke-linecap="round"/>
+    <!-- Folha principal -->
+    <path d="M0,-20 C-50,-70 -80,-20 -40,30 C-20,55 20,55 40,30 C80,-20 50,-70 0,-20 Z" fill="white" opacity="0.95"/>
+    <!-- Nervura central da folha -->
+    <path d="M0,-20 C0,10 0,30 0,30" stroke="#8A2BE2" stroke-width="4" stroke-linecap="round" fill="none"/>
+  </g>
+  <!-- Texto DiNutri em branco -->
+  <text x="256" y="330" font-family="Arial, sans-serif" font-size="108" font-weight="bold"
+        fill="white" text-anchor="middle">DiNutri</text>
+</svg>

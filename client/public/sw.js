@@ -7,6 +7,7 @@ const DYNAMIC_CACHE = `${CACHE_NAME}-dynamic`;
 // para garantir que referências a novos bundles (com hash) sejam carregadas.
 const STATIC_ASSETS = [
   '/manifest.json',
+  '/icon.svg',
   '/icon-192x192.png',
   '/icon-512x512.png',
   '/logo_dinutri.png',
