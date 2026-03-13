@@ -48,7 +48,7 @@ export function MobileLayout({
   const navItems: LayoutNavItem[] = isPatient
     ? [
         { icon: Home, label: "Início", href: "/dashboard" },
-        { icon: BookOpen, label: "Diário", href: "/diary" },
+        { icon: BookOpen, label: "Diário Alimentar", href: "/diary" },
         { icon: User, label: "Perfil", href: "/profile" },
       ]
     : isNutritionist
@@ -154,7 +154,7 @@ export function DefaultMobileDrawer({ onProfileClick }: DefaultMobileDrawerProps
           { label: "Minha Assinatura", href: "/my-plan", icon: ShieldCheck, action: "navigate" },
           { label: "Prescrições", href: "/patient/prescriptions", icon: FileText, action: "navigate" },
           { label: "Avaliações", href: "/assessments", icon: ClipboardList, action: "navigate" },
-          { label: "Diário", href: "/diary", icon: BookOpen, action: "navigate" },
+          { label: "Diário Alimentar", href: "/diary", icon: BookOpen, action: "navigate" },
           { label: "Perfil", href: "/profile", icon: User, action: "navigate" },
         ]
       : []),
