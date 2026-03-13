@@ -55,8 +55,8 @@ const dashboardCards: DashboardCard[] = [
     iconColor: "text-[#F59E0B]",
   },
   {
-    title: "Diário",
-    subtitle: "Sua evolução fotográfica",
+    title: "Diário Alimentar",
+    subtitle: "Fotos e humor das refeições",
     href: "/diary",
     icon: BookOpen,
     iconBg: "bg-[#FFEAF4]",
