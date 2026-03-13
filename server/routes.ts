@@ -1633,7 +1633,7 @@ export async function setupRoutes(app: Express): Promise<void> {
           const assessmentPayload = {
             title: 'Relatório de Avaliação Disponível! 📊',
             body: `Um novo documento de avaliação (${safeFileName}) foi disponibilizado pelo seu nutricionista.`,
-            url: '/assessments',
+            url: '/assessments?tab=reports',
             type: 'assessment' as const,
           };
           // Push (funciona apenas se o paciente autorizou)

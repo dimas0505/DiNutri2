@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useInvalidatePatientData } from "@/hooks/useInvalidatePatientData";
 import { Download, FileText, ClipboardList, Percent, Ruler, TrendingUp, Weight, Scan } from "lucide-react";
@@ -14,14 +15,29 @@ import { apiRequest } from "@/lib/queryClient";
 import { BodyHologramView } from "@/components/body-hologram-view";
 
 export default function AssessmentsPage() {
+  const [location] = useLocation();
   const invalidatePatientData = useInvalidatePatientData();
   const { toast } = useToast();
 
+  // Determinar a aba inicial com base no query parameter
+  const getInitialTab = () => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("tab") || "body3d";
+  };
+
+  const [activeTab, setActiveTab] = useState(getInitialTab());
 
   // Invalida o cache ao montar a tela para garantir dados frescos
   useEffect(() => {
     invalidatePatientData();
-  }, [invalidatePatientData]);
+    
+    // Se o parâmetro mudar enquanto a página está aberta, atualiza a aba
+    const params = new URLSearchParams(window.location.search);
+    const tabParam = params.get("tab");
+    if (tabParam && (tabParam === "reports" || tabParam === "anthro" || tabParam === "body3d")) {
+      setActiveTab(tabParam);
+    }
+  }, [invalidatePatientData, location]);
 
   const { data: documents, isLoading: documentsLoading } = useQuery<PatientDocument[]>({
     queryKey: ["/api/my-assessments"],
@@ -74,7 +90,7 @@ export default function AssessmentsPage() {
   return (
     <MobileLayout title="Minhas Avaliações" showBackButton>
       <div className="p-4 space-y-4">
-        <Tabs defaultValue="body3d" className="w-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="w-full grid grid-cols-3 h-auto min-h-11 rounded-xl bg-purple-50 p-1 gap-1">
             <TabsTrigger
               value="body3d"
@@ -282,7 +298,12 @@ export default function AssessmentsPage() {
                         size="sm"
                         className="w-full gap-2"
                       >
-                        <a href={doc.fileUrl} download={doc.fileName} target="_blank" rel="noopener noreferrer">
+                        <a 
+                          href={`${doc.fileUrl}${doc.fileUrl.includes('?') ? '&' : '?'}download=1`} 
+                          download={doc.fileName} 
+                          target="_self" 
+                          rel="noopener noreferrer"
+                        >
                           <Download className="h-4 w-4" />
                           Download
                         </a>
