@@ -2059,6 +2059,25 @@ export async function setupRoutes(app: Express): Promise<void> {
     }
   });
 
+  // GET: Patient fetches their full anthropometric assessment history (for evolution charts)
+  app.get('/api/my-anthropometry/history', isAuthenticated, async (req: any, res) => {
+    try {
+      const patientProfile = await storage.getPatientByUserId(req.user.id);
+      if (!patientProfile) {
+        return res.status(404).json({ message: "Perfil de paciente não encontrado." });
+      }
+      const history = await db
+        .select()
+        .from(anthropometricAssessments)
+        .where(eq(anthropometricAssessments.patientId, patientProfile.id))
+        .orderBy(anthropometricAssessments.createdAt);
+      return res.json(history);
+    } catch (error) {
+      console.error("Erro ao buscar histórico de avaliações antropométricas:", error);
+      res.status(500).json({ message: "Falha ao buscar histórico de avaliações." });
+    }
+  });
+
   // ─────────────────────────────────────────────────────────────────────────────
   // Rotas de Notificações In-App (inbox interno do paciente)
   // Funcionam independente de qualquer permissão do sistema operacional.

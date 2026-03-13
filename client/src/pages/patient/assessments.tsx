@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useInvalidatePatientData } from "@/hooks/useInvalidatePatientData";
-import { Download, FileText, ClipboardList, Percent, Ruler, TrendingUp, Weight, Scan } from "lucide-react";
+import { Download, FileText, ClipboardList, Percent, Ruler, TrendingUp, Weight, Scan, Activity } from "lucide-react";
 import { MobileLayout } from "@/components/layout/mobile-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import type { AnthropometricAssessment, PatientDocument } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { BodyHologramView } from "@/components/body-hologram-view";
+import { AssessmentEvolution } from "@/components/assessment-evolution";
 
 export default function AssessmentsPage() {
   const [location] = useLocation();
@@ -34,7 +35,7 @@ export default function AssessmentsPage() {
     // Se o parâmetro mudar enquanto a página está aberta, atualiza a aba
     const params = new URLSearchParams(window.location.search);
     const tabParam = params.get("tab");
-    if (tabParam && (tabParam === "reports" || tabParam === "anthro" || tabParam === "body3d")) {
+    if (tabParam && (tabParam === "reports" || tabParam === "anthro" || tabParam === "body3d" || tabParam === "evolution")) {
       setActiveTab(tabParam);
     }
   }, [invalidatePatientData, location]);
@@ -51,6 +52,17 @@ export default function AssessmentsPage() {
       return res.json();
     },
     retry: false,
+  });
+
+  const { data: anthroHistory, isLoading: historyLoading } = useQuery<AnthropometricAssessment[]>({
+    queryKey: ["/api/my-anthropometry/history"],
+    queryFn: async () => {
+      const res = await apiRequest("GET", "/api/my-anthropometry/history");
+      if (!res.ok) return [];
+      return res.json();
+    },
+    retry: false,
+    enabled: activeTab === "evolution",
   });
 
   const handleDownload = async (url: string, filename: string) => {
@@ -113,7 +125,7 @@ export default function AssessmentsPage() {
     <MobileLayout title="Minhas Avaliações" showBackButton>
       <div className="p-4 space-y-4">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="w-full grid grid-cols-3 h-auto min-h-11 rounded-xl bg-purple-50 p-1 gap-1">
+          <TabsList className="w-full grid grid-cols-4 h-auto min-h-11 rounded-xl bg-purple-50 p-1 gap-1">
             <TabsTrigger
               value="body3d"
               className="rounded-lg text-xs font-medium leading-tight whitespace-normal text-center py-1.5 data-[state=active]:bg-white data-[state=active]:text-purple-700 data-[state=inactive]:text-purple-400 flex items-center justify-center gap-1"
@@ -126,7 +138,14 @@ export default function AssessmentsPage() {
               aria-label="Dados Antropométricos"
               className="rounded-lg text-xs font-medium leading-tight whitespace-normal text-center py-1.5 data-[state=active]:bg-white data-[state=active]:text-purple-700 data-[state=inactive]:text-purple-400"
             >
-              Dados Antrop.
+              Dados
+            </TabsTrigger>
+            <TabsTrigger
+              value="evolution"
+              className="rounded-lg text-xs font-medium leading-tight whitespace-normal text-center py-1.5 data-[state=active]:bg-white data-[state=active]:text-purple-700 data-[state=inactive]:text-purple-400 flex items-center justify-center gap-1"
+            >
+              <Activity className="h-3.5 w-3.5 shrink-0" />
+              Evolução
             </TabsTrigger>
             <TabsTrigger
               value="reports"
@@ -270,6 +289,27 @@ export default function AssessmentsPage() {
                   </Card>
                 )}
               </div>
+            )}
+          </TabsContent>
+
+          {/* ── Aba: Evolução ── */}
+          <TabsContent value="evolution" className="mt-4">
+            <p className="text-sm text-muted-foreground mb-4">
+              Acompanhe sua evolução ao longo das avaliações com gráficos e comparações detalhadas.
+            </p>
+            {historyLoading ? (
+              <div className="space-y-4">
+                <Skeleton className="h-8 w-48 rounded-lg" />
+                <div className="grid grid-cols-2 gap-2.5">
+                  {[1, 2, 3, 4].map((i) => (
+                    <Skeleton key={i} className="h-24 w-full rounded-xl" />
+                  ))}
+                </div>
+                <Skeleton className="h-48 w-full rounded-xl" />
+                <Skeleton className="h-48 w-full rounded-xl" />
+              </div>
+            ) : (
+              <AssessmentEvolution history={anthroHistory ?? []} />
             )}
           </TabsContent>
 
