@@ -37,11 +37,7 @@ export default function AssessmentsPage() {
     retry: false,
   });
 
-  const handleDownload = (url: string, filename: string) => {
-    // Abrir em nova aba é mais robusto contra erros de CORS do que fetch
-    // e permite que o navegador gerencie o download/visualização nativamente
-    window.open(url, "_blank", "noopener,noreferrer");
-  };
+  // Removida a função handleDownload para usar link direto com atributo download
 
   const formatDate = (date: Date | string | null) => {
     if (!date) return "";
@@ -282,12 +278,14 @@ export default function AssessmentsPage() {
                     </CardHeader>
                     <CardContent className="px-4 pb-4 pt-1">
                       <Button
+                        asChild
                         size="sm"
                         className="w-full gap-2"
-                        onClick={() => handleDownload(doc.fileUrl, doc.fileName)}
                       >
-                        <Download className="h-4 w-4" />
-                        Download
+                        <a href={doc.fileUrl} download={doc.fileName} target="_blank" rel="noopener noreferrer">
+                          <Download className="h-4 w-4" />
+                          Download
+                        </a>
                       </Button>
                     </CardContent>
                   </Card>
