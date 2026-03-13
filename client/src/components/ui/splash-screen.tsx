@@ -27,7 +27,7 @@ export function SplashScreen({ onFinished }: SplashScreenProps) {
 
   return (
     <div
-      className={`fixed inset-0 z-[9999] flex items-center justify-center bg-gradient-to-br from-[#8B5CF6] to-[#6D28D9] ${
+      className={`fixed inset-0 z-[9999] flex items-center justify-center bg-[#8B5CF6] bg-gradient-to-br from-[#8B5CF6] to-[#6D28D9] ${
         phase === "exit" ? "animate-splash-slide-up" : ""
       }`}
     >
@@ -37,7 +37,7 @@ export function SplashScreen({ onFinished }: SplashScreenProps) {
 
       {/* Logo */}
       <div className={`flex flex-col items-center gap-4 ${phase === "enter" ? "animate-splash-logo-enter" : ""}`}>
-        <div className="bg-white/20 backdrop-blur-sm rounded-3xl p-6">
+        <div className="bg-white/20 backdrop-blur-sm rounded-3xl p-6 min-h-[100px] min-w-[100px] flex items-center justify-center">
           <DiNutriLogo size="xl" variant="full" className="h-24 w-auto" />
         </div>
         <p className="text-white/80 text-lg font-medium tracking-wide">

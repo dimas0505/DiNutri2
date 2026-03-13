@@ -8,7 +8,7 @@ import InstallPWA from "@/components/InstallPWA";
 import IosInstallToast from "@/components/IosInstallToast";
 import { UpdateNotifier } from "@/components/update-notifier";
 import { SplashScreen } from "@/components/ui/splash-screen";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
 import Home from "@/pages/home";
@@ -59,7 +59,7 @@ function Router() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
           <p className="text-muted-foreground">Carregando...</p>
@@ -103,6 +103,7 @@ function Router() {
           <Route path="/notifications/send" component={SendNotificationPage} />
           <Route path="/reports/notifications" component={NotificationsReportPage} />
           <Route path="/notifications/report" component={NotificationsReportPage} />
+          <Route path="/notifications/report" component={NotificationsReportPage} />
         </>
       )}
 
@@ -139,10 +140,18 @@ function Router() {
 function App() {
   const [showSplash, setShowSplash] = useState(() => {
     // Show splash only on the first load within a browser session
-    if (sessionStorage.getItem("splashShown")) return false;
-    sessionStorage.setItem("splashShown", "1");
+    if (typeof window !== "undefined" && sessionStorage.getItem("splashShown")) return false;
+    if (typeof window !== "undefined") sessionStorage.setItem("splashShown", "1");
     return true;
   });
+
+  // Ensure splash is removed if something goes wrong or after hydration
+  useEffect(() => {
+    if (showSplash) {
+      const timer = setTimeout(() => setShowSplash(false), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [showSplash]);
 
   return (
     <QueryClientProvider client={queryClient}>
