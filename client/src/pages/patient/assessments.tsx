@@ -16,7 +16,7 @@ import { BodyHologramView } from "@/components/body-hologram-view";
 export default function AssessmentsPage() {
   const invalidatePatientData = useInvalidatePatientData();
   const { toast } = useToast();
-  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+
 
   // Invalida o cache ao montar a tela para garantir dados frescos
   useEffect(() => {
@@ -37,24 +37,10 @@ export default function AssessmentsPage() {
     retry: false,
   });
 
-  const handleDownload = async (url: string, filename: string, id: string) => {
-    setDownloadingId(id);
-    try {
-      const response = await fetch(url);
-      if (!response.ok) throw new Error("Falha ao baixar o arquivo.");
-      const blob = await response.blob();
-      const blobUrl = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = blobUrl;
-      a.download = filename;
-      a.click();
-      window.URL.revokeObjectURL(blobUrl);
-    } catch (error) {
-      console.error("[Download] Erro ao baixar arquivo:", error);
-      toast({ variant: "destructive", title: "Erro no download", description: "Não foi possível baixar o arquivo. Tente novamente." });
-    } finally {
-      setDownloadingId(null);
-    }
+  const handleDownload = (url: string, filename: string) => {
+    // Abrir em nova aba é mais robusto contra erros de CORS do que fetch
+    // e permite que o navegador gerencie o download/visualização nativamente
+    window.open(url, "_blank", "noopener,noreferrer");
   };
 
   const formatDate = (date: Date | string | null) => {
@@ -298,11 +284,10 @@ export default function AssessmentsPage() {
                       <Button
                         size="sm"
                         className="w-full gap-2"
-                        disabled={downloadingId === doc.id}
-                        onClick={() => handleDownload(doc.fileUrl, doc.fileName, doc.id)}
+                        onClick={() => handleDownload(doc.fileUrl, doc.fileName)}
                       >
                         <Download className="h-4 w-4" />
-                        {downloadingId === doc.id ? "Baixando..." : "Download"}
+                        Download
                       </Button>
                     </CardContent>
                   </Card>
