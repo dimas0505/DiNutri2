@@ -1611,6 +1611,8 @@ export async function setupRoutes(app: Express): Promise<void> {
       const blob = await put(blobPath, req.file.buffer, {
         access: 'public',
         contentType: req.file.mimetype,
+        addRandomSuffix: true,
+        cacheControlMaxAge: 31536000,
       });
       console.log(`[Upload] Blob upload successful: ${blob.url}`);
 
