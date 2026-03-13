@@ -4,7 +4,11 @@ import { getBreakpoint, isMobileBreakpoint, isTouchDevice, debounce, MOBILE_BREA
 const MOBILE_BREAKPOINT = 768
 
 export function useIsMobile() {
-  const [isMobile, setIsMobile] = React.useState<boolean | undefined>(undefined)
+  // Inicializa com o valor real baseado na largura da janela para evitar flash de conteúdo
+  const [isMobile, setIsMobile] = React.useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return window.innerWidth < MOBILE_BREAKPOINT;
+  })
 
   React.useEffect(() => {
     const mql = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`)
@@ -12,11 +16,14 @@ export function useIsMobile() {
       setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
     }
     mql.addEventListener("change", onChange)
+    
+    // Sincroniza novamente no mount caso tenha mudado
     setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
+    
     return () => mql.removeEventListener("change", onChange)
   }, [])
 
-  return !!isMobile
+  return isMobile
 }
 
 export function useBreakpoint() {
