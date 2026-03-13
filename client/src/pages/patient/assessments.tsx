@@ -53,7 +53,29 @@ export default function AssessmentsPage() {
     retry: false,
   });
 
-  // Removida a função handleDownload para usar link direto com atributo download
+  const handleDownload = async (url: string, filename: string) => {
+    try {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error("Falha ao baixar o arquivo.");
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (error) {
+      console.error("[Download] Erro ao baixar arquivo:", error);
+      // Fallback para link direto se o fetch falhar (ex: CORS)
+      const a = document.createElement("a");
+      a.href = `${url}${url.includes('?') ? '&' : '?'}download=1`;
+      a.download = filename;
+      a.target = "_self";
+      a.click();
+    }
+  };
 
   const formatDate = (date: Date | string | null) => {
     if (!date) return "";
@@ -294,19 +316,12 @@ export default function AssessmentsPage() {
                     </CardHeader>
                     <CardContent className="px-4 pb-4 pt-1">
                       <Button
-                        asChild
                         size="sm"
                         className="w-full gap-2"
+                        onClick={() => handleDownload(doc.fileUrl, doc.fileName)}
                       >
-                        <a 
-                          href={`${doc.fileUrl}${doc.fileUrl.includes('?') ? '&' : '?'}download=1`} 
-                          download={doc.fileName} 
-                          target="_self" 
-                          rel="noopener noreferrer"
-                        >
-                          <Download className="h-4 w-4" />
-                          Download
-                        </a>
+                        <Download className="h-4 w-4" />
+                        Download
                       </Button>
                     </CardContent>
                   </Card>
