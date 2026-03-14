@@ -440,6 +440,11 @@ export async function setupRoutes(app: Express): Promise<void> {
   
   app.get('/api/patient/my-profile', isAuthenticated, async (req: any, res) => {
     try {
+      // Adiciona headers de cache-control para garantir que dados sempre frescos sejam buscados
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+      
       // Log activity to track when patient accesses their profile
       logActivity({ userId: req.user.id, activityType: 'view_profile' });
       
@@ -703,6 +708,11 @@ export async function setupRoutes(app: Express): Promise<void> {
 
   app.get('/api/patient/my-prescriptions', isAuthenticated, async (req: any, res) => {
     try {
+      // Adiciona headers de cache-control para garantir que dados sempre frescos sejam buscados
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+      
       logActivity({ userId: req.user.id, activityType: 'view_my_prescriptions_list' });
 
       // Regra de negócio: a assinatura é a regra absoluta de acesso.
@@ -934,6 +944,11 @@ export async function setupRoutes(app: Express): Promise<void> {
 
   app.get('/api/patients/:patientId/food-diary/entries', isAuthenticated, async (req: any, res) => {
     try {
+      // Adiciona headers de cache-control para garantir que dados sempre frescos sejam buscados
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+      
       const { patientId } = req.params;
       
       // Se for nutricionista, verifica se ele é dono do paciente
@@ -1071,6 +1086,11 @@ export async function setupRoutes(app: Express): Promise<void> {
   // Get patient's current subscription
   app.get('/api/patients/:patientId/subscription', isAuthenticated, async (req: any, res) => {
     try {
+      // Adiciona headers de cache-control para garantir que dados sempre frescos sejam buscados
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+      
       const patientId = req.params.patientId;
       const userId = req.user.id;
       
@@ -1680,6 +1700,11 @@ export async function setupRoutes(app: Express): Promise<void> {
   // GET: Patient lists their own assessments
   app.get('/api/my-assessments', isAuthenticated, async (req: any, res) => {
     try {
+      // Adiciona headers de cache-control para garantir que dados sempre frescos sejam buscados
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+      
       const patientProfile = await storage.getPatientByUserId(req.user.id);
       if (!patientProfile) {
         return res.status(404).json({ message: "Perfil de paciente não encontrado." });
@@ -2039,6 +2064,11 @@ export async function setupRoutes(app: Express): Promise<void> {
   // GET: Patient fetches their own latest anthropometric assessment
   app.get('/api/my-anthropometry/latest', isAuthenticated, async (req: any, res) => {
     try {
+      // Adiciona headers de cache-control para garantir que dados sempre frescos sejam buscados
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+      
       const patientProfile = await storage.getPatientByUserId(req.user.id);
       if (!patientProfile) {
         return res.status(404).json({ message: "Perfil de paciente não encontrado." });

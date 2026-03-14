@@ -65,16 +65,19 @@ export const queryClient = new QueryClient({
       // Recarrega dados ao focar a janela para garantir que o usuário
       // veja informações atualizadas ao retornar ao app.
       refetchOnWindowFocus: true,
-      // 5 minutos: dados são considerados frescos por 5 min após o fetch.
-      // Evita requisições desnecessárias em navegação rápida entre páginas,
-      // mas garante atualização após ausências mais longas.
-      staleTime: 5 * 60 * 1000,
-      // Não retenta erros do cliente (4xx) pois são falhas determinísticas.
+      // 1 minuto: dados são considerados frescos por 1 min após o fetch.
+      // Reduzido de 5 minutos para garantir que dados desatualizados sejam
+      // refetchados mais frequentemente, especialmente ao retornar ao app.
+      staleTime: 1 * 60 * 1000,
+      // Nao retenta erros do cliente (4xx) pois sao falhas deterministicas.
       // Retenta apenas erros de rede/servidor (5xx) uma vez.
       retry: (failureCount, error) => {
         if (isClientError(error)) return false;
         return failureCount < 1;
       },
+      // Garbage collection: 5 minutos
+      // Dados em cache serao descartados apos 5 minutos de inatividade
+      gcTime: 5 * 60 * 1000,
     },
     mutations: {
       retry: false,

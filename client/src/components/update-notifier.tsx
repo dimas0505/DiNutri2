@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
+import { useQueryClient } from '@tanstack/react-query';
 
 /**
  * UpdateNotifier — Componente responsável por detectar e aplicar atualizações
@@ -15,9 +16,11 @@ import { useToast } from '@/hooks/use-toast';
  */
 export function UpdateNotifier() {
   const { toast, dismiss } = useToast();
+  const queryClient = useQueryClient();
   const controllerChangeListenerAdded = useRef(false);
   const isReloading = useRef(false);
   const lastCheckRef = useRef(0);
+  const lastFocusInvalidationRef = useRef(0);
 
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return;
@@ -111,11 +114,34 @@ export function UpdateNotifier() {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         checkForUpdates();
+        // Invalida o cache de dados do paciente ao retornar ao app
+        // Isso garante que dados atualizados sejam buscados do servidor
+        const now = Date.now();
+        if (now - lastFocusInvalidationRef.current > 5000) { // Debounce: mínimo 5s entre invalidações
+          lastFocusInvalidationRef.current = now;
+          console.log('[UpdateNotifier] Invalidating patient data cache on focus...');
+          queryClient.invalidateQueries({ queryKey: ['/api/patient/my-profile'] });
+          queryClient.invalidateQueries({ queryKey: ['/api/patient/my-prescriptions'] });
+          queryClient.invalidateQueries({ queryKey: ['/api/patients'] });
+          queryClient.invalidateQueries({ queryKey: ['/api/my-assessments'] });
+          queryClient.invalidateQueries({ queryKey: ['/api/my-anthropometry/latest'] });
+        }
       }
     };
 
     const handleWindowFocus = () => {
       checkForUpdates();
+      // Invalida o cache de dados do paciente ao retornar ao foco da janela
+      const now = Date.now();
+      if (now - lastFocusInvalidationRef.current > 5000) { // Debounce: mínimo 5s entre invalidações
+        lastFocusInvalidationRef.current = now;
+        console.log('[UpdateNotifier] Invalidating patient data cache on window focus...');
+        queryClient.invalidateQueries({ queryKey: ['/api/patient/my-profile'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/patient/my-prescriptions'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/patients'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/my-assessments'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/my-anthropometry/latest'] });
+      }
     };
 
     const handleOnline = () => {
@@ -135,7 +161,20 @@ export function UpdateNotifier() {
         navigator.serviceWorker.removeEventListener('controllerchange', handleControllerChange);
       }
     };
-  }, [toast, dismiss]);
+  }, [toast, dismiss, queryClient]);
+
+  // Expor função de invalidação para uso externo (ex: navegação)
+  useEffect(() => {
+    // Armazena a função de invalidação no window para acesso global
+    (window as any).__invalidatePatientDataCache = () => {
+      console.log('[UpdateNotifier] Invalidating patient data cache via global function...');
+      queryClient.invalidateQueries({ queryKey: ['/api/patient/my-profile'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/patient/my-prescriptions'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/patients'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/my-assessments'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/my-anthropometry/latest'] });
+    };
+  }, [queryClient]);
 
   return null;
 }

@@ -2,6 +2,7 @@ import { Link } from "wouter";
 import { Home, BookOpen, User } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useCallback } from "react";
 
 interface BottomNavItem {
   icon: LucideIcon;
@@ -21,6 +22,13 @@ const defaultPatientItems: BottomNavItem[] = [
 ];
 
 export function BottomNavigation({ items = defaultPatientItems, currentPath = "" }: BottomNavigationProps) {
+  const handleNavigation = useCallback(() => {
+    // Invalida o cache de dados do paciente ao navegar entre abas
+    if (typeof window !== 'undefined' && (window as any).__invalidatePatientDataCache) {
+      (window as any).__invalidatePatientDataCache();
+    }
+  }, []);
+
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 flex justify-around items-center h-[72px] px-2 z-50 rounded-t-2xl shadow-[0_-4px_20px_rgba(0,0,0,0.05)] md:hidden">
       {items.map((item) => {
@@ -30,7 +38,7 @@ export function BottomNavigation({ items = defaultPatientItems, currentPath = ""
           (item.href !== "/dashboard" && currentPath.startsWith(item.href));
 
         return (
-          <Link key={item.href} href={item.href}>
+          <Link key={item.href} href={item.href} onClick={handleNavigation}>
             <a className="flex flex-col items-center justify-center w-full h-full gap-1 pt-1">
               <div
                 className={cn(
