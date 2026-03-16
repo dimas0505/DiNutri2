@@ -103,17 +103,20 @@ export default function SendNotificationPage() {
     return result;
   }, [patientsWithApp, searchTerm, activeFilter, target]);
 
-  // Auto-selecionar ao mudar filtro
+  // Auto-selecionar ao mudar filtro - corrigido para evitar loop infinito
   useEffect(() => {
     if (target === "filter" && activeFilter !== "all") {
-      const newIds = [];
-      for (let i = 0; i < filteredPatients.length; i++) {
-        const p = filteredPatients[i];
-        if (p && p.userId && typeof p.userId === "string") {
-          newIds.push(p.userId);
+      const newIds = filteredPatients
+        .map(p => p.userId)
+        .filter((id): id is string => !!id && typeof id === "string");
+      
+      // Só atualiza se a lista de IDs realmente mudou para evitar loop de renderização
+      setSelectedUserIds(prev => {
+        if (prev.length === newIds.length && prev.every((id, i) => id === newIds[i])) {
+          return prev;
         }
-      }
-      setSelectedUserIds(newIds);
+        return newIds;
+      });
     }
   }, [activeFilter, target, filteredPatients]);
 
