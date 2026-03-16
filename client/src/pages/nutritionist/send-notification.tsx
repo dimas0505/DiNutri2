@@ -63,7 +63,7 @@ export default function SendNotificationPage() {
     return patients.filter(p => p && p.hasAccount && p.userId);
   }, [patients]);
 
-  // Filtros pré-definidos - SIMPLIFICADO
+  // Filtros pré-definidos - Estabilizado para evitar re-renderizações desnecessárias
   const filteredPatients = useMemo(() => {
     let result = patientsWithApp;
 
@@ -103,16 +103,19 @@ export default function SendNotificationPage() {
     return result;
   }, [patientsWithApp, searchTerm, activeFilter, target]);
 
-  // Auto-selecionar ao mudar filtro - corrigido para evitar loop infinito
+  // Auto-selecionar ao mudar filtro - Implementação robusta com Set para evitar loop infinito (Error #185)
   useEffect(() => {
     if (target === "filter" && activeFilter !== "all") {
       const newIds = filteredPatients
         .map(p => p.userId)
         .filter((id): id is string => !!id && typeof id === "string");
       
-      // Só atualiza se a lista de IDs realmente mudou para evitar loop de renderização
       setSelectedUserIds(prev => {
-        if (prev.length === newIds.length && prev.every((id, i) => id === newIds[i])) {
+        const prevSet = new Set(prev);
+        const newSet = new Set(newIds);
+        
+        // Checagem de igualdade de conjuntos para evitar atualização infinita
+        if (prevSet.size === newSet.size && [...newSet].every(id => prevSet.has(id))) {
           return prev;
         }
         return newIds;
@@ -135,13 +138,9 @@ export default function SendNotificationPage() {
   }, []);
 
   const selectAllFiltered = useCallback(() => {
-    const newIds = [];
-    for (let i = 0; i < filteredPatients.length; i++) {
-      const p = filteredPatients[i];
-      if (p && p.userId && typeof p.userId === "string") {
-        newIds.push(p.userId);
-      }
-    }
+    const newIds = filteredPatients
+      .map(p => p.userId)
+      .filter((id): id is string => !!id && typeof id === "string");
     setSelectedUserIds(newIds);
   }, [filteredPatients]);
 
