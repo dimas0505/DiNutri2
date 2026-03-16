@@ -1,5 +1,5 @@
 // ARQUIVO: ./client/src/pages/nutritionist/send-notification.tsx
-// Página para o nutricionista enviar notificações push personalizadas - VERSÃO FINAL COM SELEÇÃO ASSÍNCRONA
+// Página para o nutricionista enviar notificações push personalizadas - VERSÃO FINAL ESTABILIZADA COM PREVIEW
 
 import { useState, useMemo, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -276,16 +276,96 @@ export default function SendNotificationPage() {
             </Tabs>
           </div>
 
-          <div className="space-y-3">
-            <Input placeholder="Título da Notificação" value={title} onChange={(e) => setTitle(e.target.value)} className="text-sm h-11" />
-            <Textarea placeholder="Mensagem da Notificação" value={body} onChange={(e) => setBody(e.target.value)} className="text-sm min-h-[100px]" />
+          <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm space-y-3">
+            <div className="flex items-center gap-2 mb-1">
+              <Bell className="h-4 w-4 text-[#4E9F87]" />
+              <Label className="text-sm font-semibold text-gray-700">Conteúdo da Notificação</Label>
+            </div>
+
+            <div className="space-y-1">
+              <Label htmlFor="notif-title" className="text-xs text-gray-500">
+                Título <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="notif-title"
+                placeholder="Ex: Lembrete importante"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                maxLength={100}
+                className="text-sm h-11"
+              />
+              <p className="text-right text-[10px] text-gray-400">{title.length}/100</p>
+            </div>
+
+            <div className="space-y-1">
+              <Label htmlFor="notif-body" className="text-xs text-gray-500">
+                Mensagem <span className="text-red-500">*</span>
+              </Label>
+              <Textarea
+                id="notif-body"
+                placeholder="Ex: Não esqueça de registrar suas refeições hoje!"
+                value={body}
+                onChange={(e) => setBody(e.target.value)}
+                maxLength={300}
+                rows={4}
+                className="text-sm resize-none min-h-[100px]"
+              />
+              <p className="text-right text-[10px] text-gray-400">{body.length}/300</p>
+            </div>
           </div>
 
-          <Button type="submit" disabled={sendMutation.isPending || (target !== "all" && selectedUserIds.length === 0)} className="w-full h-12 bg-[#4E9F87] hover:bg-[#3d8a74] text-white font-bold rounded-xl shadow-md">
-            {sendMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : (
+          {(title || body) && (
+            <div className="rounded-xl border border-dashed border-[#4E9F87]/40 bg-[#4E9F87]/5 p-4 animate-in fade-in slide-in-from-top-2 duration-300">
+              <p className="text-[10px] font-semibold text-[#4E9F87] mb-2 uppercase tracking-wide">Pré-visualização</p>
+              <div className="bg-white rounded-lg p-3 shadow-sm border border-gray-100">
+                <div className="flex items-start gap-2.5">
+                  <img src="/icon-72x72.png" alt="DiNutri" className="w-8 h-8 rounded-lg shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-bold text-gray-800 leading-tight">{title || "Título da notificação"}</p>
+                    <p className="text-xs text-gray-600 mt-0.5 leading-relaxed">{body || "Conteúdo da mensagem..."}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {lastResult && (
+            <div className={cn(
+              "flex items-center gap-3 rounded-xl p-3.5 border",
+              lastResult.sent > 0 ? "bg-green-50 border-green-200" : "bg-amber-50 border-amber-200"
+            )}>
+              {lastResult.sent > 0 ? (
+                <CheckCircle2 className="h-5 w-5 text-green-600 shrink-0" />
+              ) : (
+                <AlertCircle className="h-5 w-5 text-amber-500 shrink-0" />
+              )}
+              <div>
+                <p className={cn("text-sm font-semibold", lastResult.sent > 0 ? "text-green-700" : "text-amber-700")}>
+                  {lastResult.sent > 0 ? `${lastResult.sent} dispositivo(s) notificado(s)` : "Nenhum dispositivo ativo"}
+                </p>
+                <p className={cn("text-xs mt-0.5", lastResult.sent > 0 ? "text-green-600" : "text-amber-600")}>
+                  {lastResult.message || (lastResult.sent === 0 ? "Os pacientes precisam ativar as notificações." : "Notificação enviada!")}
+                </p>
+              </div>
+            </div>
+          )}
+
+          <Button
+            type="submit"
+            disabled={sendMutation.isPending || !title.trim() || !body.trim() || (target !== "all" && selectedUserIds.length === 0)}
+            className="w-full h-12 text-sm font-semibold bg-[#4E9F87] hover:bg-[#3d8a74] text-white rounded-xl shadow-md"
+          >
+            {sendMutation.isPending ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                Enviando...
+              </>
+            ) : (
               <>
                 <Send className="h-4 w-4 mr-2" />
-                {target === "all" ? "Enviar para Todos" : `Enviar para ${selectedUserIds.length} selecionado(s)`}
+                {target === "all" 
+                  ? "Enviar para Todos" 
+                  : `Enviar para ${selectedUserIds.length} selecionado(s)`}
               </>
             )}
           </Button>
