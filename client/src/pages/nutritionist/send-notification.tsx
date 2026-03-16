@@ -1,5 +1,5 @@
 // ARQUIVO: ./client/src/pages/nutritionist/send-notification.tsx
-// Página para o nutricionista enviar notificações push personalizadas - VERSÃO FINAL ESTABILIZADA
+// Página para o nutricionista enviar notificações push personalizadas - VERSÃO ULTRA-ESTÁVEL
 
 import { useState, useMemo, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -10,8 +10,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -205,21 +203,38 @@ export default function SendNotificationPage() {
                   </div>
                 </div>
 
-                <ScrollArea className="h-[200px] rounded-md border border-gray-100 p-2">
+                {/* SUBSTITUIÇÃO DO ScrollArea POR DIV NATIVA COM OVERFLOW PARA EVITAR LOOPS DE REDIMENSIONAMENTO */}
+                <div className="h-[200px] rounded-md border border-gray-100 p-2 overflow-y-auto">
                   {reportLoading ? <Loader2 className="h-4 w-4 animate-spin mx-auto mt-10" /> : (
                     <div className="space-y-1">
-                      {filteredPatients.map((p) => (
-                        <div key={p.patientId} className="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-50 cursor-pointer" onClick={() => togglePatientSelection(p.userId)}>
-                          <Checkbox checked={!!p.userId && selectedUserIds.includes(p.userId)} onCheckedChange={() => togglePatientSelection(p.userId)} />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs font-medium truncate">{p.patientName}</p>
-                            <p className="text-[10px] text-gray-400 truncate">{p.patientEmail}</p>
+                      {filteredPatients.map((p) => {
+                        const isSelected = !!p.userId && selectedUserIds.includes(p.userId);
+                        return (
+                          <div 
+                            key={p.patientId} 
+                            className={cn(
+                              "flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-50 cursor-pointer",
+                              isSelected && "bg-[#4E9F87]/5"
+                            )} 
+                            onClick={() => togglePatientSelection(p.userId)}
+                          >
+                            {/* SUBSTITUIÇÃO DO Checkbox POR INPUT HTML NATIVO PARA EVITAR CONFLITOS DE ESTADO */}
+                            <input 
+                              type="checkbox"
+                              className="h-4 w-4 rounded border-gray-300 text-[#4E9F87] focus:ring-[#4E9F87]"
+                              checked={isSelected} 
+                              onChange={() => {}} // O clique no pai já lida com a seleção
+                            />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-medium truncate">{p.patientName}</p>
+                              <p className="text-[10px] text-gray-400 truncate">{p.patientEmail}</p>
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
-                </ScrollArea>
+                </div>
               </TabsContent>
 
               <TabsContent value="filter" className="mt-0 space-y-3">
