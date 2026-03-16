@@ -4,7 +4,7 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { Bell, Send, Users, CheckCircle2, AlertCircle, Loader2, Search, Calendar } from "lucide-react";
+import { Bell, Send, Users, CheckCircle2, AlertCircle, Loader2, Search, Calendar, XCircle } from "lucide-react";
 import { MobileLayout } from "@/components/layout/mobile-layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -329,7 +329,7 @@ export default function SendNotificationPage() {
                   <FilterButton 
                     active={activeFilter === "inactive"} 
                     onClick={() => setActiveFilter("inactive")}
-                    icon={XCircleIcon}
+                    icon={XCircle}
                     label="Pacientes inativos"
                     color="red"
                   />
@@ -489,23 +489,4 @@ function FilterButton({ active, onClick, icon: Icon, label, color }: any) {
   );
 }
 
-function XCircleIcon(props: any) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <circle cx="12" cy="12" r="10" />
-      <path d="m15 9-6 6" />
-      <path d="m9 9 6 6" />
-    </svg>
-  );
-}
+
