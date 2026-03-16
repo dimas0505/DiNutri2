@@ -1,10 +1,10 @@
 // ARQUIVO: ./client/src/pages/nutritionist/send-notification.tsx
-// Página para o nutricionista enviar notificações push personalizadas - VERSÃO FINAL ESTABILIZADA COM PREVIEW
+// Página para o nutricionista enviar notificações push personalizadas - VERSÃO FINAL ESTABILIZADA COM NAVEGAÇÃO MELHORADA
 
 import { useState, useMemo, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { Bell, Send, Users, CheckCircle2, AlertCircle, Loader2, Search, Calendar, XCircle, CheckSquare, Square } from "lucide-react";
+import { Bell, Send, Users, CheckCircle2, AlertCircle, Loader2, Search, Calendar, XCircle, CheckSquare, Square, ChevronLeft } from "lucide-react";
 import { MobileLayout } from "@/components/layout/mobile-layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -174,6 +174,19 @@ export default function SendNotificationPage() {
   return (
     <MobileLayout title="Enviar Notificação" showBackButton>
       <div className="px-4 pb-8 pt-2 space-y-5">
+        {/* BOTÃO DE VOLTAR PARA DESKTOP/MOBILE MELHORADO */}
+        <div className="flex items-center justify-between">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="text-gray-500 hover:text-[#4E9F87] transition-colors flex items-center gap-1 -ml-2"
+            onClick={() => setLocation("/")}
+          >
+            <ChevronLeft className="h-4 w-4" />
+            <span className="text-xs font-medium">Voltar para o Painel</span>
+          </Button>
+        </div>
+
         <div className="rounded-2xl overflow-hidden shadow-sm bg-[#4E9F87] p-4 flex items-center gap-4">
           <Bell className="h-6 w-6 text-white" />
           <div>
@@ -368,6 +381,15 @@ export default function SendNotificationPage() {
                   : `Enviar para ${selectedUserIds.length} selecionado(s)`}
               </>
             )}
+          </Button>
+
+          <Button
+            type="button"
+            variant="ghost"
+            className="w-full text-xs text-gray-500"
+            onClick={() => setLocation("/reports/notifications")}
+          >
+            Ver relatório de adesão
           </Button>
         </form>
       </div>
