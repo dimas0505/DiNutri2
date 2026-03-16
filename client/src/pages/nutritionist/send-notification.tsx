@@ -1,22 +1,35 @@
 // ARQUIVO: ./client/src/pages/nutritionist/send-notification.tsx
 // Página para o nutricionista enviar notificações push personalizadas
 
-import { useState } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { Bell, Send, Users, User, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
+import { Bell, Send, Users, User, CheckCircle2, AlertCircle, Loader2, Search, Filter, Calendar } from "lucide-react";
 import { MobileLayout } from "@/components/layout/mobile-layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import type { Patient } from "@shared/schema";
+import { cn } from "@/lib/utils";
 
-interface PatientWithUser extends Patient {
+interface NotificationReportItem {
+  patientId: string;
+  patientName: string;
+  patientEmail: string | null;
   userId: string | null;
+  hasAccount: boolean;
+  hasPushEnabled: boolean;
+  subscriptionStatus?: string;
+  subscriptionExpiresAt?: string | null;
+}
+
+interface NotificationReportResponse {
+  report: NotificationReportItem[];
 }
 
 export default function SendNotificationPage() {
@@ -25,29 +38,95 @@ export default function SendNotificationPage() {
 
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
-  const [target, setTarget] = useState<"all" | "specific">("all");
-  const [selectedPatientUserId, setSelectedPatientUserId] = useState<string>("");
+  const [target, setTarget] = useState<"all" | "selection" | "filter">("all");
+  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [activeFilter, setActiveFilter] = useState<string>("all");
   const [lastResult, setLastResult] = useState<{ sent: number; message: string } | null>(null);
 
-  // Buscar lista de pacientes com conta de usuário
-  const { data: patients = [], isLoading: patientsLoading } = useQuery<PatientWithUser[]>({
-    queryKey: ["/api/patients"],
+  // Buscar relatório detalhado de pacientes
+  const { data: reportData, isLoading: reportLoading } = useQuery<NotificationReportResponse>({
+    queryKey: ["/api/push/report"],
     queryFn: async () => {
-      const res = await apiRequest("GET", "/api/patients");
-      if (!res.ok) return [];
+      const res = await fetch("/api/push/report", { credentials: "include" });
+      if (!res.ok) throw new Error("Falha ao carregar relatório.");
       return res.json();
     },
   });
 
-  // Filtrar apenas pacientes que têm userId (conta ativa no app)
-  const patientsWithApp = patients.filter((p) => p.userId);
+  const patients = useMemo(() => reportData?.report || [], [reportData]);
+  const patientsWithApp = useMemo(() => patients.filter((p) => p && p.hasAccount && p.userId), [patients]);
+
+  // Filtros pré-definidos
+  const filteredPatients = useMemo(() => {
+    let result = patientsWithApp;
+
+    if (searchTerm) {
+      const lowerSearch = searchTerm.toLowerCase();
+      result = result.filter(p => 
+        (p.patientName && p.patientName.toLowerCase().includes(lowerSearch)) ||
+        (p.patientEmail && p.patientEmail.toLowerCase().includes(lowerSearch))
+      );
+    }
+
+    if (target === "filter") {
+      const now = new Date();
+      const sevenDaysFromNow = new Date();
+      sevenDaysFromNow.setDate(now.getDate() + 7);
+
+      if (activeFilter === "active") {
+        result = result.filter(p => p.subscriptionStatus === "active");
+      } else if (activeFilter === "inactive") {
+        result = result.filter(p => p.subscriptionStatus !== "active");
+      } else if (activeFilter === "expiring") {
+        result = result.filter(p => {
+          if (!p.subscriptionExpiresAt) return false;
+          const expiryDate = new Date(p.subscriptionExpiresAt);
+          return expiryDate > now && expiryDate <= sevenDaysFromNow;
+        });
+      }
+    }
+
+    return result;
+  }, [patientsWithApp, searchTerm, activeFilter, target]);
+
+  // Atualiza a seleção quando o filtro muda
+  useEffect(() => {
+    if (target === "filter" && activeFilter !== "all") {
+      const ids = filteredPatients.map(p => p.userId).filter((id): id is string => !!id);
+      setSelectedUserIds(ids);
+    }
+  }, [activeFilter, target, filteredPatients]);
+
+  const togglePatientSelection = (userId: string | null) => {
+    if (!userId) return;
+    setSelectedUserIds(prev => 
+      prev.includes(userId) 
+        ? prev.filter(id => id !== userId) 
+        : [...prev, userId]
+    );
+  };
+
+  const selectAllFiltered = () => {
+    const ids = filteredPatients.map(p => p.userId).filter((id): id is string => !!id);
+    setSelectedUserIds(ids);
+  };
+
+  const clearSelection = () => {
+    setSelectedUserIds([]);
+  };
 
   const sendMutation = useMutation({
     mutationFn: async () => {
-      const payload: Record<string, string> = { title, body };
-      if (target === "specific" && selectedPatientUserId) {
-        payload.targetUserId = selectedPatientUserId;
+      const payload: any = { title, body };
+      
+      if (target === "selection" || target === "filter") {
+        if (selectedUserIds.length === 0) {
+          throw new Error("Selecione pelo menos um paciente.");
+        }
+        payload.targetUserIds = selectedUserIds;
       }
+      
       const res = await apiRequest("POST", "/api/push/send-message", payload);
       if (!res.ok) {
         const err = await res.json();
@@ -59,7 +138,7 @@ export default function SendNotificationPage() {
       setLastResult(data);
       setTitle("");
       setBody("");
-      setSelectedPatientUserId("");
+      if (target !== "all") setSelectedUserIds([]);
       toast({
         title: "Notificação enviada!",
         description: data.sent > 0
@@ -86,10 +165,10 @@ export default function SendNotificationPage() {
       });
       return;
     }
-    if (target === "specific" && !selectedPatientUserId) {
+    if (target !== "all" && selectedUserIds.length === 0) {
       toast({
-        title: "Selecione um paciente",
-        description: "Escolha um paciente para envio individual.",
+        title: "Selecione destinatários",
+        description: "Escolha pelo menos um paciente para enviar.",
         variant: "destructive",
       });
       return;
@@ -97,13 +176,10 @@ export default function SendNotificationPage() {
     sendMutation.mutate();
   };
 
-  const selectedPatient = patientsWithApp.find((p) => p.userId === selectedPatientUserId);
-
   return (
     <MobileLayout title="Enviar Notificação" showBackButton>
       <div className="px-4 pb-8 pt-2 space-y-5">
 
-        {/* Header informativo */}
         <div className="rounded-2xl overflow-hidden shadow-sm"
              style={{ background: "linear-gradient(135deg, #4E9F87 0%, #3d8a74 100%)" }}>
           <div className="px-5 py-4 flex items-center gap-4">
@@ -113,89 +189,137 @@ export default function SendNotificationPage() {
             <div>
               <p className="text-white font-bold text-sm">Notificações Push</p>
               <p className="text-white/80 text-xs mt-0.5 leading-relaxed">
-                Envie mensagens diretamente para os dispositivos dos seus pacientes, mesmo com o app fechado.
+                Envie mensagens diretamente para os dispositivos dos seus pacientes.
               </p>
             </div>
           </div>
         </div>
 
-        {/* Formulário */}
         <form onSubmit={handleSubmit} className="space-y-4">
 
-          {/* Destinatário */}
           <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm space-y-3">
             <div className="flex items-center gap-2 mb-1">
               <Users className="h-4 w-4 text-[#4E9F87]" />
               <Label className="text-sm font-semibold text-gray-700">Destinatário</Label>
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => setTarget("all")}
-                className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all ${
-                  target === "all"
-                    ? "border-[#4E9F87] bg-[#4E9F87]/5 text-[#4E9F87]"
-                    : "border-gray-200 text-gray-500 hover:border-gray-300"
-                }`}
-              >
-                <Users className="h-5 w-5" />
-                <span className="text-xs font-medium">Todos os pacientes</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setTarget("specific")}
-                className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all ${
-                  target === "specific"
-                    ? "border-[#4E9F87] bg-[#4E9F87]/5 text-[#4E9F87]"
-                    : "border-gray-200 text-gray-500 hover:border-gray-300"
-                }`}
-              >
-                <User className="h-5 w-5" />
-                <span className="text-xs font-medium">Paciente específico</span>
-              </button>
-            </div>
+            <Tabs value={target} onValueChange={(v: any) => setTarget(v)} className="w-full">
+              <TabsList className="grid grid-cols-3 mb-4">
+                <TabsTrigger value="all" className="text-xs">Todos</TabsTrigger>
+                <TabsTrigger value="selection" className="text-xs">Seleção</TabsTrigger>
+                <TabsTrigger value="filter" className="text-xs">Filtros</TabsTrigger>
+              </TabsList>
 
-            {target === "specific" && (
-              <div className="mt-2">
-                {patientsLoading ? (
-                  <div className="flex items-center gap-2 text-sm text-gray-500 py-2">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Carregando pacientes...
-                  </div>
-                ) : patientsWithApp.length === 0 ? (
-                  <div className="flex items-center gap-2 text-sm text-amber-600 bg-amber-50 rounded-lg p-3">
-                    <AlertCircle className="h-4 w-4 shrink-0" />
-                    Nenhum paciente com o app instalado e notificações ativas.
-                  </div>
-                ) : (
-                  <Select value={selectedPatientUserId} onValueChange={setSelectedPatientUserId}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Selecione um paciente..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {patientsWithApp.map((p) => (
-                        <SelectItem key={p.userId!} value={p.userId!}>
-                          {p.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              </div>
-            )}
+              <TabsContent value="all" className="mt-0">
+                <p className="text-xs text-gray-500 bg-gray-50 rounded-lg p-3">
+                  A notificação será enviada para todos os pacientes que instalaram o app.
+                  {patientsWithApp.length > 0 && (
+                    <span className="font-medium text-[#4E9F87]"> ({patientsWithApp.length} paciente(s) com app)</span>
+                  )}
+                </p>
+              </TabsContent>
 
-            {target === "all" && (
-              <p className="text-xs text-gray-500 bg-gray-50 rounded-lg p-2.5">
-                A notificação será enviada para todos os pacientes que instalaram o app e ativaram as notificações.
-                {patientsWithApp.length > 0 && (
-                  <span className="font-medium text-[#4E9F87]"> ({patientsWithApp.length} paciente(s) com app)</span>
+              <TabsContent value="selection" className="mt-0 space-y-3">
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
+                  <Input
+                    placeholder="Buscar paciente..."
+                    className="pl-9 h-9 text-xs"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between px-1">
+                  <span className="text-[10px] font-medium text-gray-500 uppercase">
+                    {selectedUserIds.length} selecionado(s)
+                  </span>
+                  <div className="flex gap-2">
+                    <Button type="button" variant="ghost" size="sm" className="h-6 text-[10px] px-2" onClick={selectAllFiltered}>
+                      Selecionar Todos
+                    </Button>
+                    <Button type="button" variant="ghost" size="sm" className="h-6 text-[10px] px-2 text-red-500" onClick={clearSelection}>
+                      Limpar
+                    </Button>
+                  </div>
+                </div>
+
+                <ScrollArea className="h-[200px] rounded-md border border-gray-100 p-2">
+                  {reportLoading ? (
+                    <div className="flex items-center justify-center h-full">
+                      <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                    </div>
+                  ) : filteredPatients.length === 0 ? (
+                    <p className="text-center text-xs text-gray-400 py-10">Nenhum paciente encontrado.</p>
+                  ) : (
+                    <div className="space-y-1">
+                      {filteredPatients.map((p) => {
+                        const isSelected = p.userId ? selectedUserIds.includes(p.userId) : false;
+                        return (
+                          <div 
+                            key={p.patientId} 
+                            className={cn(
+                              "flex items-center space-x-3 p-2 rounded-lg transition-colors cursor-pointer hover:bg-gray-50",
+                              isSelected && "bg-[#4E9F87]/5"
+                            )}
+                            onClick={() => togglePatientSelection(p.userId)}
+                          >
+                            <Checkbox 
+                              checked={isSelected} 
+                              onCheckedChange={() => togglePatientSelection(p.userId)}
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-medium text-gray-700 truncate">{p.patientName}</p>
+                              <p className="text-[10px] text-gray-400 truncate">{p.patientEmail || "Sem e-mail"}</p>
+                            </div>
+                            {!p.hasPushEnabled && (
+                              <div title="Push inativo">
+                                <AlertCircle className="h-3 w-3 text-amber-400" />
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </ScrollArea>
+              </TabsContent>
+
+              <TabsContent value="filter" className="mt-0 space-y-4">
+                <div className="grid grid-cols-1 gap-2">
+                  <FilterButton 
+                    active={activeFilter === "active"} 
+                    onClick={() => setActiveFilter("active")}
+                    icon={CheckCircle2}
+                    label="Pacientes com plano ativo"
+                    color="green"
+                  />
+                  <FilterButton 
+                    active={activeFilter === "inactive"} 
+                    onClick={() => setActiveFilter("inactive")}
+                    icon={XCircleIcon}
+                    label="Pacientes inativos"
+                    color="red"
+                  />
+                  <FilterButton 
+                    active={activeFilter === "expiring"} 
+                    onClick={() => setActiveFilter("expiring")}
+                    icon={Calendar}
+                    label="Vencimento em 7 dias"
+                    color="amber"
+                  />
+                </div>
+                
+                {selectedUserIds.length > 0 && (
+                  <p className="text-[10px] text-center text-[#4E9F87] font-medium">
+                    {selectedUserIds.length} paciente(s) selecionado(s) pelo filtro.
+                  </p>
                 )}
-              </p>
-            )}
+              </TabsContent>
+            </Tabs>
           </div>
 
-          {/* Título e Mensagem */}
           <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm space-y-3">
             <div className="flex items-center gap-2 mb-1">
               <Bell className="h-4 w-4 text-[#4E9F87]" />
@@ -214,7 +338,7 @@ export default function SendNotificationPage() {
                 maxLength={100}
                 className="text-sm"
               />
-              <p className="text-right text-xs text-gray-400">{title.length}/100</p>
+              <p className="text-right text-[10px] text-gray-400">{title.length}/100</p>
             </div>
 
             <div className="space-y-1">
@@ -230,14 +354,13 @@ export default function SendNotificationPage() {
                 rows={4}
                 className="text-sm resize-none"
               />
-              <p className="text-right text-xs text-gray-400">{body.length}/300</p>
+              <p className="text-right text-[10px] text-gray-400">{body.length}/300</p>
             </div>
           </div>
 
-          {/* Preview */}
           {(title || body) && (
             <div className="rounded-xl border border-dashed border-[#4E9F87]/40 bg-[#4E9F87]/5 p-4">
-              <p className="text-xs font-semibold text-[#4E9F87] mb-2 uppercase tracking-wide">Pré-visualização</p>
+              <p className="text-[10px] font-semibold text-[#4E9F87] mb-2 uppercase tracking-wide">Pré-visualização</p>
               <div className="bg-white rounded-lg p-3 shadow-sm border border-gray-100">
                 <div className="flex items-start gap-2.5">
                   <img src="/icon-72x72.png" alt="DiNutri" className="w-8 h-8 rounded-lg shrink-0" />
@@ -250,42 +373,30 @@ export default function SendNotificationPage() {
             </div>
           )}
 
-          {/* Resultado do último envio */}
           {lastResult && (
-            <div className={`flex items-center gap-3 rounded-xl p-3.5 ${
-              lastResult.sent > 0 ? "bg-green-50 border border-green-200" : "bg-amber-50 border border-amber-200"
-            }`}>
+            <div className={cn(
+              "flex items-center gap-3 rounded-xl p-3.5 border",
+              lastResult.sent > 0 ? "bg-green-50 border-green-200" : "bg-amber-50 border-amber-200"
+            )}>
               {lastResult.sent > 0 ? (
                 <CheckCircle2 className="h-5 w-5 text-green-600 shrink-0" />
               ) : (
                 <AlertCircle className="h-5 w-5 text-amber-500 shrink-0" />
               )}
               <div>
-                <p className={`text-sm font-semibold ${lastResult.sent > 0 ? "text-green-700" : "text-amber-700"}`}>
+                <p className={cn("text-sm font-semibold", lastResult.sent > 0 ? "text-green-700" : "text-amber-700")}>
                   {lastResult.sent > 0 ? `${lastResult.sent} dispositivo(s) notificado(s)` : "Nenhum dispositivo ativo"}
                 </p>
-                <p className={`text-xs mt-0.5 ${lastResult.sent > 0 ? "text-green-600" : "text-amber-600"}`}>
-                  {lastResult.sent === 0
-                    ? "Os pacientes precisam instalar o app e ativar as notificações."
-                    : "Notificação enviada com sucesso!"}
+                <p className={cn("text-xs mt-0.5", lastResult.sent > 0 ? "text-green-600" : "text-amber-600")}>
+                  {lastResult.message || (lastResult.sent === 0 ? "Os pacientes precisam ativar as notificações." : "Notificação enviada!")}
                 </p>
               </div>
             </div>
           )}
 
-        <Button
-          type="button"
-          variant="outline"
-          className="w-full"
-          onClick={() => setLocation("/reports")}
-        >
-          Ir para central de relatórios
-        </Button>
-
-          {/* Botão de envio */}
           <Button
             type="submit"
-            disabled={sendMutation.isPending || !title.trim() || !body.trim()}
+            disabled={sendMutation.isPending || !title.trim() || !body.trim() || (target !== "all" && selectedUserIds.length === 0)}
             className="w-full h-12 text-sm font-semibold bg-[#4E9F87] hover:bg-[#3d8a74] text-white rounded-xl"
           >
             {sendMutation.isPending ? (
@@ -296,12 +407,74 @@ export default function SendNotificationPage() {
             ) : (
               <>
                 <Send className="h-4 w-4 mr-2" />
-                {target === "all" ? "Enviar para Todos" : `Enviar para ${selectedPatient?.name || "Paciente"}`}
+                {target === "all" 
+                  ? "Enviar para Todos" 
+                  : `Enviar para ${selectedUserIds.length} selecionado(s)`}
               </>
             )}
+          </Button>
+
+          <Button
+            type="button"
+            variant="ghost"
+            className="w-full text-xs text-gray-500"
+            onClick={() => setLocation("/reports/notifications")}
+          >
+            Ver relatório de adesão
           </Button>
         </form>
       </div>
     </MobileLayout>
+  );
+}
+
+function FilterButton({ active, onClick, icon: Icon, label, color }: any) {
+  const colors: any = {
+    green: active ? "border-green-500 bg-green-50 text-green-700" : "border-gray-200 text-gray-600 hover:border-green-200",
+    red: active ? "border-red-500 bg-red-50 text-red-700" : "border-gray-200 text-gray-600 hover:border-red-200",
+    amber: active ? "border-amber-500 bg-amber-50 text-amber-700" : "border-gray-200 text-gray-600 hover:border-amber-200",
+  };
+
+  const iconColors: any = {
+    green: active ? "text-green-500" : "text-gray-400",
+    red: active ? "text-red-500" : "text-gray-400",
+    amber: active ? "text-amber-500" : "text-gray-400",
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "flex items-center gap-3 p-3 rounded-xl border-2 transition-all text-left",
+        colors[color]
+      )}
+    >
+      <div className={cn("p-1.5 rounded-lg bg-white shadow-sm border border-gray-100", iconColors[color])}>
+        <Icon className="h-4 w-4" />
+      </div>
+      <span className="text-xs font-medium">{label}</span>
+    </button>
+  );
+}
+
+function XCircleIcon(props: any) {
+  return (
+    <svg
+      {...props}
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle cx="12" cy="12" r="10" />
+      <path d="m15 9-6 6" />
+      <path d="m9 9 6 6" />
+    </svg>
   );
 }
