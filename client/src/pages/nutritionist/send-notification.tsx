@@ -1,7 +1,7 @@
 // ARQUIVO: ./client/src/pages/nutritionist/send-notification.tsx
-// Página para o nutricionista enviar notificações push personalizadas
+// Página para o nutricionista enviar notificações push personalizadas - VERSÃO ESTABILIZADA
 
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Bell, Send, Users, CheckCircle2, AlertCircle, Loader2, Search, Calendar, XCircle } from "lucide-react";
@@ -63,7 +63,7 @@ export default function SendNotificationPage() {
     return patients.filter(p => p && p.hasAccount && p.userId);
   }, [patients]);
 
-  // Filtros pré-definidos - Estabilizado para evitar re-renderizações desnecessárias
+  // Filtros - Lógica de filtragem pura e simples (sem efeitos colaterais)
   const filteredPatients = useMemo(() => {
     let result = patientsWithApp;
 
@@ -77,7 +77,7 @@ export default function SendNotificationPage() {
       });
     }
 
-    // Filtro por status
+    // Filtro por status (apenas se estiver na aba de filtros)
     if (target === "filter" && activeFilter !== "all") {
       const now = new Date();
       const sevenDaysFromNow = new Date();
@@ -103,25 +103,31 @@ export default function SendNotificationPage() {
     return result;
   }, [patientsWithApp, searchTerm, activeFilter, target]);
 
-  // Auto-selecionar ao mudar filtro - Implementação robusta com Set para evitar loop infinito (Error #185)
-  useEffect(() => {
-    if (target === "filter" && activeFilter !== "all") {
-      const newIds = filteredPatients
-        .map(p => p.userId)
-        .filter((id): id is string => !!id && typeof id === "string");
-      
-      setSelectedUserIds(prev => {
-        const prevSet = new Set(prev);
-        const newSet = new Set(newIds);
-        
-        // Checagem de igualdade de conjuntos para evitar atualização infinita
-        if (prevSet.size === newSet.size && [...newSet].every(id => prevSet.has(id))) {
-          return prev;
-        }
-        return newIds;
-      });
-    }
-  }, [activeFilter, target, filteredPatients]);
+  // Lógica de Seleção - Mover de useEffect para Ações Manuais (Elimina Error #185)
+  const handleSelectAll = useCallback(() => {
+    const ids = filteredPatients
+      .map(p => p.userId)
+      .filter((id): id is string => !!id && typeof id === "string");
+    setSelectedUserIds(ids);
+  }, [filteredPatients]);
+
+  const handleClearSelection = useCallback(() => {
+    setSelectedUserIds([]);
+  }, []);
+
+  const handleFilterChange = useCallback((filter: string) => {
+    setActiveFilter(filter);
+    // Ao mudar o filtro, limpamos a seleção para evitar confusão de estados
+    setSelectedUserIds([]);
+  }, []);
+
+  const handleTargetChange = useCallback((newTarget: "all" | "selection" | "filter") => {
+    setTarget(newTarget);
+    // Ao mudar a aba, limpamos a seleção e a busca para um estado limpo e estável
+    setSelectedUserIds([]);
+    setSearchTerm("");
+    setActiveFilter("all");
+  }, []);
 
   const togglePatientSelection = useCallback((userId: string | null) => {
     if (!userId || typeof userId !== "string") return;
@@ -135,17 +141,6 @@ export default function SendNotificationPage() {
       }
       return newIds;
     });
-  }, []);
-
-  const selectAllFiltered = useCallback(() => {
-    const newIds = filteredPatients
-      .map(p => p.userId)
-      .filter((id): id is string => !!id && typeof id === "string");
-    setSelectedUserIds(newIds);
-  }, [filteredPatients]);
-
-  const clearSelection = useCallback(() => {
-    setSelectedUserIds([]);
   }, []);
 
   const sendMutation = useMutation({
@@ -170,7 +165,7 @@ export default function SendNotificationPage() {
       setLastResult(data);
       setTitle("");
       setBody("");
-      if (target !== "all") setSelectedUserIds([]);
+      setSelectedUserIds([]);
       toast({
         title: "Notificação enviada!",
         description: data.sent > 0
@@ -235,7 +230,7 @@ export default function SendNotificationPage() {
               <Label className="text-sm font-semibold text-gray-700">Destinatário</Label>
             </div>
 
-            <Tabs value={target} onValueChange={(v: any) => setTarget(v)} className="w-full">
+            <Tabs value={target} onValueChange={(v: any) => handleTargetChange(v)} className="w-full">
               <TabsList className="grid grid-cols-3 mb-4">
                 <TabsTrigger value="all" className="text-xs">Todos</TabsTrigger>
                 <TabsTrigger value="selection" className="text-xs">Seleção</TabsTrigger>
@@ -267,10 +262,10 @@ export default function SendNotificationPage() {
                     {selectedUserIds.length} selecionado(s)
                   </span>
                   <div className="flex gap-2">
-                    <Button type="button" variant="ghost" size="sm" className="h-6 text-[10px] px-2" onClick={selectAllFiltered}>
+                    <Button type="button" variant="ghost" size="sm" className="h-6 text-[10px] px-2" onClick={handleSelectAll}>
                       Selecionar Todos
                     </Button>
-                    <Button type="button" variant="ghost" size="sm" className="h-6 text-[10px] px-2 text-red-500" onClick={clearSelection}>
+                    <Button type="button" variant="ghost" size="sm" className="h-6 text-[10px] px-2 text-red-500" onClick={handleClearSelection}>
                       Limpar
                     </Button>
                   </div>
@@ -323,30 +318,40 @@ export default function SendNotificationPage() {
                 <div className="grid grid-cols-1 gap-2">
                   <FilterButton 
                     active={activeFilter === "active"} 
-                    onClick={() => setActiveFilter("active")}
+                    onClick={() => handleFilterChange("active")}
                     icon={CheckCircle2}
                     label="Pacientes com plano ativo"
                     color="green"
                   />
                   <FilterButton 
                     active={activeFilter === "inactive"} 
-                    onClick={() => setActiveFilter("inactive")}
+                    onClick={() => handleFilterChange("inactive")}
                     icon={XCircle}
                     label="Pacientes inativos"
                     color="red"
                   />
                   <FilterButton 
                     active={activeFilter === "expiring"} 
-                    onClick={() => setActiveFilter("expiring")}
+                    onClick={() => handleFilterChange("expiring")}
                     icon={Calendar}
                     label="Vencimento em 7 dias"
                     color="amber"
                   />
                 </div>
                 
+                <div className="pt-2">
+                  <Button 
+                    type="button" 
+                    className="w-full h-9 text-xs bg-[#4E9F87]/10 text-[#4E9F87] hover:bg-[#4E9F87]/20 border-none"
+                    onClick={handleSelectAll}
+                  >
+                    Selecionar pacientes filtrados ({filteredPatients.length})
+                  </Button>
+                </div>
+
                 {selectedUserIds.length > 0 && (
                   <p className="text-[10px] text-center text-[#4E9F87] font-medium">
-                    {selectedUserIds.length} paciente(s) selecionado(s) pelo filtro.
+                    {selectedUserIds.length} paciente(s) selecionado(s).
                   </p>
                 )}
               </TabsContent>
