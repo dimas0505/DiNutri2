@@ -1,5 +1,5 @@
 // ARQUIVO: ./client/src/pages/nutritionist/send-notification.tsx
-// Página para o nutricionista enviar notificações push personalizadas - VERSÃO ULTRA-ESTÁVEL
+// Página para o nutricionista enviar notificações push personalizadas - VERSÃO ESTABILIZADA (SEM SELECIONAR TODOS)
 
 import { useState, useMemo, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -100,15 +100,6 @@ export default function SendNotificationPage() {
   }, [patientsWithApp, searchTerm, activeFilter, target]);
 
   // Handlers Manuais - Única forma de alterar estado (Sem useEffect)
-  const handleSelectAll = useCallback(() => {
-    const ids = filteredPatients
-      .map(p => p.userId)
-      .filter((id): id is string => !!id);
-    
-    // Atualização atômica para evitar loops
-    setSelectedUserIds([...ids]);
-  }, [filteredPatients]);
-
   const handleClearSelection = useCallback(() => {
     setSelectedUserIds([]);
   }, []);
@@ -198,13 +189,11 @@ export default function SendNotificationPage() {
                 <div className="flex items-center justify-between px-1">
                   <span className="text-[10px] font-bold text-gray-400">{selectedUserIds.length} SELECIONADO(S)</span>
                   <div className="flex gap-2">
-                    <Button type="button" variant="ghost" className="h-6 text-[10px] px-2" onClick={handleSelectAll}>Selecionar Todos</Button>
-                    <Button type="button" variant="ghost" className="h-6 text-[10px] px-2 text-red-500" onClick={handleClearSelection}>Limpar</Button>
+                    <Button type="button" variant="ghost" className="h-6 text-[10px] px-2 text-red-500" onClick={handleClearSelection}>Limpar Seleção</Button>
                   </div>
                 </div>
 
-                {/* SUBSTITUIÇÃO DO ScrollArea POR DIV NATIVA COM OVERFLOW PARA EVITAR LOOPS DE REDIMENSIONAMENTO */}
-                <div className="h-[200px] rounded-md border border-gray-100 p-2 overflow-y-auto">
+                <div className="h-[250px] rounded-md border border-gray-100 p-2 overflow-y-auto bg-gray-50/30">
                   {reportLoading ? <Loader2 className="h-4 w-4 animate-spin mx-auto mt-10" /> : (
                     <div className="space-y-1">
                       {filteredPatients.map((p) => {
@@ -213,20 +202,19 @@ export default function SendNotificationPage() {
                           <div 
                             key={p.patientId} 
                             className={cn(
-                              "flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-50 cursor-pointer",
-                              isSelected && "bg-[#4E9F87]/5"
+                              "flex items-center space-x-3 p-2.5 rounded-lg border border-transparent transition-all cursor-pointer",
+                              isSelected ? "bg-white border-[#4E9F87] shadow-sm" : "hover:bg-white/50"
                             )} 
                             onClick={() => togglePatientSelection(p.userId)}
                           >
-                            {/* SUBSTITUIÇÃO DO Checkbox POR INPUT HTML NATIVO PARA EVITAR CONFLITOS DE ESTADO */}
-                            <input 
-                              type="checkbox"
-                              className="h-4 w-4 rounded border-gray-300 text-[#4E9F87] focus:ring-[#4E9F87]"
-                              checked={isSelected} 
-                              onChange={() => {}} // O clique no pai já lida com a seleção
-                            />
+                            <div className={cn(
+                              "h-5 w-5 rounded border flex items-center justify-center transition-colors",
+                              isSelected ? "bg-[#4E9F87] border-[#4E9F87]" : "border-gray-300 bg-white"
+                            )}>
+                              {isSelected && <div className="h-2 w-2 bg-white rounded-full" />}
+                            </div>
                             <div className="flex-1 min-w-0">
-                              <p className="text-xs font-medium truncate">{p.patientName}</p>
+                              <p className="text-xs font-semibold truncate text-gray-700">{p.patientName}</p>
                               <p className="text-[10px] text-gray-400 truncate">{p.patientEmail}</p>
                             </div>
                           </div>
@@ -238,23 +226,42 @@ export default function SendNotificationPage() {
               </TabsContent>
 
               <TabsContent value="filter" className="mt-0 space-y-3">
+                <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1">Selecione um filtro para ver os pacientes:</p>
                 <div className="grid gap-2">
                   <FilterBtn active={activeFilter === "active"} label="Plano Ativo" icon={CheckCircle2} onClick={() => handleFilterChange("active")} color="green" />
                   <FilterBtn active={activeFilter === "inactive"} label="Inativos" icon={XCircle} onClick={() => handleFilterChange("inactive")} color="red" />
                   <FilterBtn active={activeFilter === "expiring"} label="Vencendo" icon={Calendar} onClick={() => handleFilterChange("expiring")} color="amber" />
                 </div>
-                <Button type="button" className="w-full h-9 text-xs" onClick={handleSelectAll}>Selecionar Filtrados ({filteredPatients.length})</Button>
+                
+                {activeFilter !== "all" && (
+                  <div className="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-100">
+                    <p className="text-xs text-gray-600 mb-2">Selecione os pacientes abaixo:</p>
+                    <div className="max-h-[150px] overflow-y-auto space-y-1">
+                      {filteredPatients.map((p) => (
+                        <div key={p.patientId} className="flex items-center gap-2 p-1.5 hover:bg-white rounded cursor-pointer" onClick={() => togglePatientSelection(p.userId)}>
+                          <div className={cn("h-3 w-3 rounded-full border", selectedUserIds.includes(p.userId!) ? "bg-[#4E9F87]" : "bg-white")} />
+                          <span className="text-[10px] font-medium text-gray-700">{p.patientName}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </TabsContent>
             </Tabs>
           </div>
 
           <div className="space-y-3">
-            <Input placeholder="Título" value={title} onChange={(e) => setTitle(e.target.value)} className="text-sm" />
-            <Textarea placeholder="Mensagem" value={body} onChange={(e) => setBody(e.target.value)} className="text-sm" />
+            <Input placeholder="Título da Notificação" value={title} onChange={(e) => setTitle(e.target.value)} className="text-sm h-11" />
+            <Textarea placeholder="Mensagem da Notificação" value={body} onChange={(e) => setBody(e.target.value)} className="text-sm min-h-[100px]" />
           </div>
 
-          <Button type="submit" disabled={sendMutation.isPending} className="w-full h-12 bg-[#4E9F87] hover:bg-[#3d8a74] text-white font-bold rounded-xl">
-            {sendMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Enviar Notificação"}
+          <Button type="submit" disabled={sendMutation.isPending || (target !== "all" && selectedUserIds.length === 0)} className="w-full h-12 bg-[#4E9F87] hover:bg-[#3d8a74] text-white font-bold rounded-xl shadow-md">
+            {sendMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : (
+              <>
+                <Send className="h-4 w-4 mr-2" />
+                {target === "all" ? "Enviar para Todos" : `Enviar para ${selectedUserIds.length} selecionado(s)`}
+              </>
+            )}
           </Button>
         </form>
       </div>
@@ -264,14 +271,14 @@ export default function SendNotificationPage() {
 
 function FilterBtn({ active, label, icon: Icon, onClick, color }: any) {
   const styles: any = {
-    green: active ? "border-green-500 bg-green-50" : "border-gray-200",
-    red: active ? "border-red-500 bg-red-50" : "border-gray-200",
-    amber: active ? "border-amber-500 bg-amber-50" : "border-gray-200",
+    green: active ? "border-green-500 bg-green-50 text-green-700" : "border-gray-200 text-gray-600",
+    red: active ? "border-red-500 bg-red-50 text-red-700" : "border-gray-200 text-gray-600",
+    amber: active ? "border-amber-500 bg-amber-50 text-amber-700" : "border-gray-200 text-gray-600",
   };
   return (
-    <button type="button" onClick={onClick} className={cn("flex items-center gap-3 p-3 rounded-xl border-2 transition-all", styles[color])}>
+    <button type="button" onClick={onClick} className={cn("flex items-center gap-3 p-3 rounded-xl border-2 transition-all text-left", styles[color])}>
       <Icon className="h-4 w-4" />
-      <span className="text-xs font-medium">{label}</span>
+      <span className="text-xs font-bold">{label}</span>
     </button>
   );
 }
