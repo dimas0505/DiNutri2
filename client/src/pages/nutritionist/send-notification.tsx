@@ -1,10 +1,10 @@
 // ARQUIVO: ./client/src/pages/nutritionist/send-notification.tsx
 // Página para o nutricionista enviar notificações push personalizadas
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { Bell, Send, Users, User, CheckCircle2, AlertCircle, Loader2, Search, Filter, Calendar } from "lucide-react";
+import { Bell, Send, Users, CheckCircle2, AlertCircle, Loader2, Search, Calendar } from "lucide-react";
 import { MobileLayout } from "@/components/layout/mobile-layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -54,22 +54,31 @@ export default function SendNotificationPage() {
     },
   });
 
-  const patients = useMemo(() => reportData?.report || [], [reportData]);
-  const patientsWithApp = useMemo(() => patients.filter((p) => p && p.hasAccount && p.userId), [patients]);
+  const patients = useMemo(() => {
+    if (!reportData?.report || !Array.isArray(reportData.report)) return [];
+    return reportData.report;
+  }, [reportData]);
 
-  // Filtros pré-definidos
+  const patientsWithApp = useMemo(() => {
+    return patients.filter(p => p && p.hasAccount && p.userId);
+  }, [patients]);
+
+  // Filtros pré-definidos - SIMPLIFICADO
   const filteredPatients = useMemo(() => {
     let result = patientsWithApp;
 
-    if (searchTerm) {
+    // Filtro por busca
+    if (searchTerm && searchTerm.trim()) {
       const lowerSearch = searchTerm.toLowerCase();
-      result = result.filter(p => 
-        (p.patientName && p.patientName.toLowerCase().includes(lowerSearch)) ||
-        (p.patientEmail && p.patientEmail.toLowerCase().includes(lowerSearch))
-      );
+      result = result.filter(p => {
+        const name = (p.patientName || "").toLowerCase();
+        const email = (p.patientEmail || "").toLowerCase();
+        return name.includes(lowerSearch) || email.includes(lowerSearch);
+      });
     }
 
-    if (target === "filter") {
+    // Filtro por status
+    if (target === "filter" && activeFilter !== "all") {
       const now = new Date();
       const sevenDaysFromNow = new Date();
       sevenDaysFromNow.setDate(now.getDate() + 7);
@@ -81,8 +90,12 @@ export default function SendNotificationPage() {
       } else if (activeFilter === "expiring") {
         result = result.filter(p => {
           if (!p.subscriptionExpiresAt) return false;
-          const expiryDate = new Date(p.subscriptionExpiresAt);
-          return expiryDate > now && expiryDate <= sevenDaysFromNow;
+          try {
+            const expiryDate = new Date(p.subscriptionExpiresAt);
+            return expiryDate > now && expiryDate <= sevenDaysFromNow;
+          } catch {
+            return false;
+          }
         });
       }
     }
@@ -90,31 +103,48 @@ export default function SendNotificationPage() {
     return result;
   }, [patientsWithApp, searchTerm, activeFilter, target]);
 
-  // Atualiza a seleção quando o filtro muda
+  // Auto-selecionar ao mudar filtro
   useEffect(() => {
     if (target === "filter" && activeFilter !== "all") {
-      const ids = filteredPatients.map(p => p.userId).filter((id): id is string => !!id);
-      setSelectedUserIds(ids);
+      const newIds = [];
+      for (let i = 0; i < filteredPatients.length; i++) {
+        const p = filteredPatients[i];
+        if (p && p.userId && typeof p.userId === "string") {
+          newIds.push(p.userId);
+        }
+      }
+      setSelectedUserIds(newIds);
     }
   }, [activeFilter, target, filteredPatients]);
 
-  const togglePatientSelection = (userId: string | null) => {
-    if (!userId) return;
-    setSelectedUserIds(prev => 
-      prev.includes(userId) 
-        ? prev.filter(id => id !== userId) 
-        : [...prev, userId]
-    );
-  };
+  const togglePatientSelection = useCallback((userId: string | null) => {
+    if (!userId || typeof userId !== "string") return;
+    setSelectedUserIds(prev => {
+      const newIds = [...prev];
+      const idx = newIds.indexOf(userId);
+      if (idx >= 0) {
+        newIds.splice(idx, 1);
+      } else {
+        newIds.push(userId);
+      }
+      return newIds;
+    });
+  }, []);
 
-  const selectAllFiltered = () => {
-    const ids = filteredPatients.map(p => p.userId).filter((id): id is string => !!id);
-    setSelectedUserIds(ids);
-  };
+  const selectAllFiltered = useCallback(() => {
+    const newIds = [];
+    for (let i = 0; i < filteredPatients.length; i++) {
+      const p = filteredPatients[i];
+      if (p && p.userId && typeof p.userId === "string") {
+        newIds.push(p.userId);
+      }
+    }
+    setSelectedUserIds(newIds);
+  }, [filteredPatients]);
 
-  const clearSelection = () => {
+  const clearSelection = useCallback(() => {
     setSelectedUserIds([]);
-  };
+  }, []);
 
   const sendMutation = useMutation({
     mutationFn: async () => {
@@ -254,6 +284,7 @@ export default function SendNotificationPage() {
                   ) : (
                     <div className="space-y-1">
                       {filteredPatients.map((p) => {
+                        if (!p || !p.patientId) return null;
                         const isSelected = p.userId ? selectedUserIds.includes(p.userId) : false;
                         return (
                           <div 
