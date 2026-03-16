@@ -1,10 +1,10 @@
 // ARQUIVO: ./client/src/pages/nutritionist/send-notification.tsx
-// Página para o nutricionista enviar notificações push personalizadas - VERSÃO ESTABILIZADA (SEM SELECIONAR TODOS)
+// Página para o nutricionista enviar notificações push personalizadas - VERSÃO FINAL COM SELEÇÃO ASSÍNCRONA
 
 import { useState, useMemo, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { Bell, Send, Users, CheckCircle2, AlertCircle, Loader2, Search, Calendar, XCircle } from "lucide-react";
+import { Bell, Send, Users, CheckCircle2, AlertCircle, Loader2, Search, Calendar, XCircle, CheckSquare, Square } from "lucide-react";
 import { MobileLayout } from "@/components/layout/mobile-layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,6 +41,7 @@ export default function SendNotificationPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeFilter, setActiveFilter] = useState<string>("all");
   const [lastResult, setLastResult] = useState<{ sent: number; message: string } | null>(null);
+  const [isSelectingAll, setIsSelectingAll] = useState(false);
 
   // Buscar relatório detalhado de pacientes
   const { data: reportData, isLoading: reportLoading } = useQuery<NotificationReportResponse>({
@@ -100,6 +101,27 @@ export default function SendNotificationPage() {
   }, [patientsWithApp, searchTerm, activeFilter, target]);
 
   // Handlers Manuais - Única forma de alterar estado (Sem useEffect)
+  
+  // SELECIONAR TODOS - VERSÃO ASSÍNCRONA ULTRA-SEGURA (Evita Error #185)
+  const handleSelectAll = useCallback(() => {
+    setIsSelectingAll(true);
+    
+    // Pequeno atraso para o React processar o estado de carregamento e respirar
+    setTimeout(() => {
+      const ids = filteredPatients
+        .map(p => p.userId)
+        .filter((id): id is string => !!id);
+      
+      setSelectedUserIds([...ids]);
+      setIsSelectingAll(false);
+      
+      toast({
+        title: "Seleção concluída",
+        description: `${ids.length} paciente(s) selecionado(s) com sucesso.`,
+      });
+    }, 100);
+  }, [filteredPatients, toast]);
+
   const handleClearSelection = useCallback(() => {
     setSelectedUserIds([]);
   }, []);
@@ -189,7 +211,16 @@ export default function SendNotificationPage() {
                 <div className="flex items-center justify-between px-1">
                   <span className="text-[10px] font-bold text-gray-400">{selectedUserIds.length} SELECIONADO(S)</span>
                   <div className="flex gap-2">
-                    <Button type="button" variant="ghost" className="h-6 text-[10px] px-2 text-red-500" onClick={handleClearSelection}>Limpar Seleção</Button>
+                    <Button 
+                      type="button" 
+                      variant="ghost" 
+                      className="h-6 text-[10px] px-2 text-[#4E9F87]" 
+                      onClick={handleSelectAll}
+                      disabled={isSelectingAll || filteredPatients.length === 0}
+                    >
+                      {isSelectingAll ? "Processando..." : "Selecionar Todos"}
+                    </Button>
+                    <Button type="button" variant="ghost" className="h-6 text-[10px] px-2 text-red-500" onClick={handleClearSelection}>Limpar</Button>
                   </div>
                 </div>
 
@@ -211,7 +242,7 @@ export default function SendNotificationPage() {
                               "h-5 w-5 rounded border flex items-center justify-center transition-colors",
                               isSelected ? "bg-[#4E9F87] border-[#4E9F87]" : "border-gray-300 bg-white"
                             )}>
-                              {isSelected && <div className="h-2 w-2 bg-white rounded-full" />}
+                              {isSelected ? <CheckSquare className="h-3.5 w-3.5 text-white" /> : <Square className="h-3.5 w-3.5 text-gray-200" />}
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="text-xs font-semibold truncate text-gray-700">{p.patientName}</p>
@@ -233,19 +264,14 @@ export default function SendNotificationPage() {
                   <FilterBtn active={activeFilter === "expiring"} label="Vencendo" icon={Calendar} onClick={() => handleFilterChange("expiring")} color="amber" />
                 </div>
                 
-                {activeFilter !== "all" && (
-                  <div className="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-100">
-                    <p className="text-xs text-gray-600 mb-2">Selecione os pacientes abaixo:</p>
-                    <div className="max-h-[150px] overflow-y-auto space-y-1">
-                      {filteredPatients.map((p) => (
-                        <div key={p.patientId} className="flex items-center gap-2 p-1.5 hover:bg-white rounded cursor-pointer" onClick={() => togglePatientSelection(p.userId)}>
-                          <div className={cn("h-3 w-3 rounded-full border", selectedUserIds.includes(p.userId!) ? "bg-[#4E9F87]" : "bg-white")} />
-                          <span className="text-[10px] font-medium text-gray-700">{p.patientName}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                <Button 
+                  type="button" 
+                  className="w-full h-9 text-xs bg-[#4E9F87] hover:bg-[#3d8a74] text-white mt-2" 
+                  onClick={handleSelectAll}
+                  disabled={isSelectingAll || filteredPatients.length === 0}
+                >
+                  {isSelectingAll ? "Processando..." : `Selecionar Filtrados (${filteredPatients.length})`}
+                </Button>
               </TabsContent>
             </Tabs>
           </div>
