@@ -1921,7 +1921,7 @@ export async function setupRoutes(app: Express): Promise<void> {
         return res.status(403).json({ message: 'Acesso negado. Apenas nutricionistas.' });
       }
 
-      const { title, body, targetUserId } = req.body;
+      const { title, body, targetUserId, targetUserIds } = req.body;
       if (!title || !body) {
         return res.status(400).json({ message: 'Título e mensagem são obrigatórios.' });
       }
@@ -1930,24 +1930,37 @@ export async function setupRoutes(app: Express): Promise<void> {
       let totalSent = 0;
       let inAppCount = 0;
 
-      if (targetUserId) {
-        // Enviar para um paciente específico
-        // Verificar se o paciente pertence ao nutricionista
-        const patient = await db
-          .select()
-          .from(patients)
-          .where(and(eq(patients.userId, targetUserId), eq(patients.ownerId, req.user.id)))
-          .limit(1);
+      const userIdsToSend = targetUserIds || (targetUserId ? [targetUserId] : null);
 
-        if (patient.length === 0) {
-          return res.status(404).json({ message: 'Paciente não encontrado ou não pertence a você.' });
+      if (userIdsToSend && Array.isArray(userIdsToSend)) {
+        // Enviar para um ou mais pacientes específicos
+        // Verificar se os pacientes pertencem ao nutricionista
+        const validPatients = await db
+          .select({ userId: patients.userId })
+          .from(patients)
+          .where(
+            and(
+              inArray(patients.userId, userIdsToSend.filter(id => !!id) as string[]),
+              eq(patients.ownerId, req.user.id)
+            )
+          );
+
+        const validUserIds = validPatients
+          .map(p => p.userId)
+          .filter((id): id is string => !!id);
+
+        if (validUserIds.length === 0) {
+          return res.status(404).json({ message: 'Nenhum paciente válido encontrado para envio.' });
         }
 
-        // Push (funciona apenas se o paciente autorizou)
-        totalSent = await sendPushToUser(targetUserId, payload);
-        // In-app (sempre funciona, independente de permissão)
-        await createInAppNotification(targetUserId, payload);
-        inAppCount = 1;
+        for (const userId of validUserIds) {
+          // Push (funciona apenas se o paciente autorizou)
+          const sent = await sendPushToUser(userId, payload);
+          totalSent += sent;
+          // In-app (sempre funciona, independente de permissão)
+          await createInAppNotification(userId, payload);
+          inAppCount++;
+        }
       } else {
         // Enviar para todos os pacientes do nutricionista
         // Push (funciona apenas se o paciente autorizou)
@@ -1984,12 +1997,33 @@ export async function setupRoutes(app: Express): Promise<void> {
         .from(patients)
         .where(eq(patients.ownerId, req.user.id));
 
+      const patientIds = nutritionistPatients.map(p => p.id);
       const patientUserIds = nutritionistPatients
         .map((patient) => patient.userId)
         .filter((userId): userId is string => Boolean(userId));
 
       const pushByUserId = new Map<string, number>();
       const inAppByUserId = new Map<string, { count: number; lastReceivedAt: Date | null }>();
+      const subscriptionByPatientId = new Map<string, { status: string; expiresAt: Date | null }>();
+
+      if (patientIds.length > 0) {
+        // Buscar status de assinatura mais recente para cada paciente
+        const latestSubscriptions = await db
+          .select()
+          .from(subscriptions)
+          .where(inArray(subscriptions.patientId, patientIds))
+          .orderBy(desc(subscriptions.createdAt));
+
+        // Como ordenamos por createdAt desc, pegamos apenas a primeira ocorrência de cada patientId
+        latestSubscriptions.forEach((sub) => {
+          if (!subscriptionByPatientId.has(sub.patientId)) {
+            subscriptionByPatientId.set(sub.patientId, {
+              status: sub.status,
+              expiresAt: sub.expiresAt,
+            });
+          }
+        });
+      }
 
       if (patientUserIds.length > 0) {
         const pushStats = await db
@@ -2032,6 +2066,7 @@ export async function setupRoutes(app: Express): Promise<void> {
         const userId = patient.userId;
         const pushCount = userId ? (pushByUserId.get(userId) ?? 0) : 0;
         const messageStats = userId ? inAppByUserId.get(userId) : undefined;
+        const subInfo = subscriptionByPatientId.get(patient.id);
 
         return {
           patientId: patient.id,
@@ -2043,6 +2078,8 @@ export async function setupRoutes(app: Express): Promise<void> {
           pushSubscriptions: pushCount,
           messagesReceived: messageStats?.count ?? 0,
           lastMessageReceivedAt: messageStats?.lastReceivedAt ?? null,
+          subscriptionStatus: subInfo?.status || 'none',
+          subscriptionExpiresAt: subInfo?.expiresAt || null,
         };
       });
 
