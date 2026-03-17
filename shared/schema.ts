@@ -230,6 +230,20 @@ export const pushSubscriptions = pgTable(
   (table) => [index("IDX_push_subscriptions_user").on(table.userId)]
 );
 
+// Notification Templates table (modelos reutilizáveis de notificações do nutricionista)
+export const notificationTemplates = pgTable(
+  "notification_templates",
+  {
+    id: varchar("id").primaryKey(),
+    nutritionistId: varchar("nutritionist_id").references(() => users.id, { onDelete: 'cascade' }).notNull(),
+    title: varchar("title", { length: 100 }).notNull(),
+    body: text("body").notNull(),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [index("IDX_notification_templates_nutritionist").on(table.nutritionistId)]
+);
+
 // In-App Notifications table (fallback independente de permissão push)
 // Garante que o paciente receba mensagens mesmo sem autorizar notificações do sistema.
 export const inAppNotifications = pgTable(
@@ -332,6 +346,13 @@ export const patientDocumentsRelations = relations(patientDocuments, ({ one }) =
   }),
   nutritionist: one(users, {
     fields: [patientDocuments.nutritionistId],
+    references: [users.id],
+  }),
+}));
+
+export const notificationTemplatesRelations = relations(notificationTemplates, ({ one }) => ({
+  nutritionist: one(users, {
+    fields: [notificationTemplates.nutritionistId],
     references: [users.id],
   }),
 }));
@@ -515,6 +536,17 @@ export type InsertAnthropometricAssessment = z.infer<typeof insertAnthropometric
 export type UpdateAnthropometricAssessment = z.infer<typeof updateAnthropometricAssessmentSchema>;
 export type PushSubscription = typeof pushSubscriptions.$inferSelect;
 export type InAppNotification = typeof inAppNotifications.$inferSelect;
+export type NotificationTemplate = typeof notificationTemplates.$inferSelect;
+export type InsertNotificationTemplate = {
+  id: string;
+  nutritionistId: string;
+  title: string;
+  body: string;
+};
+export type UpdateNotificationTemplate = {
+  title?: string;
+  body?: string;
+};
 export type InsertInAppNotification = {
   id: string;
   userId: string;
