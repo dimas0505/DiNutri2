@@ -162,6 +162,28 @@ async function ensureRoutesRegistered() {
       console.error("[DB] Failed to ensure in_app_notifications table:", err);
     }
 
+    // Ensure notification_templates table exists for nutritionist templates.
+    try {
+      await db.execute(sql`
+        CREATE TABLE IF NOT EXISTS notification_templates (
+          id              VARCHAR PRIMARY KEY,
+          nutritionist_id VARCHAR NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          name            VARCHAR NOT NULL,
+          title           VARCHAR NOT NULL,
+          body            TEXT NOT NULL,
+          created_at      TIMESTAMP DEFAULT NOW(),
+          updated_at      TIMESTAMP DEFAULT NOW()
+        )
+      `);
+      await db.execute(sql`
+        CREATE INDEX IF NOT EXISTS idx_notification_templates_nutritionist
+        ON notification_templates (nutritionist_id)
+      `);
+      console.log("[DB] notification_templates table ensured.");
+    } catch (err) {
+      console.error("[DB] Failed to ensure notification_templates table:", err);
+    }
+
     await setupRoutes(app);
     
     // Middleware de tratamento de erros

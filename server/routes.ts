@@ -11,7 +11,7 @@ import { handleUpload, type HandleUploadBody } from '@vercel/blob/client';
 import { put } from '@vercel/blob';
 import multer from 'multer';
 import { eq, and, desc, or, sql, inArray } from 'drizzle-orm';
-import { anamnesisRecords, foodDiaryEntries, prescriptions, users, patients, subscriptions, activityLog, patientDocuments, anthropometricAssessments, pushSubscriptions, inAppNotifications } from '../shared/schema.js';
+import { anamnesisRecords, foodDiaryEntries, prescriptions, users, patients, subscriptions, activityLog, patientDocuments, anthropometricAssessments, pushSubscriptions, inAppNotifications, notificationTemplates } from '../shared/schema.js';
 import { db } from './db.js';
 import sharp from 'sharp';
 import { nanoid } from 'nanoid';
@@ -2438,6 +2438,110 @@ export async function setupRoutes(app: Express): Promise<void> {
     } catch (error) {
       console.error('[InAppNotifications] Erro ao marcar todas como lidas:', error);
       res.status(500).json({ message: 'Falha ao marcar notificações como lidas.' });
+    }
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Rotas de Modelos de Notificação (Templates)
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  // GET: Nutricionista busca seus modelos de notificação
+  app.get('/api/notifications/templates', isAuthenticated, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'nutritionist' && req.user.role !== 'admin') {
+        return res.status(403).json({ message: 'Acesso negado.' });
+      }
+      const templates = await db
+        .select()
+        .from(notificationTemplates)
+        .where(eq(notificationTemplates.nutritionistId, req.user.id))
+        .orderBy(desc(notificationTemplates.createdAt));
+      return res.json(templates);
+    } catch (error) {
+      console.error('[NotificationTemplates] Erro ao buscar modelos:', error);
+      res.status(500).json({ message: 'Falha ao buscar modelos de notificação.' });
+    }
+  });
+
+  // POST: Nutricionista cria um novo modelo de notificação
+  app.post('/api/notifications/templates', isAuthenticated, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'nutritionist' && req.user.role !== 'admin') {
+        return res.status(403).json({ message: 'Acesso negado.' });
+      }
+      const { name, title, body } = req.body;
+      if (!name || !title || !body) {
+        return res.status(400).json({ message: 'Nome, título e mensagem são obrigatórios.' });
+      }
+      const [newTemplate] = await db
+        .insert(notificationTemplates)
+        .values({
+          id: nanoid(),
+          nutritionistId: req.user.id,
+          name,
+          title,
+          body,
+        })
+        .returning();
+      logActivity({ userId: req.user.id, activityType: 'create_notification_template', details: `Modelo criado: ${name}` });
+      return res.status(201).json(newTemplate);
+    } catch (error) {
+      console.error('[NotificationTemplates] Erro ao criar modelo:', error);
+      res.status(500).json({ message: 'Falha ao criar modelo de notificação.' });
+    }
+  });
+
+  // PUT: Nutricionista atualiza um modelo de notificação
+  app.put('/api/notifications/templates/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'nutritionist' && req.user.role !== 'admin') {
+        return res.status(403).json({ message: 'Acesso negado.' });
+      }
+      const { name, title, body } = req.body;
+      const [updatedTemplate] = await db
+        .update(notificationTemplates)
+        .set({
+          name,
+          title,
+          body,
+          updatedAt: new Date(),
+        })
+        .where(and(
+          eq(notificationTemplates.id, req.params.id),
+          eq(notificationTemplates.nutritionistId, req.user.id)
+        ))
+        .returning();
+      if (!updatedTemplate) {
+        return res.status(404).json({ message: 'Modelo não encontrado.' });
+      }
+      return res.json(updatedTemplate);
+    } catch (error) {
+      console.error('[NotificationTemplates] Erro ao atualizar modelo:', error);
+      res.status(500).json({ message: 'Falha ao atualizar modelo de notificação.' });
+    }
+  });
+
+  // DELETE: Nutricionista remove um modelo de notificação
+  app.delete('/api/notifications/templates/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'nutritionist' && req.user.role !== 'admin') {
+        return res.status(403).json({ message: 'Acesso negado.' });
+      }
+      const result = await db
+        .delete(notificationTemplates)
+        .where(and(
+          eq(notificationTemplates.id, req.params.id),
+          eq(notificationTemplates.nutritionistId, req.user.id)
+        ))
+        .returning();
+      if (result.length === 0) {
+        return res.status(404).json({ message: 'Modelo não encontrado.' });
+      }
+      logActivity({ userId: req.user.id, activityType: 'delete_notification_template', details: `Modelo removido ID: ${req.params.id}` });
+      return res.json({ ok: true });
+    } catch (error) {
+      console.error('[NotificationTemplates] Erro ao remover modelo:', error);
+      res.status(500).json({ message: 'Falha ao remover modelo de notificação.' });
     }
   });
 }
