@@ -21,6 +21,7 @@ import SubscriptionsPage from "@/pages/nutritionist/subscriptions";
 import ReportsPage from "@/pages/nutritionist/reports";
 import SendNotificationPage from "@/pages/nutritionist/send-notification";
 import NotificationsReportPage from "@/pages/nutritionist/notifications-report";
+import MessagesReadReportPage from "@/pages/nutritionist/messages-read-report";
 import PatientPrescriptionView from "@/pages/patient/prescription-view";
 import PatientPrescriptionsList from "@/pages/patient/prescriptions-list";
 import PrescriptionPrintPage from "@/pages/patient/prescription-print";
@@ -102,7 +103,7 @@ function Router() {
           <Route path="/reports" component={ReportsPage} />
           <Route path="/notifications/send" component={SendNotificationPage} />
           <Route path="/reports/notifications" component={NotificationsReportPage} />
-          <Route path="/notifications/report" component={NotificationsReportPage} />
+          <Route path="/reports/messages-read" component={MessagesReadReportPage} />
           <Route path="/notifications/report" component={NotificationsReportPage} />
         </>
       )}

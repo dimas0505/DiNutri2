@@ -3,7 +3,7 @@ import { Link } from 'wouter';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Bell, Download, Loader2, LineChart } from "lucide-react";
+import { ArrowLeft, Bell, Download, Loader2, LineChart, MessageSquare } from "lucide-react";
 
 export default function ReportsPage() {
   const [isDownloading, setIsDownloading] = useState(false);
@@ -69,7 +69,7 @@ export default function ReportsPage() {
         </Link>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -105,6 +105,23 @@ export default function ReportsPage() {
           <CardContent>
             <Link href="/reports/notifications">
               <Button variant="outline">Abrir Relatório de Notificações</Button>
+            </Link>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <MessageSquare className="h-4 w-4" />
+              Relatório de Mensagens Lidas
+            </CardTitle>
+            <CardDescription>
+              Visualize todas as mensagens enviadas e o status de leitura de cada paciente.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Link href="/reports/messages-read">
+              <Button variant="outline">Abrir Relatório de Mensagens</Button>
             </Link>
           </CardContent>
         </Card>
