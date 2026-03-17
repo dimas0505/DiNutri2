@@ -3,7 +3,7 @@ import { Link } from 'wouter';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Bell, Download, Loader2, LineChart } from "lucide-react";
+import { ArrowLeft, Bell, Download, Loader2, LineChart, MessageSquare } from "lucide-react";
 
 export default function ReportsPage() {
   const [isDownloading, setIsDownloading] = useState(false);
@@ -58,7 +58,7 @@ export default function ReportsPage() {
         <div>
           <h1 className="text-2xl md:text-3xl font-bold">Relatórios</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Centralize aqui os relatórios de acesso e de notificações dos seus pacientes.
+            Centralize aqui os relatórios de acesso, notificações e mensagens lidas dos seus pacientes.
           </p>
         </div>
         <Link href="/">
@@ -69,7 +69,7 @@ export default function ReportsPage() {
         </Link>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -105,6 +105,23 @@ export default function ReportsPage() {
           <CardContent>
             <Link href="/reports/notifications">
               <Button variant="outline">Abrir Relatório de Notificações</Button>
+            </Link>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <MessageSquare className="h-4 w-4" />
+              Relatório de Mensagens Lidas
+            </CardTitle>
+            <CardDescription>
+              Acompanhe quais mensagens seus pacientes marcaram como lidas com data/hora e conteúdo.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Link href="/reports/messages">
+              <Button variant="outline">Abrir Relatório de Mensagens</Button>
             </Link>
           </CardContent>
         </Card>
