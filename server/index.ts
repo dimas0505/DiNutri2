@@ -162,6 +162,8 @@ async function ensureRoutesRegistered() {
       console.error("[DB] Failed to ensure in_app_notifications table:", err);
     }
 
+
+
     await setupRoutes(app);
     
     // Middleware de tratamento de erros

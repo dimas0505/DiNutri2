@@ -247,6 +247,21 @@ export const inAppNotifications = pgTable(
   (table) => [index("IDX_in_app_notifications_user").on(table.userId)]
 );
 
+// Notification Templates table
+export const notificationTemplates = pgTable(
+  "notification_templates",
+  {
+    id: varchar("id").primaryKey(),
+    nutritionistId: varchar("nutritionist_id").references(() => users.id, { onDelete: 'cascade' }).notNull(),
+    name: varchar("name").notNull(),
+    title: varchar("title").notNull(),
+    body: text("body").notNull(),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [index("IDX_notification_templates_nutritionist").on(table.nutritionistId)]
+);
+
 // Relations
 export const usersRelations = relations(users, ({ one, many }) => ({
   patientProfile: one(patients, {
@@ -339,6 +354,13 @@ export const patientDocumentsRelations = relations(patientDocuments, ({ one }) =
 export const inAppNotificationsRelations = relations(inAppNotifications, ({ one }) => ({
   user: one(users, {
     fields: [inAppNotifications.userId],
+    references: [users.id],
+  }),
+}));
+
+export const notificationTemplatesRelations = relations(notificationTemplates, ({ one }) => ({
+  nutritionist: one(users, {
+    fields: [notificationTemplates.nutritionistId],
     references: [users.id],
   }),
 }));
@@ -523,6 +545,8 @@ export type InsertInAppNotification = {
   type: 'plan' | 'assessment' | 'message' | 'general';
   url?: string | null;
 };
+export type NotificationTemplate = typeof notificationTemplates.$inferSelect;
+export type InsertNotificationTemplate = typeof notificationTemplates.$inferInsert;
 
 // Extended type for food diary entries with prescription and mood information
 export interface FoodDiaryEntryWithPrescription extends FoodDiaryEntry {

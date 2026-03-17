@@ -4,8 +4,10 @@
 import { useState, useMemo, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { Bell, Send, Users, CheckCircle2, AlertCircle, Loader2, Search, Calendar, XCircle, CheckSquare, Square, ChevronLeft } from "lucide-react";
+import { Bell, Send, Users, CheckCircle2, AlertCircle, Loader2, Search, Calendar, XCircle, CheckSquare, Square, ChevronLeft, FileText } from "lucide-react";
 import { MobileLayout } from "@/components/layout/mobile-layout";
+import { NotificationTemplateManager } from "@/components/nutritionist/NotificationTemplateManager";
+import type { NotificationTemplate } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -42,6 +44,7 @@ export default function SendNotificationPage() {
   const [activeFilter, setActiveFilter] = useState<string>("all");
   const [lastResult, setLastResult] = useState<{ sent: number; message: string } | null>(null);
   const [isSelectingAll, setIsSelectingAll] = useState(false);
+  const [showTemplates, setShowTemplates] = useState(false);
 
   // Buscar relatório detalhado de pacientes
   const { data: reportData, isLoading: reportLoading } = useQuery<NotificationReportResponse>({
@@ -138,6 +141,16 @@ export default function SendNotificationPage() {
     setActiveFilter("all");
   }, []);
 
+  const handleSelectTemplate = useCallback((template: NotificationTemplate) => {
+    setTitle(template.title);
+    setBody(template.body);
+    setShowTemplates(false);
+    toast({
+      title: "Modelo aplicado",
+      description: `O modelo "${template.name}" foi carregado com sucesso.`,
+    });
+  }, [toast]);
+
   const togglePatientSelection = useCallback((userId: string | null) => {
     if (!userId) return;
     setSelectedUserIds(prev => {
@@ -197,6 +210,42 @@ export default function SendNotificationPage() {
 
         <form onSubmit={(e) => { e.preventDefault(); sendMutation.mutate(); }} className="space-y-4">
           <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm space-y-3">
+            <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center gap-2">
+                <Users className="h-4 w-4 text-[#4E9F87]" />
+                <Label className="text-sm font-semibold text-gray-700">Destinatários</Label>
+              </div>
+              <Button 
+                type="button" 
+                variant="ghost" 
+                size="sm" 
+                className={cn(
+                  "h-8 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 transition-all",
+                  showTemplates ? "text-red-500 hover:text-red-600 hover:bg-red-50" : "text-[#4E9F87] hover:text-[#3d8a74] hover:bg-[#4E9F87]/5"
+                )}
+                onClick={() => setShowTemplates(!showTemplates)}
+              >
+                {showTemplates ? (
+                  <>
+                    <XCircle className="h-3.5 w-3.5" />
+                    Fechar Modelos
+                  </>
+                ) : (
+                  <>
+                    <FileText className="h-3.5 w-3.5" />
+                    Usar Modelo
+                  </>
+                )}
+              </Button>
+            </div>
+
+            {showTemplates && (
+              <div className="mb-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                <NotificationTemplateManager onSelectTemplate={handleSelectTemplate} />
+                <div className="h-px bg-gray-100 my-4" />
+              </div>
+            )}
+
             <Tabs value={target} onValueChange={(v: any) => handleTargetChange(v)} className="w-full">
               <TabsList className="grid grid-cols-3 mb-4">
                 <TabsTrigger value="all" className="text-xs">Todos</TabsTrigger>
