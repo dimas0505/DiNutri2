@@ -39,6 +39,7 @@ import PatientProfilePage from "@/pages/patient/profile";
 import PatientSupplementsPage from "./pages/patient/supplements";
 import PatientDiaryPage from "./pages/patient/diary";
 import { MobileLayout } from "@/components/layout/mobile-layout";
+import { NotificationPopupBanner } from "@/components/NotificationPopupBanner";
 import { Wrench } from "lucide-react";
 
 function ComingSoonPage({ title }: { title: string }) {
@@ -138,6 +139,16 @@ function Router() {
   );
 }
 
+/**
+ * Wrapper que renderiza o NotificationPopupBanner apenas para pacientes autenticados.
+ * Precisa estar dentro do QueryClientProvider para acessar o hook de notificações.
+ */
+function PatientNotificationBanner() {
+  const { isAuthenticated, isPatient } = useAuth();
+  if (!isAuthenticated || !isPatient) return null;
+  return <NotificationPopupBanner />;
+}
+
 function App() {
   const [showSplash, setShowSplash] = useState(() => {
     // Show splash only on the first load within a browser session
@@ -161,6 +172,7 @@ function App() {
       <TooltipProvider>
         <Toaster />
         <Router />
+        <PatientNotificationBanner />
         <InstallPWA />
         <IosInstallToast />
       </TooltipProvider>
