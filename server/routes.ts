@@ -2222,3 +2222,183 @@ export async function registerRoutes(app: Express): Promise<Server> {
   await setupRoutes(app);
   return createServer(app);
 }
+
+  // GET: Nutricionista visualiza relatório de mensagens lidas dos seus pacientes
+  app.get('/api/nutritionist/reports/messages', isAuthenticated, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'nutritionist' && req.user.role !== 'admin') {
+        return res.status(403).json({ message: 'Acesso negado. Apenas nutricionistas.' });
+      }
+
+      const nutritionistId = req.user.id;
+
+      // Buscar todos os pacientes do nutricionista com seus usuários
+      const patientsOfNutritionist = await db
+        .select({
+          id: patients.id,
+          name: patients.name,
+          userId: patients.userId,
+          userEmail: users.email
+        })
+        .from(patients)
+        .leftJoin(users, eq(patients.userId, users.id))
+        .where(eq(patients.ownerId, nutritionistId));
+
+      const validPatients = patientsOfNutritionist.filter(p => p.id && p.name && p.userId);
+      const userIds = validPatients.map(p => p.userId).filter(Boolean) as string[];
+
+      // Buscar todas as notificações dos pacientes do nutricionista
+      const notifications = userIds.length > 0
+        ? await db
+            .select({
+              id: inAppNotifications.id,
+              userId: inAppNotifications.userId,
+              title: inAppNotifications.title,
+              body: inAppNotifications.body,
+              isRead: inAppNotifications.isRead,
+              createdAt: inAppNotifications.createdAt,
+            })
+            .from(inAppNotifications)
+            .where(inArray(inAppNotifications.userId, userIds))
+            .orderBy(desc(inAppNotifications.createdAt))
+        : [];
+
+      // Mapear notificações para pacientes
+      const userToPatientMap = new Map(validPatients.map(p => [p.userId, p]));
+
+      const reportData = notifications.map(notif => {
+        const patient = userToPatientMap.get(notif.userId!);
+        return {
+          notificationId: notif.id,
+          patientId: patient?.id || 'N/A',
+          patientName: patient?.name || 'N/A',
+          patientEmail: patient?.userEmail || null,
+          title: notif.title,
+          body: notif.body,
+          isRead: notif.isRead,
+          createdAt: notif.createdAt,
+        };
+      });
+
+      const totals = {
+        patients: validPatients.length,
+        totalMessages: notifications.length,
+        readMessages: notifications.filter(n => n.isRead).length,
+        unreadMessages: notifications.filter(n => !n.isRead).length,
+      };
+
+      res.json({
+        totals,
+        report: reportData,
+      });
+    } catch (error) {
+      console.error('Erro ao buscar relatório de mensagens:', error);
+      res.status(500).json({ message: 'Falha ao buscar relatório de mensagens.' });
+    }
+  });
+
+  // GET: Exportar relatório de mensagens lidas em Excel
+  app.get('/api/nutritionist/reports/messages/export', isAuthenticated, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'nutritionist' && req.user.role !== 'admin') {
+        return res.status(403).json({ message: 'Acesso negado. Apenas nutricionistas.' });
+      }
+
+      const nutritionistId = req.user.id;
+
+      // Buscar todos os pacientes do nutricionista com seus usuários
+      const patientsOfNutritionist = await db
+        .select({
+          id: patients.id,
+          name: patients.name,
+          userId: patients.userId,
+          userEmail: users.email
+        })
+        .from(patients)
+        .leftJoin(users, eq(patients.userId, users.id))
+        .where(eq(patients.ownerId, nutritionistId));
+
+      const validPatients = patientsOfNutritionist.filter(p => p.id && p.name && p.userId);
+      const userIds = validPatients.map(p => p.userId).filter(Boolean) as string[];
+
+      // Buscar todas as notificações dos pacientes do nutricionista
+      const notifications = userIds.length > 0
+        ? await db
+            .select({
+              id: inAppNotifications.id,
+              userId: inAppNotifications.userId,
+              title: inAppNotifications.title,
+              body: inAppNotifications.body,
+              isRead: inAppNotifications.isRead,
+              createdAt: inAppNotifications.createdAt,
+            })
+            .from(inAppNotifications)
+            .where(inArray(inAppNotifications.userId, userIds))
+            .orderBy(desc(inAppNotifications.createdAt))
+        : [];
+
+      // Mapear notificações para pacientes
+      const userToPatientMap = new Map(validPatients.map(p => [p.userId, p]));
+
+      const reportData = notifications.map(notif => {
+        const patient = userToPatientMap.get(notif.userId!);
+        return {
+          patientId: patient?.id || 'N/A',
+          patientName: patient?.name || 'N/A',
+          patientEmail: patient?.userEmail || 'N/A',
+          title: notif.title,
+          body: notif.body,
+          isRead: notif.isRead ? 'Sim' : 'Não',
+          createdAt: notif.createdAt,
+        };
+      });
+
+      // Criar workbook Excel
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet('Relatório de Mensagens Lidas');
+
+      worksheet.columns = [
+        { header: 'ID do Paciente', key: 'patientId', width: 25 },
+        { header: 'Nome do Paciente', key: 'patientName', width: 30 },
+        { header: 'Email', key: 'patientEmail', width: 30 },
+        { header: 'Título da Mensagem', key: 'title', width: 40 },
+        { header: 'Corpo da Mensagem', key: 'body', width: 60 },
+        { header: 'Marcada como Lida', key: 'isRead', width: 20 },
+        { header: 'Data e Hora', key: 'createdAt', width: 25 },
+      ];
+
+      worksheet.getRow(1).font = { bold: true };
+      worksheet.getRow(1).fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FF6366F1' },
+      };
+      worksheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+
+      reportData.forEach((data, index) => {
+        worksheet.addRow({
+          ...data,
+          createdAt: formatDateInBrazilTimezone(data.createdAt, true),
+        });
+
+        // Alternar cores de fundo para melhor legibilidade
+        if (index % 2 === 0) {
+          worksheet.getRow(index + 2).fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FFF3F4F6' },
+          };
+        }
+      });
+
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', 'attachment; filename="relatorio_de_mensagens_lidas.xlsx"');
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      res.send(buffer);
+    } catch (error) {
+      console.error('Erro ao exportar relatório de mensagens:', error);
+      res.status(500).json({ message: 'Falha ao exportar relatório de mensagens.' });
+    }
+  });
+}
