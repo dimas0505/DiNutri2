@@ -19,26 +19,26 @@ interface PhytotherapyFormula {
 }
 
 const CATEGORIES = [
-  "Peso e Metabolismo",
-  "Performance Física",
-  "Comportamento Alimentar",
-  "Sono e Relaxamento",
+  "Antioxidante e Longevidade",
+  "Bem-estar Geral",
+  "Circulação e Drenagem",
   "Cognição e Foco",
-  "Saúde Mental e Emocional",
+  "Comportamento Alimentar",
+  "Detox e Imunidade",
+  "Energia e Vitalidade",
+  "Pele, Cabelo e Unhas",
+  "Performance Física",
+  "Peso e Metabolismo",
+  "Saúde Articular e Óssea",
+  "Saúde Cardiovascular",
   "Saúde Digestiva",
   "Saúde Hepática",
   "Saúde Hormonal",
-  "Detox e Imunidade",
-  "Antioxidante e Longevidade",
-  "Pele, Cabelo e Unhas",
-  "Circulação e Drenagem",
-  "Saúde Cardiovascular",
+  "Saúde Mental e Emocional",
   "Saúde Metabólica",
-  "Saúde Articular e Óssea",
-  "Energia e Vitalidade",
   "Saúde Sensorial",
-  "Bem-estar Geral",
-];
+  "Sono e Relaxamento",
+].sort();
 
 const CATEGORY_COLORS: Record<string, string> = {
   "Peso e Metabolismo": "bg-blue-100 text-blue-800",
