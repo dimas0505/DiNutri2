@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import Header from "@/components/layout/header";
 
 export default function Home() {
-  const { isAdmin, isNutritionist, isPatient } = useAuth();
+  const { isAdmin, isNutritionist, isPatient, isFito } = useAuth();
   const [, setLocation] = useLocation();
 
   useEffect(() => {
@@ -12,10 +12,12 @@ export default function Home() {
       setLocation("/admin");
     } else if (isNutritionist) {
       setLocation("/patients");
+    } else if (isFito) {
+      setLocation("/fito");
     } else if (isPatient) {
       setLocation("/dashboard");
     }
-  }, [isAdmin, isNutritionist, isPatient, setLocation]);
+  }, [isAdmin, isNutritionist, isPatient, isFito, setLocation]);
 
   return (
     <div className="min-h-screen bg-background">

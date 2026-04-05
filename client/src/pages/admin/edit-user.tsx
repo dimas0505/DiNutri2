@@ -22,7 +22,7 @@ const updateUserSchema = z.object({
   firstName: z.string().min(1, "Nome é obrigatório."),
   lastName: z.string().min(1, "Sobrenome é obrigatório."),
   email: z.string().email("Email inválido."),
-  role: z.enum(["admin", "nutritionist", "patient"], {
+  role: z.enum(["admin", "nutritionist", "patient", "fito"], {
     required_error: "Selecione um tipo de usuário.",
   }),
 });
@@ -91,7 +91,7 @@ export default function EditUserPage({ params }: EditUserPageProps) {
         firstName: user.firstName || "",
         lastName: user.lastName || "",
         email: user.email || "",
-        role: user.role as "admin" | "nutritionist" | "patient",
+        role: user.role as "admin" | "nutritionist" | "patient" | "fito",
       });
     }
   }, [user, userForm]);
@@ -353,6 +353,7 @@ export default function EditUserPage({ params }: EditUserPageProps) {
                               <SelectItem value="admin">Administrador</SelectItem>
                               <SelectItem value="nutritionist">Nutricionista</SelectItem>
                               <SelectItem value="patient">Paciente</SelectItem>
+                              <SelectItem value="fito">Consultor Fitoterápico</SelectItem>
                             </SelectContent>
                           </Select>
                           <FormMessage />

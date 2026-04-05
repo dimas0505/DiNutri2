@@ -21,7 +21,7 @@ export const users = pgTable("users", {
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
-  role: varchar("role", { enum: ["admin", "nutritionist", "patient"] }).notNull().default("patient"),
+  role: varchar("role", { enum: ["admin", "nutritionist", "patient", "fito"] }).notNull().default("patient"),
   hashedPassword: varchar("hashed_password"),
   // Configurações do nutricionista
   bodyFatEquation: varchar("body_fat_equation", { enum: ["siri", "brozek"] }).default("siri"),

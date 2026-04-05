@@ -3,7 +3,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { MobileHeader } from "@/components/mobile";
 import { BottomNavigation } from "@/components/mobile";
 import { useAuth } from "@/hooks/useAuth";
-import { Home, Users, FileText, User, LogOut, Shield, UserPlus, Settings, ShieldCheck, BookOpen, ClipboardList, Bell, LineChart } from "lucide-react";
+import { Home, Users, FileText, User, LogOut, Shield, UserPlus, Settings, ShieldCheck, BookOpen, ClipboardList, Bell, LineChart, Leaf } from "lucide-react";
 import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import type { LucideIcon } from "lucide-react";
@@ -42,7 +42,7 @@ export function MobileLayout({
   drawerContent,
 }: MobileLayoutProps) {
   const isMobile = useIsMobile();
-  const { user, isPatient, isNutritionist, logout } = useAuth();
+  const { user, isPatient, isNutritionist, isFito, logout } = useAuth();
   const [location] = useLocation();
 
   const navItems: LayoutNavItem[] = isPatient
@@ -54,6 +54,11 @@ export function MobileLayout({
     : isNutritionist
       ? [
           { icon: Users, label: "Pacientes", href: "/patients" },
+          { icon: User, label: "Perfil", href: "/admin/profile" },
+        ]
+    : isFito
+      ? [
+          { icon: Leaf, label: "Fito", href: "/fito" },
           { icon: User, label: "Perfil", href: "/admin/profile" },
         ]
       : [];
@@ -125,7 +130,7 @@ interface DefaultMobileDrawerProps {
 }
 
 export function DefaultMobileDrawer({ onProfileClick }: DefaultMobileDrawerProps = {}) {
-  const { isNutritionist, isPatient, isAdmin } = useAuth();
+  const { isNutritionist, isPatient, isAdmin, isFito } = useAuth();
   const [, setLocation] = useLocation();
 
   const handleLogout = () => {
@@ -146,6 +151,11 @@ export function DefaultMobileDrawer({ onProfileClick }: DefaultMobileDrawerProps
           { label: "Nova Prescrição", href: "/patients/new", icon: FileText, action: "navigate" },
           { label: "Relatórios", href: "/reports", icon: LineChart, action: "navigate" },
           { label: "Enviar Notificação", href: "/notifications/send", icon: Bell, action: "navigate" },
+        ]
+      : []),
+    ...(isFito
+      ? [
+          { label: "Consultor Fitoterápico", href: "/fito", icon: Leaf, action: "navigate" },
         ]
       : []),
     ...(isPatient
