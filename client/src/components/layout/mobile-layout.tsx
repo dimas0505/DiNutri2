@@ -42,7 +42,7 @@ export function MobileLayout({
   drawerContent,
 }: MobileLayoutProps) {
   const isMobile = useIsMobile();
-  const { user, isPatient, isNutritionist, logout } = useAuth();
+  const { user, isPatient, isNutritionist, isFito, logout } = useAuth();
   const [location] = useLocation();
 
   const navItems: LayoutNavItem[] = isPatient
@@ -54,6 +54,11 @@ export function MobileLayout({
     : isNutritionist
       ? [
           { icon: Users, label: "Pacientes", href: "/patients" },
+          { icon: User, label: "Perfil", href: "/admin/profile" },
+        ]
+    : isFito
+      ? [
+          { icon: Leaf, label: "Fito", href: "/fito" },
           { icon: User, label: "Perfil", href: "/admin/profile" },
         ]
       : [];
