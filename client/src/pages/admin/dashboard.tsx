@@ -20,6 +20,7 @@ export default function AdminDashboard() {
     admins: users.filter(u => u.role === 'admin').length,
     nutritionists: users.filter(u => u.role === 'nutritionist').length,
     patients: users.filter(u => u.role === 'patient').length,
+    fitos: users.filter(u => u.role === 'fito').length,
   };
 
   const formatDate = (dateString: string) => {
@@ -31,6 +32,7 @@ export default function AdminDashboard() {
       case 'admin': return 'destructive';
       case 'nutritionist': return 'default';
       case 'patient': return 'secondary';
+      case 'fito': return 'outline';
       default: return 'outline';
     }
   };
@@ -40,6 +42,7 @@ export default function AdminDashboard() {
       case 'admin': return 'Administrador';
       case 'nutritionist': return 'Nutricionista';
       case 'patient': return 'Paciente';
+      case 'fito': return 'Consultor Fitoterápico';
       default: return role;
     }
   };

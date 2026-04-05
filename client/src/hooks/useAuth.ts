@@ -6,7 +6,7 @@ email: string;
 firstName?: string;
 lastName?: string;
 profileImageUrl?: string;
-role: 'admin' | 'nutritionist' | 'patient'; // <-- ADICIONADO "admin"
+role: 'admin' | 'nutritionist' | 'patient' | 'fito';
 patientProfile?: { id: string };
 }
 export function useAuth() {
@@ -25,9 +25,10 @@ user,
 isLoading,
 error,
 isAuthenticated: !!user,
-isAdmin: user?.role === 'admin', // <-- ADICIONADO
+isAdmin: user?.role === 'admin',
 isNutritionist: user?.role === 'nutritionist',
 isPatient: user?.role === 'patient',
-logout, // <-- ADICIONADO
+isFito: user?.role === 'fito',
+logout,
 };
 }

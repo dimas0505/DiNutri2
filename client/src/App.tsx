@@ -38,6 +38,7 @@ import PatientDashboard from "@/pages/patient/dashboard";
 import PatientProfilePage from "@/pages/patient/profile";
 import PatientSupplementsPage from "./pages/patient/supplements";
 import PatientDiaryPage from "./pages/patient/diary";
+import FitoPage from "@/pages/fito/fito-page";
 import { MobileLayout } from "@/components/layout/mobile-layout";
 import { NotificationPopupBanner } from "@/components/NotificationPopupBanner";
 import { Wrench } from "lucide-react";
@@ -57,7 +58,7 @@ function ComingSoonPage({ title }: { title: string }) {
 }
 
 function Router() {
-  const { isAuthenticated, isLoading, isAdmin, isNutritionist, isPatient } = useAuth();
+  const { isAuthenticated, isLoading, isAdmin, isNutritionist, isPatient, isFito } = useAuth();
 
   if (isLoading) {
     return (
@@ -106,6 +107,13 @@ function Router() {
           <Route path="/reports/notifications" component={NotificationsReportPage} />
           <Route path="/reports/messages-read" component={MessagesReadReportPage} />
           <Route path="/notifications/report" component={NotificationsReportPage} />
+        </>
+      )}
+
+      {/* Rotas de Fito (Consultor de Fitoterápicos) */}
+      {isAuthenticated && isFito && (
+        <>
+          <Route path="/fito" component={FitoPage} />
         </>
       )}
 

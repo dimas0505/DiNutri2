@@ -18,7 +18,7 @@ const createUserSchema = z.object({
   firstName: z.string().min(1, "Nome é obrigatório."),
   lastName: z.string().min(1, "Sobrenome é obrigatório."),
   password: z.string().min(6, "A senha deve ter pelo menos 6 caracteres."),
-  role: z.enum(["admin", "nutritionist"], {
+  role: z.enum(["admin", "nutritionist", "fito"], {
     required_error: "Selecione um tipo de usuário.",
   }),
 });
@@ -156,6 +156,7 @@ export default function CreateUserPage() {
                         <SelectContent>
                           <SelectItem value="admin">Administrador</SelectItem>
                           <SelectItem value="nutritionist">Nutricionista</SelectItem>
+                          <SelectItem value="fito">Consultor Fitoterápico</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />

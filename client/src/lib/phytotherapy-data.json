@@ -1,0 +1,1674 @@
+[
+  {
+    "id": 1,
+    "objective": "Emagrecimento",
+    "category": "Peso e Metabolismo",
+    "subcategory": "Emagrecimento",
+    "formula": "Faseolamina 400mg + Irvingia Gabonensis 200mg + Picolinato Cromo 150mcg + Garcinia Cambogia 200mg + Aloina 70mg + Carqueja 200mg + Passiflora extr. seco 150mg + Valeriana extr. seco 150mg + Gymnena Silvestre 150mg",
+    "posology": "Conforme prescrição"
+  },
+  {
+    "id": 2,
+    "objective": "Pré-treino",
+    "category": "Performance Física",
+    "subcategory": "Pré-treino",
+    "formula": "Capsiate 4mg + Guaraná E.S 200mg + Ginseng Siberiano 300mcg + Cordia Ecalyculata E.S 400mg",
+    "posology": "1 cápsula 20min antes do treino"
+  },
+  {
+    "id": 3,
+    "objective": "Compulsão Alimentar / Doces",
+    "category": "Comportamento Alimentar",
+    "subcategory": "Compulsão Alimentar",
+    "formula": "Saffrim 80mg + Sarenzo 250mg + Picolinato de Cromo 200mcg",
+    "posology": "1 dose após o café da manhã"
+  },
+  {
+    "id": 4,
+    "objective": "Detox e Redução da Inflamação",
+    "category": "Detox e Imunidade",
+    "subcategory": "Detox",
+    "formula": "Altilix 100mg + Drenow C 500mg + Cúrcuma 200mg + Piperina 5mg",
+    "posology": "1 dose após o café da manhã"
+  },
+  {
+    "id": 5,
+    "objective": "Reforço da Libido no Climatério",
+    "category": "Saúde Hormonal",
+    "subcategory": "Libido / Climatério",
+    "formula": "CavaQ10 30mg + Damilib 200mg",
+    "posology": "1 dose ao dia"
+  },
+  {
+    "id": 6,
+    "objective": "Aumento do aporte de oxigênio e ação vasodilatadora (Pré-treino)",
+    "category": "Performance Física",
+    "subcategory": "Pré-treino",
+    "formula": "Peak O2 500mg + Vinitrox 200mg + L-Arginina 300mg",
+    "posology": "1 dose 30-40 min antes do treino"
+  },
+  {
+    "id": 7,
+    "objective": "Aceleração Metabólica",
+    "category": "Peso e Metabolismo",
+    "subcategory": "Metabolismo",
+    "formula": "Chá Verde E.S 300mg + Gengibre E.S 250mg + Valeriana E.S 200mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 8,
+    "objective": "Controle do Apetite",
+    "category": "Comportamento Alimentar",
+    "subcategory": "Controle do Apetite",
+    "formula": "Hibiscus sabdariffa E.S 400mg + Cavalinha E.S 300mg + Ashwagandha E.S 300mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 9,
+    "objective": "Redução de Compulsão por Doces",
+    "category": "Comportamento Alimentar",
+    "subcategory": "Compulsão Alimentar",
+    "formula": "Guaraná E.S 200mg + Dente-de-leão E.S 250mg + Rhodiola rosea E.S 250mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 10,
+    "objective": "Ansiedade Leve",
+    "category": "Saúde Mental e Emocional",
+    "subcategory": "Ansiedade",
+    "formula": "Gengibre E.S 250mg + Passiflora E.S 300mg + Griffonia simplicifolia 150mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 11,
+    "objective": "Qualidade do Sono",
+    "category": "Sono e Relaxamento",
+    "subcategory": "Qualidade do Sono",
+    "formula": "Cavalinha E.S 300mg + Valeriana E.S 200mg + Magnésio glicinado 200mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 12,
+    "objective": "Energia e Disposição",
+    "category": "Energia e Vitalidade",
+    "subcategory": "Energia",
+    "formula": "Dente-de-leão E.S 250mg + Ashwagandha E.S 300mg + Picolinato de cromo 200mcg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 13,
+    "objective": "Redução de Inchaço",
+    "category": "Circulação e Drenagem",
+    "subcategory": "Retenção Hídrica / Inchaço",
+    "formula": "Passiflora E.S 300mg + Rhodiola rosea E.S 250mg + Inulina 200mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 14,
+    "objective": "Equilíbrio Intestinal",
+    "category": "Saúde Digestiva",
+    "subcategory": "Flora Intestinal",
+    "formula": "Valeriana E.S 200mg + Griffonia simplicifolia 150mg + Psyllium 300mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 15,
+    "objective": "Saúde Hepática",
+    "category": "Saúde Hepática",
+    "subcategory": "Fígado",
+    "formula": "Ashwagandha E.S 300mg + Magnésio glicinado 200mg + Cúrcuma longa E.S 250mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 16,
+    "objective": "Foco e Concentração",
+    "category": "Cognição e Foco",
+    "subcategory": "Foco",
+    "formula": "Rhodiola rosea E.S 250mg + Picolinato de cromo 200mcg + Silimarina 200mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 17,
+    "objective": "Estresse",
+    "category": "Saúde Mental e Emocional",
+    "subcategory": "Estresse",
+    "formula": "Griffonia simplicifolia 150mg + Inulina 200mg + Biotina 5mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 18,
+    "objective": "Imunidade",
+    "category": "Detox e Imunidade",
+    "subcategory": "Imunidade",
+    "formula": "Magnésio glicinado 200mg + Psyllium 300mg + Silício orgânico 100mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 19,
+    "objective": "Antioxidante",
+    "category": "Antioxidante e Longevidade",
+    "subcategory": "Antioxidante",
+    "formula": "Picolinato de cromo 200mcg + Cúrcuma longa E.S 250mg + Vitamina C natural 300mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 20,
+    "objective": "Estética da Pele",
+    "category": "Pele, Cabelo e Unhas",
+    "subcategory": "Pele",
+    "formula": "Inulina 200mg + Silimarina 200mg + Zinco quelado 15mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 21,
+    "objective": "Bem-estar Geral",
+    "category": "Bem-estar Geral",
+    "subcategory": "Bem-estar",
+    "formula": "Cúrcuma longa E.S 250mg + Silício orgânico 100mg + Camomila E.S 300mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 22,
+    "objective": "Aceleração Metabólica (Variante)",
+    "category": "Peso e Metabolismo",
+    "subcategory": "Metabolismo",
+    "formula": "Silimarina 200mg + Vitamina C natural 300mg + Melissa officinalis E.S 250mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 23,
+    "objective": "Qualidade do Sono – Indução",
+    "category": "Sono e Relaxamento",
+    "subcategory": "Indução ao Sono",
+    "formula": "Melatonina 0,21mg + Passiflora E.S 300mg + Valeriana E.S 200mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 24,
+    "objective": "Qualidade do Sono – Profundidade",
+    "category": "Sono e Relaxamento",
+    "subcategory": "Sono Profundo",
+    "formula": "Magnésio glicinado 200mg + Triptofano 250mg + Melissa officinalis E.S 250mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 25,
+    "objective": "Energia e Disposição – Adaptação ao Estresse",
+    "category": "Energia e Vitalidade",
+    "subcategory": "Energia",
+    "formula": "Rhodiola rosea E.S 250mg + Panax ginseng E.S 200mg + Vitamina C natural 300mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 26,
+    "objective": "Energia e Disposição – Metabolismo Celular",
+    "category": "Energia e Vitalidade",
+    "subcategory": "Energia Celular",
+    "formula": "Coenzima Q10 100mg + Magnésio malato 200mg + Tiamina 50mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 27,
+    "objective": "Redução de Inchaço – Linfático",
+    "category": "Circulação e Drenagem",
+    "subcategory": "Drenagem Linfática",
+    "formula": "Cavalinha E.S 300mg + Hibiscus sabdariffa E.S 400mg + Dente-de-leão E.S 250mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 28,
+    "objective": "Redução de Inchaço – Intestinal",
+    "category": "Saúde Digestiva",
+    "subcategory": "Inchaço Intestinal",
+    "formula": "Psyllium 300mg + Inulina 200mg + Funcho E.S 200mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 29,
+    "objective": "Equilíbrio Intestinal – Flora",
+    "category": "Saúde Digestiva",
+    "subcategory": "Flora Intestinal",
+    "formula": "Lactobacillus spp. 5bi UFC + Inulina 200mg + Zinco quelado 15mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 30,
+    "objective": "Equilíbrio Intestinal – Barreira Intestinal",
+    "category": "Saúde Digestiva",
+    "subcategory": "Barreira Intestinal",
+    "formula": "Glutamina 300mg + Zinco carnosina 75mg + Camomila E.S 300mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 31,
+    "objective": "Saúde Hepática – Detoxificação",
+    "category": "Saúde Hepática",
+    "subcategory": "Detox Hepático",
+    "formula": "Silimarina 200mg + Alcachofra E.S 300mg + Cúrcuma longa E.S 250mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 32,
+    "objective": "Saúde Hepática – Antioxidante",
+    "category": "Saúde Hepática",
+    "subcategory": "Antioxidante Hepático",
+    "formula": "N-acetilcisteína 300mg + Vitamina E 200UI + Selênio quelado 100mcg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 33,
+    "objective": "Foco e Concentração – Cognitivo",
+    "category": "Cognição e Foco",
+    "subcategory": "Foco Cognitivo",
+    "formula": "Bacopa monnieri E.S 300mg + Colina 200mg + Cafeína natural 100mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 34,
+    "objective": "Foco e Concentração – Neuroproteção",
+    "category": "Cognição e Foco",
+    "subcategory": "Neuroproteção",
+    "formula": "Fosfatidilserina 100mg + Ômega-3 DHA 250mg + Vitamina B12 500mcg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 35,
+    "objective": "Imunidade – Barreira Primária",
+    "category": "Detox e Imunidade",
+    "subcategory": "Imunidade",
+    "formula": "Vitamina C natural 500mg + Zinco quelado 15mg + Própolis verde E.S 200mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 36,
+    "objective": "Imunidade – Modulação Inflamatória",
+    "category": "Detox e Imunidade",
+    "subcategory": "Imunidade",
+    "formula": "Cúrcuma longa E.S 250mg + Vitamina D3 2000UI + Selênio 100mcg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 37,
+    "objective": "Estética da Pele – Antioxidante",
+    "category": "Pele, Cabelo e Unhas",
+    "subcategory": "Pele",
+    "formula": "Colágeno tipo II 40mg + Vitamina C natural 300mg + Silício orgânico 100mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 38,
+    "objective": "Estética da Pele – Oleosa/Acne",
+    "category": "Pele, Cabelo e Unhas",
+    "subcategory": "Acne / Pele Oleosa",
+    "formula": "Zinco quelado 15mg + Vitamina A 5000UI + Chá Verde E.S 300mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 39,
+    "objective": "Fortalecimento Capilar",
+    "category": "Pele, Cabelo e Unhas",
+    "subcategory": "Cabelo",
+    "formula": "Biotina 5mg + Silício orgânico 100mg + Metionina 300mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 40,
+    "objective": "Bem-estar Geral (Variante)",
+    "category": "Bem-estar Geral",
+    "subcategory": "Bem-estar",
+    "formula": "Cúrcuma longa E.S 250mg + Camomila E.S 300mg + Magnésio glicinado 200mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 41,
+    "objective": "Redução de Gordura Localizada – Lipólise",
+    "category": "Peso e Metabolismo",
+    "subcategory": "Gordura Localizada",
+    "formula": "L-carnitina 300mg + Cafeína anidra 150mg + Pimenta caiena E.S 100mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 42,
+    "objective": "Redução de Gordura Localizada – Mitocondrial",
+    "category": "Peso e Metabolismo",
+    "subcategory": "Gordura Localizada",
+    "formula": "Ácido alfa-lipóico 300mg + Coenzima Q10 100mg + Vitamina B3 50mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 43,
+    "objective": "Controle da Fome Noturna",
+    "category": "Comportamento Alimentar",
+    "subcategory": "Fome Noturna",
+    "formula": "Triptofano 250mg + Magnésio dimalato 200mg + Passiflora E.S 300mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 44,
+    "objective": "Controle da Ansiedade Alimentar",
+    "category": "Comportamento Alimentar",
+    "subcategory": "Ansiedade Alimentar",
+    "formula": "5-HTP 100mg + L-teanina 200mg + Vitamina B6 25mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 45,
+    "objective": "Melhora do Humor",
+    "category": "Saúde Mental e Emocional",
+    "subcategory": "Humor",
+    "formula": "Rhodiola rosea E.S 200mg + Tirosina 250mg + Vitamina B12 500mcg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 46,
+    "objective": "Suporte ao Estresse Crônico",
+    "category": "Saúde Mental e Emocional",
+    "subcategory": "Estresse Crônico",
+    "formula": "Ashwagandha KSM-66 300mg + Fosfatidilserina 100mg + Magnésio treonato 150mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 47,
+    "objective": "Fadiga Física",
+    "category": "Energia e Vitalidade",
+    "subcategory": "Fadiga",
+    "formula": "Panax ginseng E.S 200mg + Riboflavina 25mg + Ácido pantotênico 50mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 48,
+    "objective": "Fadiga Mental",
+    "category": "Cognição e Foco",
+    "subcategory": "Fadiga Mental",
+    "formula": "Acetil L-carnitina 300mg + Bacopa monnieri E.S 250mg + Colina bitartarato 200mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 49,
+    "objective": "Memória e Aprendizado",
+    "category": "Cognição e Foco",
+    "subcategory": "Memória",
+    "formula": "Ginkgo biloba E.S 120mg + Fosfatidilcolina 200mg + Vitamina E 200UI",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 50,
+    "objective": "Clareza Mental",
+    "category": "Cognição e Foco",
+    "subcategory": "Clareza Mental",
+    "formula": "L-tirosina 300mg + Cafeína natural 80mg + Vitamina C 300mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 51,
+    "objective": "Redução de Retenção Hídrica",
+    "category": "Circulação e Drenagem",
+    "subcategory": "Retenção Hídrica / Inchaço",
+    "formula": "Uva-ursi E.S 200mg + Salsa E.S 250mg + Potássio quelado 100mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 52,
+    "objective": "Circulação Periférica",
+    "category": "Circulação e Drenagem",
+    "subcategory": "Circulação",
+    "formula": "Castanha-da-índia E.S 250mg + Rutina 100mg + Vitamina C 300mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 53,
+    "objective": "Suporte Venoso",
+    "category": "Circulação e Drenagem",
+    "subcategory": "Saúde Venosa",
+    "formula": "Diosmina 300mg + Hesperidina 100mg + Centella asiática E.S 200mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 54,
+    "objective": "Saúde Cardiovascular",
+    "category": "Saúde Cardiovascular",
+    "subcategory": "Coração",
+    "formula": "Ômega-3 EPA/DHA 500mg + Coenzima Q10 100mg + Selênio 100mcg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 55,
+    "objective": "Controle do Colesterol",
+    "category": "Saúde Cardiovascular",
+    "subcategory": "Colesterol",
+    "formula": "Policosanol 20mg + Levedura de arroz vermelho 300mg + Niacina 50mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 56,
+    "objective": "Controle da Glicemia",
+    "category": "Saúde Metabólica",
+    "subcategory": "Glicemia",
+    "formula": "Berberina 300mg + Ácido alfa-lipóico 200mg + Cromo quelado 200mcg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 57,
+    "objective": "Sensibilidade à Insulina",
+    "category": "Saúde Metabólica",
+    "subcategory": "Insulina",
+    "formula": "Myo-inositol 500mg + Magnésio quelado 200mg + Vitamina D3 2000UI",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 58,
+    "objective": "Saúde Intestinal – Motilidade",
+    "category": "Saúde Digestiva",
+    "subcategory": "Motilidade Intestinal",
+    "formula": "Aloe vera E.S 200mg + Gengibre E.S 250mg + Magnésio citrato 200mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 59,
+    "objective": "Desconforto Gastrointestinal",
+    "category": "Saúde Digestiva",
+    "subcategory": "Desconforto Digestivo",
+    "formula": "Hortelã-pimenta E.S 200mg + Funcho E.S 200mg + Camomila E.S 300mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 60,
+    "objective": "Proteção Gástrica",
+    "category": "Saúde Digestiva",
+    "subcategory": "Proteção Gástrica",
+    "formula": "Zinco carnosina 75mg + Alcaçuz DGL 200mg + Glutamina 300mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 61,
+    "objective": "Saúde Articular",
+    "category": "Saúde Articular e Óssea",
+    "subcategory": "Articulações",
+    "formula": "Glucosamina 500mg + Condroitina 400mg + MSM 300mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 62,
+    "objective": "Inflamação Articular",
+    "category": "Saúde Articular e Óssea",
+    "subcategory": "Inflamação Articular",
+    "formula": "Boswellia serrata E.S 300mg + Cúrcuma BCM-95 250mg + Piperina 5mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 63,
+    "objective": "Saúde Óssea",
+    "category": "Saúde Articular e Óssea",
+    "subcategory": "Ossos",
+    "formula": "Cálcio citrato 300mg + Vitamina K2 100mcg + Vitamina D3 2000UI",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 64,
+    "objective": "Vitalidade Geral",
+    "category": "Energia e Vitalidade",
+    "subcategory": "Vitalidade",
+    "formula": "Maca peruana E.S 500mg + Zinco quelado 15mg + Vitamina B6 25mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 65,
+    "objective": "Termogênese Leve",
+    "category": "Peso e Metabolismo",
+    "subcategory": "Termogênese",
+    "formula": "Sinefrina 20mg + Chá branco E.S 300mg + Vitamina B5 50mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 66,
+    "objective": "Oxidação de Gordura",
+    "category": "Peso e Metabolismo",
+    "subcategory": "Gordura Localizada",
+    "formula": "Forskolina 250mg + L-tirosina 300mg + Vitamina B1 25mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 67,
+    "objective": "Controle do Apetite Emocional",
+    "category": "Comportamento Alimentar",
+    "subcategory": "Ansiedade Alimentar",
+    "formula": "Griffonia simplicifolia 150mg + Magnésio glicinato 200mg + Vitamina B9 400mcg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 68,
+    "objective": "Saciedade Prolongada",
+    "category": "Comportamento Alimentar",
+    "subcategory": "Controle do Apetite",
+    "formula": "Glucomanana 300mg + Proteína isolada de ervilha 250mg + Cálcio quelado 200mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 69,
+    "objective": "Modulação do Cortisol",
+    "category": "Saúde Mental e Emocional",
+    "subcategory": "Estresse Crônico",
+    "formula": "Withania somnifera E.S 300mg + Fosfatidilcolina 200mg + Vitamina B2 25mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 70,
+    "objective": "Energia Celular",
+    "category": "Energia e Vitalidade",
+    "subcategory": "Energia Celular",
+    "formula": "NADH 10mg + Coenzima Q10 150mg + Vitamina B3 50mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 71,
+    "objective": "Performance Cognitiva",
+    "category": "Cognição e Foco",
+    "subcategory": "Foco Cognitivo",
+    "formula": "Citicolina 250mg + Bacopa monnieri E.S 300mg + Vitamina B12 500mcg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 72,
+    "objective": "Concentração Sustentada",
+    "category": "Cognição e Foco",
+    "subcategory": "Foco",
+    "formula": "L-teacrina 100mg + L-teanina 200mg + Vitamina C 300mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 73,
+    "objective": "Relaxamento Muscular",
+    "category": "Saúde Articular e Óssea",
+    "subcategory": "Músculos",
+    "formula": "Magnésio malato 200mg + Taurina 300mg + Vitamina B6 25mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 74,
+    "objective": "Qualidade do Sono Profundo",
+    "category": "Sono e Relaxamento",
+    "subcategory": "Sono Profundo",
+    "formula": "Melatonina 3mg + Glicina 300mg + Camomila E.S 300mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 75,
+    "objective": "Equilíbrio do Ritmo Circadiano",
+    "category": "Sono e Relaxamento",
+    "subcategory": "Ritmo Circadiano",
+    "formula": "Triptofano 250mg + Magnésio treonato 150mg + Vitamina B3 50mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 76,
+    "objective": "Saúde Intestinal – Microbiota",
+    "category": "Saúde Digestiva",
+    "subcategory": "Microbiota",
+    "formula": "Frutooligossacarídeos 300mg + Lactobacillus acidophilus 2bi UFC + Zinco quelado 15mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 77,
+    "objective": "Redução de Gases Intestinais",
+    "category": "Saúde Digestiva",
+    "subcategory": "Gases",
+    "formula": "Carvão vegetal ativado 200mg + Erva-doce E.S 250mg + Hortelã E.S 200mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 78,
+    "objective": "Função Hepática Avançada",
+    "category": "Saúde Hepática",
+    "subcategory": "Fígado",
+    "formula": "N-acetilcisteína 300mg + Alcachofra E.S 300mg + Selênio 100mcg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 79,
+    "objective": "Detox Metabólico",
+    "category": "Detox e Imunidade",
+    "subcategory": "Detox",
+    "formula": "Clorofila 100mg + Cardo-mariano E.S 250mg + Vitamina B12 500mcg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 80,
+    "objective": "Imunidade Celular",
+    "category": "Detox e Imunidade",
+    "subcategory": "Imunidade",
+    "formula": "Beta-glucana 250mg + Vitamina D3 2000UI + Zinco bisglicinato 15mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 81,
+    "objective": "Defesa Antioxidante",
+    "category": "Antioxidante e Longevidade",
+    "subcategory": "Antioxidante",
+    "formula": "Resveratrol 150mg + Astaxantina 6mg + Vitamina E 200UI",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 82,
+    "objective": "Saúde da Pele – Colágeno",
+    "category": "Pele, Cabelo e Unhas",
+    "subcategory": "Pele",
+    "formula": "Colágeno hidrolisado 500mg + Vitamina C 300mg + Silício orgânico 100mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 83,
+    "objective": "Elasticidade da Pele",
+    "category": "Pele, Cabelo e Unhas",
+    "subcategory": "Pele",
+    "formula": "Ácido hialurônico 120mg + Vitamina A 5000UI + Zinco quelado 15mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 84,
+    "objective": "Saúde Capilar – Crescimento",
+    "category": "Pele, Cabelo e Unhas",
+    "subcategory": "Cabelo",
+    "formula": "Biotina 5mg + Metilsulfonilmetano 300mg + Silício quelado 100mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 85,
+    "objective": "Redução da Queda Capilar",
+    "category": "Pele, Cabelo e Unhas",
+    "subcategory": "Queda Capilar",
+    "formula": "Saw palmetto E.S 320mg + Zinco quelado 15mg + Vitamina B6 25mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 86,
+    "objective": "Fortalecimento das Unhas",
+    "category": "Pele, Cabelo e Unhas",
+    "subcategory": "Unhas",
+    "formula": "Biotina 5mg + Colágeno tipo II 300mg + Vitamina B5 50mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 87,
+    "objective": "Saúde Hormonal Feminina",
+    "category": "Saúde Hormonal",
+    "subcategory": "Hormônios Femininos",
+    "formula": "Vitex agnus-castus E.S 200mg + Magnésio quelado 200mg + Vitamina B6 25mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 88,
+    "objective": "TPM",
+    "category": "Saúde Hormonal",
+    "subcategory": "TPM",
+    "formula": "Óleo de prímula 500mg + Vitamina E 200UI + Cálcio quelado 200mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 89,
+    "objective": "Vitalidade Feminina",
+    "category": "Saúde Hormonal",
+    "subcategory": "Vitalidade Feminina",
+    "formula": "Maca negra E.S 400mg + Ferro bisglicinato 30mg + Vitamina C 300mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 90,
+    "objective": "Vitalidade Masculina",
+    "category": "Saúde Hormonal",
+    "subcategory": "Vitalidade Masculina",
+    "formula": "Tribulus terrestris E.S 300mg + Zinco quelado 15mg + Vitamina B12 500mcg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 91,
+    "objective": "Saúde Prostática",
+    "category": "Saúde Hormonal",
+    "subcategory": "Próstata",
+    "formula": "Pygeum africanum E.S 200mg + Licopeno 10mg + Selênio 100mcg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 92,
+    "objective": "Libido",
+    "category": "Saúde Hormonal",
+    "subcategory": "Libido / Climatério",
+    "formula": "Muira puama E.S 250mg + L-arginina 300mg + Vitamina B3 50mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 93,
+    "objective": "Desempenho Físico",
+    "category": "Performance Física",
+    "subcategory": "Desempenho",
+    "formula": "Beta-alanina 300mg + Creatina monohidratada 500mg + Vitamina B6 25mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 94,
+    "objective": "Resistência Muscular",
+    "category": "Performance Física",
+    "subcategory": "Resistência",
+    "formula": "Citrulina malato 400mg + Magnésio dimalato 200mg + Vitamina C 300mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 95,
+    "objective": "Recuperação Pós-treino",
+    "category": "Performance Física",
+    "subcategory": "Recuperação",
+    "formula": "Glutamina 500mg + BCAA 500mg + Vitamina E 200UI",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 96,
+    "objective": "Saúde Muscular",
+    "category": "Performance Física",
+    "subcategory": "Músculos",
+    "formula": "L-leucina 300mg + Cálcio citrato 200mg + Vitamina D3 2000UI",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 97,
+    "objective": "Prevenção de Cãibras",
+    "category": "Performance Física",
+    "subcategory": "Cãibras",
+    "formula": "Potássio quelado 100mg + Magnésio cloreto 200mg + Vitamina B1 25mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 98,
+    "objective": "Saúde Ocular",
+    "category": "Saúde Sensorial",
+    "subcategory": "Visão",
+    "formula": "Luteína 20mg + Zeaxantina 4mg + Vitamina A 5000UI",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 99,
+    "objective": "Proteção da Visão",
+    "category": "Saúde Sensorial",
+    "subcategory": "Visão",
+    "formula": "Astaxantina 6mg + Vitamina C 300mg + Zinco quelado 15mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 100,
+    "objective": "Saúde Auditiva",
+    "category": "Saúde Sensorial",
+    "subcategory": "Audição",
+    "formula": "Ginkgo biloba E.S 120mg + Magnésio quelado 200mg + Vitamina B12 500mcg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 101,
+    "objective": "Saúde da Tireoide",
+    "category": "Saúde Metabólica",
+    "subcategory": "Tireoide",
+    "formula": "Iodo quelado 150mcg + L-tirosina 300mg + Selênio 100mcg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 102,
+    "objective": "Metabolismo Basal",
+    "category": "Peso e Metabolismo",
+    "subcategory": "Metabolismo",
+    "formula": "Fucus vesiculosus E.S 250mg + Cromo quelado 200mcg + Vitamina B2 25mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 103,
+    "objective": "Saúde Adrenal",
+    "category": "Saúde Metabólica",
+    "subcategory": "Adrenal",
+    "formula": "Eleutherococcus senticosus E.S 300mg + Vitamina C 500mg + Ácido pantotênico 50mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 104,
+    "objective": "Foco sob Estresse",
+    "category": "Cognição e Foco",
+    "subcategory": "Foco",
+    "formula": "Teacrina 100mg + Rhodiola rosea E.S 200mg + Vitamina B6 25mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 105,
+    "objective": "Clareza Emocional",
+    "category": "Saúde Mental e Emocional",
+    "subcategory": "Humor",
+    "formula": "L-teanina 200mg + Magnésio taurato 200mg + Vitamina B9 400mcg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 106,
+    "objective": "Equilíbrio do Humor",
+    "category": "Saúde Mental e Emocional",
+    "subcategory": "Humor",
+    "formula": "S-adenosilmetionina 200mg + Vitamina B12 500mcg + Vitamina B6 25mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 107,
+    "objective": "Saúde Neurológica",
+    "category": "Cognição e Foco",
+    "subcategory": "Neuroproteção",
+    "formula": "Ácido alfa-linolênico 300mg + Fosfatidilserina 100mg + Vitamina E 200UI",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 108,
+    "objective": "Proteção Cognitiva",
+    "category": "Cognição e Foco",
+    "subcategory": "Neuroproteção",
+    "formula": "Curcumina fitossomada 250mg + Resveratrol 150mg + Vitamina D3 2000UI",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 109,
+    "objective": "Envelhecimento Saudável",
+    "category": "Antioxidante e Longevidade",
+    "subcategory": "Longevidade",
+    "formula": "Nicotinamida ribosídeo 250mg + Coenzima Q10 100mg + Selênio 100mcg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 110,
+    "objective": "Longevidade Celular",
+    "category": "Antioxidante e Longevidade",
+    "subcategory": "Longevidade",
+    "formula": "Espermidina 5mg + Polifenóis de oliva 250mg + Vitamina K2 100mcg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 111,
+    "objective": "Suporte Mitocondrial",
+    "category": "Antioxidante e Longevidade",
+    "subcategory": "Mitocôndria",
+    "formula": "PQQ 20mg + Acetil L-carnitina 300mg + Vitamina B1 25mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 112,
+    "objective": "Defesa Celular",
+    "category": "Antioxidante e Longevidade",
+    "subcategory": "Antioxidante",
+    "formula": "Glutationa reduzida 200mg + Vitamina C 500mg + Zinco quelado 15mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 113,
+    "objective": "Equilíbrio Redox",
+    "category": "Antioxidante e Longevidade",
+    "subcategory": "Antioxidante",
+    "formula": "N-acetilcisteína 300mg + Ácido alfa-lipóico 300mg + Vitamina E 200UI",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 114,
+    "objective": "Bem-estar Integral",
+    "category": "Bem-estar Geral",
+    "subcategory": "Bem-estar",
+    "formula": "Panax ginseng E.S 200mg + Magnésio quelado 200mg + Vitamina B6 25mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 115,
+    "objective": "Regulação do Apetite Noturno",
+    "category": "Comportamento Alimentar",
+    "subcategory": "Fome Noturna",
+    "formula": "Caseína hidrolisada 300mg + Magnésio bisglicinato 200mg + Vitamina B6 25mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 116,
+    "objective": "Estabilidade Glicêmica Noturna",
+    "category": "Saúde Metabólica",
+    "subcategory": "Glicemia",
+    "formula": "Canela Ceylon E.S 250mg + Cromo nicotinato 200mcg + Vitamina B1 25mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 117,
+    "objective": "Redução de Desejo por Açúcar",
+    "category": "Comportamento Alimentar",
+    "subcategory": "Compulsão Alimentar",
+    "formula": "Gymnema sylvestre E.S 300mg + Inositol 300mg + Vitamina B3 50mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 118,
+    "objective": "Modulação da Leptina",
+    "category": "Peso e Metabolismo",
+    "subcategory": "Metabolismo",
+    "formula": "Oleoylethanolamide OEA 200mg + Magnésio citrato 200mg + Vitamina D3 2000UI",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 119,
+    "objective": "Apoio ao Metabolismo Lipídico",
+    "category": "Peso e Metabolismo",
+    "subcategory": "Metabolismo",
+    "formula": "Lecitina de soja 300mg + Colina 200mg + Vitamina B9 400mcg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 120,
+    "objective": "Função Pancreática",
+    "category": "Saúde Metabólica",
+    "subcategory": "Pâncreas",
+    "formula": "Vanádio quelado 50mcg + Ácido alfa-lipóico 250mg + Vitamina B6 25mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 121,
+    "objective": "Equilíbrio do Eixo Intestino-Cérebro",
+    "category": "Saúde Digestiva",
+    "subcategory": "Eixo Intestino-Cérebro",
+    "formula": "L-glutamina 400mg + GABA 200mg + Vitamina B12 500mcg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 122,
+    "objective": "Relaxamento Digestivo",
+    "category": "Saúde Digestiva",
+    "subcategory": "Desconforto Digestivo",
+    "formula": "Melissa officinalis E.S 300mg + Espinheira-santa E.S 200mg + Magnésio carbonato 200mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 123,
+    "objective": "Proteção da Mucosa Intestinal",
+    "category": "Saúde Digestiva",
+    "subcategory": "Barreira Intestinal",
+    "formula": "Zinco carnosina 75mg + L-treonina 250mg + Vitamina A 5000UI",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 124,
+    "objective": "Estímulo da Imunidade Intestinal",
+    "category": "Saúde Digestiva",
+    "subcategory": "Microbiota",
+    "formula": "Saccharomyces boulardii 5bi UFC + Betaglucana 250mg + Vitamina D3 2000UI",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 125,
+    "objective": "Drenagem Linfática Funcional",
+    "category": "Circulação e Drenagem",
+    "subcategory": "Drenagem Linfática",
+    "formula": "Melilotus officinalis E.S 250mg + Centella asiatica E.S 200mg + Potássio quelado 100mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 126,
+    "objective": "Redução de Edema Periférico",
+    "category": "Circulação e Drenagem",
+    "subcategory": "Retenção Hídrica / Inchaço",
+    "formula": "Hibiscus sabdariffa E.S 300mg + Uva-ursi E.S 200mg + Vitamina B5 50mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 127,
+    "objective": "Microcirculação Cutânea",
+    "category": "Circulação e Drenagem",
+    "subcategory": "Circulação",
+    "formula": "Rutina 100mg + Ginkgo biloba E.S 120mg + Vitamina C 300mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 128,
+    "objective": "Oxigenação Tecidual",
+    "category": "Circulação e Drenagem",
+    "subcategory": "Circulação",
+    "formula": "Clorela 300mg + Ferro quelado 30mg + Vitamina B12 500mcg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 129,
+    "objective": "Apoio à Síntese de Colágeno",
+    "category": "Pele, Cabelo e Unhas",
+    "subcategory": "Pele",
+    "formula": "Prolina 300mg + Vitamina C lipossomal 300mg + Cobre quelado 2mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 130,
+    "objective": "Reparação Dérmica",
+    "category": "Pele, Cabelo e Unhas",
+    "subcategory": "Pele",
+    "formula": "Glicina 400mg + Zinco quelado 15mg + Vitamina E 200UI",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 131,
+    "objective": "Saúde da Barreira Cutânea",
+    "category": "Pele, Cabelo e Unhas",
+    "subcategory": "Pele",
+    "formula": "Ceramidas 150mg + Ômega-6 GLA 300mg + Vitamina A 5000UI",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 132,
+    "objective": "Brilho e Viço da Pele",
+    "category": "Pele, Cabelo e Unhas",
+    "subcategory": "Pele",
+    "formula": "Astaxantina 8mg + Ácido hialurônico 120mg + Vitamina C 300mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 133,
+    "objective": "Saúde das Mucosas",
+    "category": "Saúde Digestiva",
+    "subcategory": "Barreira Intestinal",
+    "formula": "Vitamina A 5000UI + Zinco quelado 15mg + L-glutamina 300mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 134,
+    "objective": "Regeneração Celular Geral",
+    "category": "Antioxidante e Longevidade",
+    "subcategory": "Longevidade",
+    "formula": "L-cisteína 250mg + Selênio 100mcg + Vitamina B2 25mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 135,
+    "objective": "Ativação Metabólica Matinal",
+    "category": "Energia e Vitalidade",
+    "subcategory": "Energia",
+    "formula": "Teobromina 200mg + Tirosina 300mg + Vitamina B1 25mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 136,
+    "objective": "Disposição ao Acordar",
+    "category": "Energia e Vitalidade",
+    "subcategory": "Energia",
+    "formula": "Cordyceps sinensis E.S 300mg + Coenzima Q10 100mg + Vitamina B5 50mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 137,
+    "objective": "Foco Mental Matinal",
+    "category": "Cognição e Foco",
+    "subcategory": "Foco",
+    "formula": "N-acetil L-tirosina 300mg + Cafeína natural 80mg + Vitamina B3 50mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 138,
+    "objective": "Atenção Sustentada",
+    "category": "Cognição e Foco",
+    "subcategory": "Foco",
+    "formula": "Alpha-GPC 250mg + Bacopa monnieri E.S 200mg + Vitamina B12 500mcg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 139,
+    "objective": "Redução de Distração Mental",
+    "category": "Cognição e Foco",
+    "subcategory": "Foco",
+    "formula": "Citicolina 250mg + L-teanina 200mg + Vitamina B6 25mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 140,
+    "objective": "Estabilidade Emocional Diurna",
+    "category": "Saúde Mental e Emocional",
+    "subcategory": "Humor",
+    "formula": "GABA 200mg + Magnésio orotato 200mg + Vitamina B9 400mcg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 141,
+    "objective": "Redução de Tensão Física",
+    "category": "Saúde Articular e Óssea",
+    "subcategory": "Músculos",
+    "formula": "Magnésio sulfato 200mg + Taurina 300mg + Vitamina B2 25mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 142,
+    "objective": "Relaxamento Neuromuscular",
+    "category": "Saúde Articular e Óssea",
+    "subcategory": "Músculos",
+    "formula": "Glicinato de magnésio 200mg + Inositol 300mg + Vitamina B1 25mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 143,
+    "objective": "Indução ao Relaxamento Noturno",
+    "category": "Sono e Relaxamento",
+    "subcategory": "Indução ao Sono",
+    "formula": "Valeriana officinalis E.S 300mg + L-teanina 200mg + Vitamina B6 25mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 144,
+    "objective": "Sono Reparador Leve",
+    "category": "Sono e Relaxamento",
+    "subcategory": "Qualidade do Sono",
+    "formula": "Passiflora incarnata E.S 300mg + Magnésio glicinato 200mg + Vitamina B3 50mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 145,
+    "objective": "Continuidade do Sono",
+    "category": "Sono e Relaxamento",
+    "subcategory": "Qualidade do Sono",
+    "formula": "L-triptofano 250mg + Glicina 300mg + Vitamina B6 25mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 146,
+    "objective": "Redução de Despertares Noturnos",
+    "category": "Sono e Relaxamento",
+    "subcategory": "Qualidade do Sono",
+    "formula": "Magnólia officinalis E.S 200mg + Magnésio treonato 150mg + Vitamina B9 400mcg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 147,
+    "objective": "Equilíbrio do Sistema Nervoso",
+    "category": "Saúde Mental e Emocional",
+    "subcategory": "Sistema Nervoso",
+    "formula": "Skullcap E.S 250mg + Vitamina B1 25mg + Magnésio malato 200mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 148,
+    "objective": "Modulação da Resposta ao Estresse",
+    "category": "Saúde Mental e Emocional",
+    "subcategory": "Estresse Crônico",
+    "formula": "Schisandra chinensis E.S 300mg + Vitamina C 500mg + Vitamina B5 50mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 149,
+    "objective": "Estabilidade do Humor",
+    "category": "Saúde Mental e Emocional",
+    "subcategory": "Humor",
+    "formula": "Saffron extract 30mg + Vitamina B6 25mg + Magnésio quelado 200mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 150,
+    "objective": "Apoio Emocional Feminino",
+    "category": "Saúde Hormonal",
+    "subcategory": "Hormônios Femininos",
+    "formula": "Dong quai E.S 300mg + Vitamina E 200UI + Vitamina B9 400mcg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 151,
+    "objective": "Equilíbrio Hormonal Masculino",
+    "category": "Saúde Hormonal",
+    "subcategory": "Hormônios Masculinos",
+    "formula": "Maca vermelha E.S 400mg + Boro quelado 3mg + Vitamina D3 2000UI",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 152,
+    "objective": "Suporte Androgênico",
+    "category": "Saúde Hormonal",
+    "subcategory": "Hormônios Masculinos",
+    "formula": "Feno-grego E.S 500mg + Zinco quelado 15mg + Vitamina B6 25mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 153,
+    "objective": "Equilíbrio Estrogênico",
+    "category": "Saúde Hormonal",
+    "subcategory": "Hormônios Femininos",
+    "formula": "Indol-3-carbinol 200mg + Cálcio D-glucarato 300mg + Vitamina B2 25mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 154,
+    "objective": "Apoio ao Ciclo Feminino",
+    "category": "Saúde Hormonal",
+    "subcategory": "Hormônios Femininos",
+    "formula": "Vitex agnus-castus E.S 200mg + Magnésio quelado 200mg + Vitamina B6 25mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 155,
+    "objective": "Conforto no Climatério",
+    "category": "Saúde Hormonal",
+    "subcategory": "Libido / Climatério",
+    "formula": "Isoflavonas de soja 100mg + Vitamina E 200UI + Cálcio quelado 200mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 156,
+    "objective": "Termorregulação Corporal",
+    "category": "Saúde Hormonal",
+    "subcategory": "Libido / Climatério",
+    "formula": "Salvia officinalis E.S 300mg + Magnésio citrato 200mg + Vitamina B5 50mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 157,
+    "objective": "Suporte Ósseo Feminino",
+    "category": "Saúde Articular e Óssea",
+    "subcategory": "Ossos",
+    "formula": "Cálcio citrato 300mg + Vitamina K2 100mcg + Vitamina D3 2000UI",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 158,
+    "objective": "Saúde Articular Feminina",
+    "category": "Saúde Articular e Óssea",
+    "subcategory": "Articulações",
+    "formula": "Colágeno tipo II 300mg + Boswellia serrata E.S 250mg + Vitamina C 300mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 159,
+    "objective": "Elasticidade Muscular",
+    "category": "Performance Física",
+    "subcategory": "Músculos",
+    "formula": "MSM 300mg + Magnésio dimalato 200mg + Vitamina B6 25mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 160,
+    "objective": "Mobilidade Articular",
+    "category": "Saúde Articular e Óssea",
+    "subcategory": "Articulações",
+    "formula": "Ácido hialurônico 120mg + Colágeno tipo I 400mg + Vitamina D3 2000UI",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 161,
+    "objective": "Saúde dos Tendões",
+    "category": "Saúde Articular e Óssea",
+    "subcategory": "Tendões",
+    "formula": "L-lisina 300mg + Vitamina C 500mg + Manganês quelado 2mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 162,
+    "objective": "Regeneração Muscular",
+    "category": "Performance Física",
+    "subcategory": "Recuperação",
+    "formula": "HMB 300mg + Glutamina 400mg + Vitamina B12 500mcg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 163,
+    "objective": "Prevenção de Lesões",
+    "category": "Performance Física",
+    "subcategory": "Recuperação",
+    "formula": "Silício orgânico 100mg + Vitamina C 300mg + Zinco quelado 15mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 164,
+    "objective": "Condicionamento Físico Geral",
+    "category": "Performance Física",
+    "subcategory": "Desempenho",
+    "formula": "Panax notoginseng E.S 200mg + Magnésio quelado 200mg + Vitamina B1 25mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 165,
+    "objective": "Estímulo Cognitivo Leve",
+    "category": "Cognição e Foco",
+    "subcategory": "Foco Cognitivo",
+    "formula": "Teacrina 100mg + L-fenilalanina 300mg + Vitamina B3 50mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 166,
+    "objective": "Atenção e Raciocínio",
+    "category": "Cognição e Foco",
+    "subcategory": "Memória",
+    "formula": "Uridina monofosfato 150mg + Colina citrato 200mg + Vitamina B12 500mcg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 167,
+    "objective": "Agilidade Mental",
+    "category": "Cognição e Foco",
+    "subcategory": "Foco Cognitivo",
+    "formula": "Fosfatidilserina 150mg + Cafeína natural 80mg + Vitamina B6 25mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 168,
+    "objective": "Clareza Mental sob Pressão",
+    "category": "Cognição e Foco",
+    "subcategory": "Clareza Mental",
+    "formula": "Rhodiola crenulata E.S 250mg + Magnésio treonato 150mg + Vitamina C 300mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 169,
+    "objective": "Estabilidade Emocional Prolongada",
+    "category": "Saúde Mental e Emocional",
+    "subcategory": "Humor",
+    "formula": "L-teanina 200mg + Inositol 300mg + Vitamina B9 400mcg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 170,
+    "objective": "Redução de Irritabilidade",
+    "category": "Saúde Mental e Emocional",
+    "subcategory": "Humor",
+    "formula": "Magnólia officinalis E.S 200mg + Magnésio glicinato 200mg + Vitamina B1 25mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 171,
+    "objective": "Relaxamento Corporal Diurno",
+    "category": "Sono e Relaxamento",
+    "subcategory": "Relaxamento",
+    "formula": "Taurina 300mg + Passiflora alata E.S 300mg + Vitamina B6 25mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 172,
+    "objective": "Redução de Tensão Cervical",
+    "category": "Saúde Articular e Óssea",
+    "subcategory": "Músculos",
+    "formula": "Magnésio dimalato 200mg + Glicina 300mg + Vitamina B2 25mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 173,
+    "objective": "Suporte ao Sistema Nervoso Periférico",
+    "category": "Cognição e Foco",
+    "subcategory": "Neuroproteção",
+    "formula": "Ácido alfa-lipóico 300mg + Vitamina B1 50mg + Vitamina B12 1000mcg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 174,
+    "objective": "Neuroproteção Funcional",
+    "category": "Cognição e Foco",
+    "subcategory": "Neuroproteção",
+    "formula": "Palmitoiletanolamida 300mg + Curcumina fitossomada 250mg + Vitamina D3 2000UI",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 175,
+    "objective": "Conforto Neuromuscular",
+    "category": "Saúde Articular e Óssea",
+    "subcategory": "Músculos",
+    "formula": "MSM 300mg + Magnésio cloreto 200mg + Vitamina C 300mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 176,
+    "objective": "Relaxamento Profundo Noturno",
+    "category": "Sono e Relaxamento",
+    "subcategory": "Sono Profundo",
+    "formula": "GABA 300mg + Valeriana officinalis E.S 250mg + Vitamina B6 25mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 177,
+    "objective": "Continuidade do Sono Profundo",
+    "category": "Sono e Relaxamento",
+    "subcategory": "Sono Profundo",
+    "formula": "Melatonina 5mg + L-triptofano 250mg + Magnésio bisglicinato 200mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 178,
+    "objective": "Redução de Fadiga Noturna",
+    "category": "Sono e Relaxamento",
+    "subcategory": "Qualidade do Sono",
+    "formula": "Glicina 400mg + Magnésio malato 200mg + Vitamina B3 50mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 179,
+    "objective": "Recuperação Neural",
+    "category": "Cognição e Foco",
+    "subcategory": "Neuroproteção",
+    "formula": "Citidina 150mg + Colina bitartarato 200mg + Vitamina B12 500mcg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 180,
+    "objective": "Apoio à Mielina",
+    "category": "Cognição e Foco",
+    "subcategory": "Neuroproteção",
+    "formula": "Fosfatidilcolina 200mg + Vitamina B9 400mcg + Vitamina B12 500mcg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 181,
+    "objective": "Sensibilidade Neural",
+    "category": "Cognição e Foco",
+    "subcategory": "Neuroproteção",
+    "formula": "Ácido gama-linolênico 300mg + Vitamina E 200UI + Zinco quelado 15mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 182,
+    "objective": "Saúde Sináptica",
+    "category": "Cognição e Foco",
+    "subcategory": "Neuroproteção",
+    "formula": "Uridina 150mg + DHA em pó 300mg + Vitamina B6 25mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 183,
+    "objective": "Defesa Antioxidante Neural",
+    "category": "Cognição e Foco",
+    "subcategory": "Neuroproteção",
+    "formula": "PQQ 20mg + Resveratrol 150mg + Vitamina C 500mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 184,
+    "objective": "Suporte Cognitivo Sênior",
+    "category": "Cognição e Foco",
+    "subcategory": "Memória",
+    "formula": "Huperzina A 200mcg + Ginkgo biloba E.S 120mg + Vitamina B12 1000mcg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 185,
+    "objective": "Memória Recente",
+    "category": "Cognição e Foco",
+    "subcategory": "Memória",
+    "formula": "Bacopa monnieri padronizada 300mg + Fosfatidilserina 100mg + Vitamina B6 25mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 186,
+    "objective": "Velocidade de Processamento Mental",
+    "category": "Cognição e Foco",
+    "subcategory": "Foco Cognitivo",
+    "formula": "N-acetil L-cisteína 300mg + Vitamina C 500mg + Selênio 100mcg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 187,
+    "objective": "Proteção contra Estresse Oxidativo Neural",
+    "category": "Cognição e Foco",
+    "subcategory": "Neuroproteção",
+    "formula": "Astaxantina 8mg + Vitamina E 200UI + Vitamina A 5000UI",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 188,
+    "objective": "Clareza Mental Prolongada",
+    "category": "Cognição e Foco",
+    "subcategory": "Clareza Mental",
+    "formula": "L-tirosina 300mg + Rhodiola rosea E.S 200mg + Vitamina B1 25mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 189,
+    "objective": "Redução de Confusão Mental",
+    "category": "Cognição e Foco",
+    "subcategory": "Clareza Mental",
+    "formula": "Alpha-lipoilcolina 250mg + Vitamina B12 500mcg + Vitamina B9 400mcg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 190,
+    "objective": "Estabilidade Cognitiva",
+    "category": "Cognição e Foco",
+    "subcategory": "Foco Cognitivo",
+    "formula": "Magnésio L-treonato 150mg + Glicina 300mg + Vitamina B6 25mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 191,
+    "objective": "Suporte Neuroenergético",
+    "category": "Cognição e Foco",
+    "subcategory": "Energia Cognitiva",
+    "formula": "NADH 10mg + Riboflavina 25mg + Coenzima Q10 100mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 192,
+    "objective": "Manutenção Cognitiva",
+    "category": "Cognição e Foco",
+    "subcategory": "Memória",
+    "formula": "Polifenóis de uva 250mg + Vitamina C 300mg + Zinco quelado 15mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 193,
+    "objective": "Bem-estar Mental Global",
+    "category": "Saúde Mental e Emocional",
+    "subcategory": "Bem-estar Mental",
+    "formula": "Panax ginseng E.S 200mg + L-teanina 200mg + Vitamina B5 50mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 194,
+    "objective": "Estímulo de Energia Limpa",
+    "category": "Energia e Vitalidade",
+    "subcategory": "Energia",
+    "formula": "Isomaltulose 300mg + Ribose 200mg + Vitamina B1 25mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 195,
+    "objective": "Redução de Fadiga Diurna",
+    "category": "Energia e Vitalidade",
+    "subcategory": "Fadiga",
+    "formula": "D-ribose 300mg + Magnésio orotato 200mg + Vitamina B5 50mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 196,
+    "objective": "Vitalidade Celular Avançada",
+    "category": "Antioxidante e Longevidade",
+    "subcategory": "Mitocôndria",
+    "formula": "Ubiquinol 100mg + PQQ 20mg + Vitamina B2 25mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 197,
+    "objective": "Regulação do Eixo HPA",
+    "category": "Saúde Mental e Emocional",
+    "subcategory": "Estresse Crônico",
+    "formula": "Ashwagandha Sensoril 250mg + Fosfatidilserina 150mg + Vitamina C 500mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 198,
+    "objective": "Adaptação ao Estresse Físico",
+    "category": "Performance Física",
+    "subcategory": "Desempenho",
+    "formula": "Rhodiola crenulata E.S 300mg + Eleutero E.S 200mg + Vitamina B6 25mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 199,
+    "objective": "Apoio à Resposta Inflamatória",
+    "category": "Detox e Imunidade",
+    "subcategory": "Anti-inflamatório",
+    "formula": "Quercetina 250mg + Bromelina 200mg + Vitamina C 300mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 200,
+    "objective": "Saúde Renal Funcional",
+    "category": "Saúde Metabólica",
+    "subcategory": "Rins",
+    "formula": "Horsetail (Cavalinha) E.S 300mg + Potássio citrato 150mg + Vitamina B6 25mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 201,
+    "objective": "Suporte Digestivo Enzimático",
+    "category": "Saúde Digestiva",
+    "subcategory": "Enzimas Digestivas",
+    "formula": "Amilase 100mg + Protease 100mg + Lipase 100mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 202,
+    "objective": "Melhora da Absorção Nutricional",
+    "category": "Saúde Digestiva",
+    "subcategory": "Enzimas Digestivas",
+    "formula": "Betaína HCL 300mg + Pepsina 150mg + Vitamina B1 25mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 203,
+    "objective": "Proteção Antioxidante Sistêmica",
+    "category": "Antioxidante e Longevidade",
+    "subcategory": "Antioxidante",
+    "formula": "Glutationa lipossomal 200mg + Vitamina C 500mg + Selênio 100mcg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 204,
+    "objective": "Redução do Estresse Oxidativo",
+    "category": "Antioxidante e Longevidade",
+    "subcategory": "Antioxidante",
+    "formula": "Ácido ferúlico 200mg + Resveratrol 150mg + Vitamina E 200UI",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 205,
+    "objective": "Proteção Celular Avançada",
+    "category": "Antioxidante e Longevidade",
+    "subcategory": "Antioxidante",
+    "formula": "Sulforafano 100mg + Curcumina C3 complex 250mg + Vitamina B9 400mcg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 206,
+    "objective": "Regulação Epigenética",
+    "category": "Antioxidante e Longevidade",
+    "subcategory": "Longevidade",
+    "formula": "EGCG isolado 200mg + Quercetina 250mg + Vitamina B12 500mcg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 207,
+    "objective": "Longevidade Funcional",
+    "category": "Antioxidante e Longevidade",
+    "subcategory": "Longevidade",
+    "formula": "Spermidina 5mg + Poliaminas vegetais 200mg + Vitamina D3 2000UI",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 208,
+    "objective": "Manutenção Metabólica Global",
+    "category": "Saúde Metabólica",
+    "subcategory": "Metabolismo Geral",
+    "formula": "Berberina 300mg + Myo-inositol 400mg + Vitamina B6 25mg",
+    "posology": "1 cápsula ao dia"
+  },
+  {
+    "id": 209,
+    "objective": "Saúde Integral Avançada",
+    "category": "Bem-estar Geral",
+    "subcategory": "Bem-estar",
+    "formula": "Panax ginseng E.S 200mg + Magnésio quelado 200mg + Vitamina C 300mg",
+    "posology": "1 cápsula ao dia"
+  }
+]
