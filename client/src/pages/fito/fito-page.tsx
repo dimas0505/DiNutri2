@@ -64,12 +64,13 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 export default function FitoPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [selectedProblem, setSelectedProblem] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [copiedId, setCopiedId] = useState<number | null>(null);
 
   const formulas: PhytotherapyFormula[] = phytotherapyData;
 
-  // Get unique subcategories for selected category
+  // Get unique subcategories (problems) for selected category
   const subcategories = useMemo(() => {
     if (!selectedCategory || selectedCategory === "all") return [];
     return Array.from(
@@ -81,19 +82,27 @@ export default function FitoPage() {
     ).sort();
   }, [selectedCategory]);
 
+  // Get all unique problems (subcategories) in alphabetical order
+  const allProblems = useMemo(() => {
+    return Array.from(
+      new Set(formulas.map((f) => f.subcategory))
+    ).sort();
+  }, []);
+
   // Filter formulas based on selected filters and search
   const filteredFormulas = useMemo(() => {
     return formulas.filter((formula) => {
       const matchesCategory = !selectedCategory || selectedCategory === "all" || formula.category === selectedCategory;
+      const matchesProblem = !selectedProblem || selectedProblem === "all" || formula.subcategory === selectedProblem;
       const matchesSearch =
         !searchTerm ||
         formula.objective.toLowerCase().includes(searchTerm.toLowerCase()) ||
         formula.subcategory.toLowerCase().includes(searchTerm.toLowerCase()) ||
         formula.formula.toLowerCase().includes(searchTerm.toLowerCase());
 
-      return matchesCategory && matchesSearch;
+      return matchesCategory && matchesProblem && matchesSearch;
     });
-  }, [selectedCategory, searchTerm]);
+  }, [selectedCategory, selectedProblem, searchTerm]);
 
   const handleCopyFormula = (formula: string, id: number) => {
     navigator.clipboard.writeText(formula);
@@ -103,6 +112,7 @@ export default function FitoPage() {
 
   const handleClearFilters = () => {
     setSelectedCategory("all");
+    setSelectedProblem("all");
     setSearchTerm("");
   };
 
@@ -116,7 +126,7 @@ export default function FitoPage() {
 
       <main className="max-w-7xl mx-auto p-4 lg:p-6">
         {/* Search and Filter Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-6">
           {/* Search Input */}
           <div className="lg:col-span-1">
             <div className="relative">
@@ -148,9 +158,27 @@ export default function FitoPage() {
             </Select>
           </div>
 
+          {/* Problem/Subcategory Select */}
+          <div className="lg:col-span-1">
+            <Select value={selectedProblem} onValueChange={setSelectedProblem}>
+              <SelectTrigger className="h-11">
+                <Filter className="h-4 w-4 mr-2" />
+                <SelectValue placeholder="Selecione um problema..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os problemas</SelectItem>
+                {allProblems.map((problem) => (
+                  <SelectItem key={problem} value={problem}>
+                    {problem}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           {/* Clear Filters Button */}
           <div className="flex gap-2">
-            {(selectedCategory !== "all" || searchTerm) && (
+            {(selectedCategory !== "all" || selectedProblem !== "all" || searchTerm) && (
               <Button
                 variant="outline"
                 onClick={handleClearFilters}
