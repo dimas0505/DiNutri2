@@ -138,7 +138,9 @@ function Router() {
 
       {/* Redirecionamento se logado mas tentando acessar rota inválida */}
       {isAuthenticated && (
-        <Redirect to="/" />
+        <Route path="/:rest*">
+          <Redirect to="/" />
+        </Route>
       )}
       
       {/* Rota 404 */}

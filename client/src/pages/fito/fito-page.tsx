@@ -63,7 +63,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 };
 
 export default function FitoPage() {
-  const [selectedCategory, setSelectedCategory] = useState<string>("");
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [copiedId, setCopiedId] = useState<number | null>(null);
 
@@ -71,7 +71,7 @@ export default function FitoPage() {
 
   // Get unique subcategories for selected category
   const subcategories = useMemo(() => {
-    if (!selectedCategory) return [];
+    if (!selectedCategory || selectedCategory === "all") return [];
     return Array.from(
       new Set(
         formulas
@@ -84,7 +84,7 @@ export default function FitoPage() {
   // Filter formulas based on selected filters and search
   const filteredFormulas = useMemo(() => {
     return formulas.filter((formula) => {
-      const matchesCategory = !selectedCategory || formula.category === selectedCategory;
+      const matchesCategory = !selectedCategory || selectedCategory === "all" || formula.category === selectedCategory;
       const matchesSearch =
         !searchTerm ||
         formula.objective.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -102,7 +102,7 @@ export default function FitoPage() {
   };
 
   const handleClearFilters = () => {
-    setSelectedCategory("");
+    setSelectedCategory("all");
     setSearchTerm("");
   };
 
@@ -138,7 +138,7 @@ export default function FitoPage() {
                 <SelectValue placeholder="Selecione uma categoria..." />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todas as categorias</SelectItem>
+                <SelectItem value="all">Todas as categorias</SelectItem>
                 {CATEGORIES.map((category) => (
                   <SelectItem key={category} value={category}>
                     {category}
@@ -150,7 +150,7 @@ export default function FitoPage() {
 
           {/* Clear Filters Button */}
           <div className="flex gap-2">
-            {(selectedCategory || searchTerm) && (
+            {(selectedCategory !== "all" || searchTerm) && (
               <Button
                 variant="outline"
                 onClick={handleClearFilters}
@@ -169,7 +169,7 @@ export default function FitoPage() {
             <h2 className="text-lg font-semibold text-gray-800">
               {filteredFormulas.length} fórmula{filteredFormulas.length !== 1 ? "s" : ""} encontrada{filteredFormulas.length !== 1 ? "s" : ""}
             </h2>
-            {selectedCategory && (
+            {selectedCategory && selectedCategory !== "all" && (
               <Badge className={CATEGORY_COLORS[selectedCategory] || "bg-gray-100 text-gray-800"}>
                 {selectedCategory}
               </Badge>
