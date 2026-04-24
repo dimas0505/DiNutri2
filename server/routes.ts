@@ -22,6 +22,37 @@ import ExcelJS from 'exceljs';
 
 const SALT_ROUNDS = 10;
 const BRAZIL_TIMEZONE = 'America/Sao_Paulo';
+const VALID_USER_ROLES = ["admin", "nutritionist", "patient", "fito"] as const;
+
+type SafeUserResponse = {
+  id: string;
+  email: string;
+  firstName: string | null;
+  lastName: string | null;
+  profileImageUrl: string | null;
+  role: string;
+  bodyFatEquation: string | null;
+  createdAt: Date | null;
+  updatedAt: Date | null;
+};
+
+function isValidUserId(id: string): boolean {
+  return typeof id === "string" && id.trim().length > 0 && id.length <= 128;
+}
+
+function sanitizeUser(user: any): SafeUserResponse {
+  return {
+    id: user.id,
+    email: user.email,
+    firstName: user.firstName ?? null,
+    lastName: user.lastName ?? null,
+    profileImageUrl: user.profileImageUrl ?? null,
+    role: user.role,
+    bodyFatEquation: user.bodyFatEquation ?? null,
+    createdAt: user.createdAt ?? null,
+    updatedAt: user.updatedAt ?? null,
+  };
+}
 
 function formatDateInBrazilTimezone(value: Date | string | null | undefined, includeTime = false): string {
   if (!value) return 'N/A';
@@ -227,16 +258,43 @@ export async function setupRoutes(app: Express): Promise<void> {
   app.get('/api/admin/users', isAuthenticated, isAdmin, async (req, res) => {
     try {
         const users = await storage.getAllUsers();
-        res.json(users);
+        res.json(users.map((user) => sanitizeUser(user)));
     } catch (error) {
         console.error("Erro ao buscar usuários:", error);
         res.status(500).json({ message: "Falha ao buscar usuários." });
     }
   });
 
+  app.get('/api/admin/users/:id', isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      if (!isValidUserId(id)) {
+        return res.status(400).json({ message: "ID de usuário inválido." });
+      }
+
+      const user = await storage.getUser(id);
+      if (!user) {
+        return res.status(404).json({ message: "Usuário não encontrado." });
+      }
+
+      res.json(sanitizeUser(user));
+    } catch (error) {
+      console.error("Erro ao buscar usuário por ID:", error);
+      res.status(500).json({ message: "Falha ao buscar usuário." });
+    }
+  });
+
   app.get('/api/admin/users/:id/dependencies', isAuthenticated, isAdmin, async (req, res) => {
     try {
       const { id } = req.params;
+      if (!isValidUserId(id)) {
+        return res.status(400).json({ message: "ID de usuário inválido." });
+      }
+      const user = await storage.getUser(id);
+      if (!user) {
+        return res.status(404).json({ message: "Usuário não encontrado." });
+      }
+
       const hasPatients = await storage.userHasPatients(id);
       const hasPrescriptions = await storage.userHasPrescriptions(id);
       const hasInvitations = await storage.userHasInvitations(id);
@@ -261,7 +319,7 @@ export async function setupRoutes(app: Express): Promise<void> {
 
         const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
         const newUser = await storage.upsertUser({ email, hashedPassword, firstName, lastName, role });
-        res.status(201).json(newUser);
+        res.status(201).json(sanitizeUser(newUser));
     } catch (error) {
         console.error("Erro ao criar usuário:", error);
         res.status(500).json({ message: "Falha ao criar usuário." });
@@ -270,8 +328,33 @@ export async function setupRoutes(app: Express): Promise<void> {
 
   app.put('/api/admin/users/:id', isAuthenticated, isAdmin, async (req, res) => {
       try {
-        const updatedUser = await storage.updateUserProfile(req.params.id, req.body);
-        res.json(updatedUser);
+        const { id } = req.params;
+        if (!isValidUserId(id)) {
+          return res.status(400).json({ message: "ID de usuário inválido." });
+        }
+
+        const existingUser = await storage.getUser(id);
+        if (!existingUser) {
+          return res.status(404).json({ message: "Usuário não encontrado." });
+        }
+
+        const allowedPayload = {
+          firstName: typeof req.body?.firstName === "string" ? req.body.firstName.trim() : "",
+          lastName: typeof req.body?.lastName === "string" ? req.body.lastName.trim() : "",
+          email: typeof req.body?.email === "string" ? req.body.email.trim().toLowerCase() : "",
+          role: req.body?.role,
+        };
+
+        if (!allowedPayload.firstName || !allowedPayload.lastName || !allowedPayload.email) {
+          return res.status(400).json({ message: "Nome, sobrenome e email são obrigatórios." });
+        }
+
+        if (!VALID_USER_ROLES.includes(allowedPayload.role)) {
+          return res.status(400).json({ message: "Role de usuário inválida." });
+        }
+
+        const updatedUser = await storage.updateUserProfile(id, allowedPayload);
+        res.json(sanitizeUser(updatedUser));
       } catch (error: any) {
         console.error("Erro ao atualizar usuário:", error);
         if (error.message?.includes('unique constraint')) {
@@ -283,12 +366,21 @@ export async function setupRoutes(app: Express): Promise<void> {
 
   app.put('/api/admin/users/:id/password', isAuthenticated, isAdmin, async (req, res) => {
       try {
+          const { id } = req.params;
+          if (!isValidUserId(id)) {
+            return res.status(400).json({ message: "ID de usuário inválido." });
+          }
+          const existingUser = await storage.getUser(id);
+          if (!existingUser) {
+            return res.status(404).json({ message: "Usuário não encontrado." });
+          }
+
           const { newPassword } = req.body;
           if (!newPassword || newPassword.length < 6) {
               return res.status(400).json({ message: "A nova senha deve ter pelo menos 6 caracteres." });
           }
           const hashedPassword = await bcrypt.hash(newPassword, SALT_ROUNDS);
-          await storage.updateUserPassword(req.params.id, hashedPassword);
+          await storage.updateUserPassword(id, hashedPassword);
           res.status(200).json({ message: "Senha atualizada com sucesso." });
       } catch (error) {
           console.error("Erro ao alterar senha:", error);
@@ -298,7 +390,21 @@ export async function setupRoutes(app: Express): Promise<void> {
   
   app.delete('/api/admin/users/:id', isAuthenticated, isAdmin, async (req, res) => {
     try {
-      await storage.deleteUser(req.params.id);
+      const { id } = req.params;
+      if (!isValidUserId(id)) {
+        return res.status(400).json({ message: "ID de usuário inválido." });
+      }
+
+      const existingUser = await storage.getUser(id);
+      if (!existingUser) {
+        return res.status(404).json({ message: "Usuário não encontrado." });
+      }
+
+      if ((req.user as any).id === id) {
+        return res.status(403).json({ message: "Você não pode excluir sua própria conta administrativa." });
+      }
+
+      await storage.deleteUser(id);
       res.status(204).send();
     } catch (error: any) {
       console.error("Erro ao deletar usuário:", error);
