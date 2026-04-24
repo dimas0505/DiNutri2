@@ -1,18 +1,48 @@
-import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { Plus, Users, Shield, UserPlus, Settings, Edit } from "lucide-react";
+import { Users, Shield, UserPlus, Settings, Edit, Trash2 } from "lucide-react";
 import Header from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { DefaultMobileDrawer } from "@/components/layout/mobile-layout";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import type { User } from "@shared/schema";
 
 export default function AdminDashboard() {
   const [, setLocation] = useLocation();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const { user: currentUser } = useAuth();
+  const [userToDelete, setUserToDelete] = useState<User | null>(null);
 
   const { data: users = [], isLoading } = useQuery<User[]>({
     queryKey: ["/api/admin/users"],
+  });
+
+  const deleteUserMutation = useMutation({
+    mutationFn: (userId: string) => apiRequest("DELETE", `/api/admin/users/${userId}`),
+    onSuccess: () => {
+      toast({
+        title: "Usuário excluído com sucesso!",
+        description: "A lista foi atualizada automaticamente.",
+      });
+      setUserToDelete(null);
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erro ao excluir usuário",
+        description: error?.message?.includes("403")
+          ? "Você não pode excluir sua própria conta."
+          : "Não foi possível excluir este usuário.",
+        variant: "destructive",
+      });
+    },
   });
 
   const userStats = {
@@ -172,16 +202,29 @@ export default function AdminDashboard() {
                           {user.createdAt && formatDate(user.createdAt.toString())}
                         </td>
                         <td className="p-4">
-                          <Button 
-                            variant="ghost" 
-                            size="sm"
-                            onClick={() => setLocation(`/admin/users/${user.id}`)}
-                            className="flex items-center space-x-2"
-                            data-testid={`button-edit-user-${user.id}`}
-                          >
-                            <Edit className="h-4 w-4" />
-                            <span>Editar</span>
-                          </Button>
+                          <div className="flex items-center gap-2">
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => setLocation(`/admin/users/${user.id}`)}
+                              className="flex items-center space-x-2"
+                              data-testid={`button-edit-user-${user.id}`}
+                            >
+                              <Edit className="h-4 w-4" />
+                              <span>Editar</span>
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setUserToDelete(user)}
+                              className="flex items-center space-x-2 text-destructive hover:text-destructive"
+                              disabled={deleteUserMutation.isPending || user.id === currentUser?.id}
+                              data-testid={`button-delete-user-${user.id}`}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              <span>Excluir</span>
+                            </Button>
+                          </div>
                         </td>
                       </tr>
                     ))
@@ -192,6 +235,27 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
       </main>
+
+      <AlertDialog open={!!userToDelete} onOpenChange={(open) => !open && setUserToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir <strong>{userToDelete?.firstName} {userToDelete?.lastName}</strong>? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteUserMutation.isPending}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleteUserMutation.isPending || !userToDelete}
+              onClick={() => userToDelete && deleteUserMutation.mutate(userToDelete.id)}
+            >
+              {deleteUserMutation.isPending ? "Excluindo..." : "Excluir"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
