@@ -6,6 +6,7 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  Legend,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -132,18 +133,48 @@ function getVariation(current: number | null, previous: number | null) {
 
   const absolute = Number((current - previous).toFixed(2));
   const percent = previous === 0 ? null : Number((((current - previous) / previous) * 100).toFixed(2));
-
   const trend = absolute === 0 ? "Sem alteração" : absolute > 0 ? "Aumento" : "Redução";
 
   return { absolute, percent, trend };
 }
 
-function SectionHeader({ icon, title }: { icon: React.ReactNode; title: string }) {
+function SectionHeader({
+  icon,
+  title,
+  subtitle,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  subtitle?: string;
+}) {
   return (
-    <div className="flex items-center gap-2 mb-3">
-      <div className="w-7 h-7 rounded-lg bg-purple-50 flex items-center justify-center">{icon}</div>
-      <p className="text-xs font-bold text-foreground uppercase tracking-widest">{title}</p>
+    <div className="mb-3">
+      <div className="flex items-center gap-2">
+        <div className="w-7 h-7 rounded-lg bg-purple-50 flex items-center justify-center">{icon}</div>
+        <p className="text-xs font-bold text-foreground uppercase tracking-widest">{title}</p>
+      </div>
+      {subtitle && <p className="text-[11px] text-muted-foreground mt-1">{subtitle}</p>}
     </div>
+  );
+}
+
+function SingleMetricLegend({ label, color }: { label: string; color: string }) {
+  return (
+    <div className="flex items-center justify-center pb-1">
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-background px-2 py-1 text-[10px] text-muted-foreground">
+        <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: color }} />
+        {label}
+      </span>
+    </div>
+  );
+}
+
+function ComparisonBadge({ label, value, variant = "outline" }: { label: string; value: string; variant?: "outline" | "secondary" }) {
+  return (
+    <Badge variant={variant} className="text-[10px] font-medium px-2.5 py-1">
+      <span className="text-muted-foreground mr-1">{label}:</span>
+      <span>{value}</span>
+    </Badge>
   );
 }
 
@@ -175,7 +206,6 @@ export function AssessmentEvolution({ history }: AssessmentEvolutionProps) {
 
   const comparisonStart = sortedHistory[compareStartIndex] ?? null;
   const comparisonEnd = sortedHistory[compareEndIndex] ?? null;
-  const previousForEnd = compareEndIndex > 0 ? sortedHistory[compareEndIndex - 1] : null;
 
   const dayInterval = getDayDiff(firstAssessment?.createdAt, latestAssessment?.createdAt);
 
@@ -266,7 +296,7 @@ export function AssessmentEvolution({ history }: AssessmentEvolutionProps) {
 
   if (!latestAssessment) {
     return (
-      <Card className="border border-border/70">
+      <Card className="border border-border/70 shadow-sm">
         <CardContent className="flex flex-col items-center justify-center py-12 text-center">
           <Activity className="h-12 w-12 text-muted-foreground/50 mb-4" />
           <p className="text-muted-foreground font-medium">Você ainda não possui avaliações registradas.</p>
@@ -281,7 +311,7 @@ export function AssessmentEvolution({ history }: AssessmentEvolutionProps) {
   if (sortedHistory.length === 1) {
     return (
       <div className="space-y-4">
-        <Card className="border border-purple-100 bg-purple-50/40">
+        <Card className="border border-purple-100 bg-purple-50/40 shadow-sm">
           <CardContent className="px-4 py-3 flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-purple-100 flex items-center justify-center">
               <Calendar className="h-4 w-4 text-purple-600" />
@@ -295,7 +325,7 @@ export function AssessmentEvolution({ history }: AssessmentEvolutionProps) {
           </CardContent>
         </Card>
 
-        <Card className="border border-border/50">
+        <Card className="border border-border/60 shadow-sm">
           <CardContent className="flex flex-col items-center justify-center py-10 text-center">
             <ArrowRightLeft className="h-10 w-10 text-purple-300 mb-3" />
             <p className="text-sm font-medium text-muted-foreground">Você possui uma avaliação registrada.</p>
@@ -316,26 +346,26 @@ export function AssessmentEvolution({ history }: AssessmentEvolutionProps) {
         transition={{ duration: 0.3 }}
         className="grid grid-cols-2 lg:grid-cols-4 gap-2.5"
       >
-        <Card className="border border-gray-100">
-          <CardContent className="p-3">
+        <Card className="border border-gray-100 shadow-sm">
+          <CardContent className="p-3.5">
             <p className="text-[11px] text-muted-foreground">Total de avaliações</p>
-            <p className="text-lg font-bold">{sortedHistory.length}</p>
+            <p className="text-lg font-bold text-foreground">{sortedHistory.length}</p>
           </CardContent>
         </Card>
-        <Card className="border border-gray-100">
-          <CardContent className="p-3">
+        <Card className="border border-gray-100 shadow-sm">
+          <CardContent className="p-3.5">
             <p className="text-[11px] text-muted-foreground">Primeira avaliação</p>
             <p className="text-sm font-semibold leading-tight">{formatDate(firstAssessment?.createdAt)}</p>
           </CardContent>
         </Card>
-        <Card className="border border-gray-100">
-          <CardContent className="p-3">
+        <Card className="border border-gray-100 shadow-sm">
+          <CardContent className="p-3.5">
             <p className="text-[11px] text-muted-foreground">Última avaliação</p>
             <p className="text-sm font-semibold leading-tight">{formatDate(latestAssessment?.createdAt)}</p>
           </CardContent>
         </Card>
-        <Card className="border border-gray-100">
-          <CardContent className="p-3">
+        <Card className="border border-gray-100 shadow-sm">
+          <CardContent className="p-3.5">
             <p className="text-[11px] text-muted-foreground">Período acompanhado</p>
             <p className="text-sm font-semibold leading-tight">
               {dayInterval == null ? "Não disponível" : `${dayInterval} dia${dayInterval === 1 ? "" : "s"}`}
@@ -344,14 +374,24 @@ export function AssessmentEvolution({ history }: AssessmentEvolutionProps) {
         </Card>
       </motion.div>
 
-      <Card className="border border-purple-100 bg-purple-50/30">
+      <Card className="border border-purple-100 bg-purple-50/30 shadow-sm">
         <CardContent className="p-4 space-y-3">
-          <SectionHeader icon={<ArrowRightLeft className="h-3.5 w-3.5 text-purple-600" />} title="Comparação entre avaliações" />
+          <SectionHeader
+            icon={<ArrowRightLeft className="h-3.5 w-3.5 text-purple-600" />}
+            title="Comparação entre avaliações"
+            subtitle="Padrão: primeira avaliação até a última avaliação registrada."
+          />
+
+          <div className="flex flex-wrap gap-2">
+            <ComparisonBadge label="Inicial" value={formatDate(comparisonStart?.createdAt)} />
+            <ComparisonBadge label="Final" value={formatDate(comparisonEnd?.createdAt)} variant="secondary" />
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label className="text-xs text-muted-foreground">Comparar de</Label>
               <Select value={comparisonStart?.id ?? ""} onValueChange={setFromId}>
-                <SelectTrigger>
+                <SelectTrigger className="bg-background/80">
                   <SelectValue placeholder="Selecione" />
                 </SelectTrigger>
                 <SelectContent>
@@ -366,7 +406,7 @@ export function AssessmentEvolution({ history }: AssessmentEvolutionProps) {
             <div className="space-y-1.5">
               <Label className="text-xs text-muted-foreground">Comparar até</Label>
               <Select value={comparisonEnd?.id ?? ""} onValueChange={setToId}>
-                <SelectTrigger>
+                <SelectTrigger className="bg-background/80">
                   <SelectValue placeholder="Selecione" />
                 </SelectTrigger>
                 <SelectContent>
@@ -394,9 +434,13 @@ export function AssessmentEvolution({ history }: AssessmentEvolutionProps) {
       </Card>
 
       <div>
-        <SectionHeader icon={<Activity className="h-3.5 w-3.5 text-indigo-600" />} title="Variação por métrica" />
+        <SectionHeader
+          icon={<Activity className="h-3.5 w-3.5 text-indigo-600" />}
+          title="Variação por métrica"
+          subtitle="Exibe apenas métricas com valor inicial e final válidos no intervalo selecionado."
+        />
         {comparisonMetrics.length === 0 ? (
-          <Card className="border border-border/70">
+          <Card className="border border-border/70 shadow-sm">
             <CardContent className="py-6 text-center text-sm text-muted-foreground">
               Não há métricas numéricas completas para comparar nesse intervalo.
             </CardContent>
@@ -413,14 +457,19 @@ export function AssessmentEvolution({ history }: AssessmentEvolutionProps) {
                   <ArrowDown className="h-3.5 w-3.5" />
                 );
 
+              const trendClasses =
+                metric.variation.absolute == null || metric.variation.absolute === 0
+                  ? "bg-slate-100 text-slate-700"
+                  : metric.variation.absolute > 0
+                  ? "bg-blue-100 text-blue-700"
+                  : "bg-emerald-100 text-emerald-700";
+
               return (
-                <Card key={metric.key} className="border border-gray-100">
+                <Card key={metric.key} className="border border-gray-100 shadow-sm">
                   <CardContent className="p-3 space-y-2">
                     <div className="flex items-center justify-between gap-3">
                       <p className="text-sm font-semibold">{metric.label}</p>
-                      <Badge variant="secondary" className="text-[10px]">
-                        {metric.variation.trend}
-                      </Badge>
+                      <Badge className={`text-[10px] border-0 ${trendClasses}`}>{metric.variation.trend}</Badge>
                     </div>
                     <div className="grid grid-cols-3 gap-2 text-xs">
                       <div>
@@ -461,11 +510,15 @@ export function AssessmentEvolution({ history }: AssessmentEvolutionProps) {
 
       {weightData.length >= 2 && (
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.1 }}>
-          <SectionHeader icon={<Weight className="h-3.5 w-3.5 text-blue-500" />} title="Evolução do Peso" />
+          <SectionHeader
+            icon={<Weight className="h-3.5 w-3.5 text-blue-500" />}
+            title="Evolução do Peso"
+            subtitle="Linha temporal de peso (kg) em ordem cronológica."
+          />
           <Card className="border border-gray-100 shadow-sm overflow-hidden">
             <CardContent className="px-2 pt-4 pb-2">
-              <ResponsiveContainer width="100%" height={190}>
-                <AreaChart data={weightData} margin={{ top: 8, right: 12, left: -20, bottom: 0 }}>
+              <ResponsiveContainer width="100%" height={220}>
+                <AreaChart data={weightData} margin={{ top: 8, right: 12, left: -20, bottom: 8 }}>
                   <defs>
                     <linearGradient id="weightGrad" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.25} />
@@ -482,15 +535,27 @@ export function AssessmentEvolution({ history }: AssessmentEvolutionProps) {
                       return (
                         <div className="bg-white/95 backdrop-blur-sm border border-gray-100 rounded-xl px-3 py-2 shadow-lg">
                           <p className="text-xs text-muted-foreground">{point.dateLong}</p>
-                          <p className="text-[11px] text-muted-foreground">{point.title}</p>
+                          <p className="text-[11px] text-muted-foreground mb-0.5">{point.title}</p>
+                          <p className="text-xs text-muted-foreground">Métrica: Peso</p>
                           <p className="text-sm font-bold text-blue-600">{formatNumber(point.value)} kg</p>
                         </div>
                       );
                     }}
                   />
-                  <Area type="monotone" dataKey="value" stroke="#3B82F6" strokeWidth={2.5} fill="url(#weightGrad)" dot={{ r: 4, fill: "#3B82F6", strokeWidth: 2, stroke: "#fff" }} activeDot={{ r: 6, fill: "#3B82F6", strokeWidth: 2, stroke: "#fff" }} />
+                  <Legend verticalAlign="bottom" align="center" wrapperStyle={{ paddingTop: 8, fontSize: 11 }} />
+                  <Area
+                    type="monotone"
+                    dataKey="value"
+                    name="Peso"
+                    stroke="#3B82F6"
+                    strokeWidth={2.5}
+                    fill="url(#weightGrad)"
+                    dot={{ r: 4, fill: "#3B82F6", strokeWidth: 2, stroke: "#fff" }}
+                    activeDot={{ r: 6, fill: "#3B82F6", strokeWidth: 2, stroke: "#fff" }}
+                  />
                 </AreaChart>
               </ResponsiveContainer>
+              <SingleMetricLegend label="Peso" color="#3B82F6" />
             </CardContent>
           </Card>
         </motion.div>
@@ -498,11 +563,15 @@ export function AssessmentEvolution({ history }: AssessmentEvolutionProps) {
 
       {fatData.length >= 2 && (
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.15 }}>
-          <SectionHeader icon={<Percent className="h-3.5 w-3.5 text-orange-500" />} title="Evolução da Gordura Corporal" />
+          <SectionHeader
+            icon={<Percent className="h-3.5 w-3.5 text-orange-500" />}
+            title="Evolução da Gordura Corporal"
+            subtitle="Linha temporal do percentual de gordura (%)."
+          />
           <Card className="border border-gray-100 shadow-sm overflow-hidden">
             <CardContent className="px-2 pt-4 pb-2">
-              <ResponsiveContainer width="100%" height={190}>
-                <AreaChart data={fatData} margin={{ top: 8, right: 12, left: -20, bottom: 0 }}>
+              <ResponsiveContainer width="100%" height={220}>
+                <AreaChart data={fatData} margin={{ top: 8, right: 12, left: -20, bottom: 8 }}>
                   <defs>
                     <linearGradient id="fatGrad" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#F97316" stopOpacity={0.25} />
@@ -519,15 +588,27 @@ export function AssessmentEvolution({ history }: AssessmentEvolutionProps) {
                       return (
                         <div className="bg-white/95 backdrop-blur-sm border border-gray-100 rounded-xl px-3 py-2 shadow-lg">
                           <p className="text-xs text-muted-foreground">{point.dateLong}</p>
-                          <p className="text-[11px] text-muted-foreground">{point.title}</p>
+                          <p className="text-[11px] text-muted-foreground mb-0.5">{point.title}</p>
+                          <p className="text-xs text-muted-foreground">Métrica: % Gordura</p>
                           <p className="text-sm font-bold text-orange-600">{formatNumber(point.value)}%</p>
                         </div>
                       );
                     }}
                   />
-                  <Area type="monotone" dataKey="value" stroke="#F97316" strokeWidth={2.5} fill="url(#fatGrad)" dot={{ r: 4, fill: "#F97316", strokeWidth: 2, stroke: "#fff" }} activeDot={{ r: 6, fill: "#F97316", strokeWidth: 2, stroke: "#fff" }} />
+                  <Legend verticalAlign="bottom" align="center" wrapperStyle={{ paddingTop: 8, fontSize: 11 }} />
+                  <Area
+                    type="monotone"
+                    dataKey="value"
+                    name="% Gordura"
+                    stroke="#F97316"
+                    strokeWidth={2.5}
+                    fill="url(#fatGrad)"
+                    dot={{ r: 4, fill: "#F97316", strokeWidth: 2, stroke: "#fff" }}
+                    activeDot={{ r: 6, fill: "#F97316", strokeWidth: 2, stroke: "#fff" }}
+                  />
                 </AreaChart>
               </ResponsiveContainer>
+              <SingleMetricLegend label="% Gordura" color="#F97316" />
             </CardContent>
           </Card>
         </motion.div>
@@ -535,45 +616,15 @@ export function AssessmentEvolution({ history }: AssessmentEvolutionProps) {
 
       {circumferenceData.length > 0 && (
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.2 }}>
-          <SectionHeader icon={<Ruler className="h-3.5 w-3.5 text-purple-600" />} title="Circunferências (cm)" />
+          <SectionHeader
+            icon={<Ruler className="h-3.5 w-3.5 text-purple-600" />}
+            title="Circunferências (cm)"
+            subtitle="Comparação por medida entre a avaliação inicial e final selecionadas."
+          />
           <Card className="border border-gray-100 shadow-sm overflow-hidden">
             <CardContent className="px-2 pt-4 pb-2">
-              <ResponsiveContainer width="100%" height={circumferenceData.length * 38 + 20}>
-                <BarChart data={circumferenceData} layout="vertical" margin={{ top: 0, right: 40, left: 60, bottom: 0 }} barSize={10} barGap={3}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
-                  <XAxis type="number" tick={{ fontSize: 9, fill: "#94a3b8" }} axisLine={false} tickLine={false} domain={["auto", "auto"]} />
-                  <YAxis type="category" dataKey="label" tick={{ fontSize: 10, fill: "#64748b" }} axisLine={false} tickLine={false} width={58} />
-                  <Tooltip
-                    content={({ active, payload, label }) => {
-                      if (!active || !payload?.length) return null;
-                      return (
-                        <div className="bg-white/95 backdrop-blur-sm border border-gray-100 rounded-xl px-3 py-2 shadow-lg">
-                          <p className="text-xs text-muted-foreground mb-1">{label}</p>
-                          {payload.map((p: any) => (
-                            <p key={p.name} className="text-xs font-semibold" style={{ color: p.fill }}>
-                              {p.name === "atual" ? "Final" : "Inicial"}: {formatNumber(p.value)} cm
-                            </p>
-                          ))}
-                        </div>
-                      );
-                    }}
-                  />
-                  {comparisonStart && <Bar dataKey="inicial" name="inicial" fill="#C4B5FD" radius={[0, 4, 4, 0]} />}
-                  <Bar dataKey="atual" name="atual" fill="#8B5CF6" radius={[0, 4, 4, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        </motion.div>
-      )}
-
-      {foldData.length > 0 && (
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.25 }}>
-          <SectionHeader icon={<Activity className="h-3.5 w-3.5 text-rose-500" />} title="Dobras Cutâneas (mm)" />
-          <Card className="border border-gray-100 shadow-sm overflow-hidden">
-            <CardContent className="px-2 pt-4 pb-2">
-              <ResponsiveContainer width="100%" height={foldData.length * 38 + 20}>
-                <BarChart data={foldData} layout="vertical" margin={{ top: 0, right: 40, left: 72, bottom: 0 }} barSize={10} barGap={3}>
+              <ResponsiveContainer width="100%" height={Math.max(circumferenceData.length * 38 + 40, 240)}>
+                <BarChart data={circumferenceData} layout="vertical" margin={{ top: 0, right: 40, left: 72, bottom: 12 }} barSize={10} barGap={3}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
                   <XAxis type="number" tick={{ fontSize: 9, fill: "#94a3b8" }} axisLine={false} tickLine={false} domain={["auto", "auto"]} />
                   <YAxis type="category" dataKey="label" tick={{ fontSize: 10, fill: "#64748b" }} axisLine={false} tickLine={false} width={70} />
@@ -583,6 +634,51 @@ export function AssessmentEvolution({ history }: AssessmentEvolutionProps) {
                       return (
                         <div className="bg-white/95 backdrop-blur-sm border border-gray-100 rounded-xl px-3 py-2 shadow-lg">
                           <p className="text-xs text-muted-foreground mb-1">{label}</p>
+                          <p className="text-[11px] text-muted-foreground">
+                            Inicial: {formatDate(comparisonStart?.createdAt)} • Final: {formatDate(comparisonEnd?.createdAt)}
+                          </p>
+                          {payload.map((p: any) => (
+                            <p key={p.name} className="text-xs font-semibold" style={{ color: p.fill }}>
+                              {p.name === "atual" ? "Final" : "Inicial"}: {formatNumber(p.value)} cm
+                            </p>
+                          ))}
+                        </div>
+                      );
+                    }}
+                  />
+                  <Legend verticalAlign="bottom" align="center" wrapperStyle={{ paddingTop: 8, fontSize: 11 }} />
+                  {comparisonStart && <Bar dataKey="inicial" name="Inicial" fill="#C4B5FD" radius={[0, 4, 4, 0]} />}
+                  <Bar dataKey="atual" name="Final" fill="#8B5CF6" radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+
+      {foldData.length > 0 && (
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.25 }}>
+          <SectionHeader
+            icon={<Activity className="h-3.5 w-3.5 text-rose-500" />}
+            title="Dobras Cutâneas (mm)"
+            subtitle="Comparação por dobra entre a avaliação inicial e final selecionadas."
+          />
+          <Card className="border border-gray-100 shadow-sm overflow-hidden">
+            <CardContent className="px-2 pt-4 pb-2">
+              <ResponsiveContainer width="100%" height={Math.max(foldData.length * 38 + 40, 220)}>
+                <BarChart data={foldData} layout="vertical" margin={{ top: 0, right: 40, left: 72, bottom: 12 }} barSize={10} barGap={3}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
+                  <XAxis type="number" tick={{ fontSize: 9, fill: "#94a3b8" }} axisLine={false} tickLine={false} domain={["auto", "auto"]} />
+                  <YAxis type="category" dataKey="label" tick={{ fontSize: 10, fill: "#64748b" }} axisLine={false} tickLine={false} width={70} />
+                  <Tooltip
+                    content={({ active, payload, label }) => {
+                      if (!active || !payload?.length) return null;
+                      return (
+                        <div className="bg-white/95 backdrop-blur-sm border border-gray-100 rounded-xl px-3 py-2 shadow-lg">
+                          <p className="text-xs text-muted-foreground mb-1">{label}</p>
+                          <p className="text-[11px] text-muted-foreground">
+                            Inicial: {formatDate(comparisonStart?.createdAt)} • Final: {formatDate(comparisonEnd?.createdAt)}
+                          </p>
                           {payload.map((p: any) => (
                             <p key={p.name} className="text-xs font-semibold" style={{ color: p.fill }}>
                               {p.name === "atual" ? "Final" : "Inicial"}: {formatNumber(p.value)} mm
@@ -592,8 +688,9 @@ export function AssessmentEvolution({ history }: AssessmentEvolutionProps) {
                       );
                     }}
                   />
-                  {comparisonStart && <Bar dataKey="inicial" name="inicial" fill="#FECDD3" radius={[0, 4, 4, 0]} />}
-                  <Bar dataKey="atual" name="atual" fill="#F43F5E" radius={[0, 4, 4, 0]} />
+                  <Legend verticalAlign="bottom" align="center" wrapperStyle={{ paddingTop: 8, fontSize: 11 }} />
+                  {comparisonStart && <Bar dataKey="inicial" name="Inicial" fill="#FECDD3" radius={[0, 4, 4, 0]} />}
+                  <Bar dataKey="atual" name="Final" fill="#F43F5E" radius={[0, 4, 4, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>
@@ -602,7 +699,11 @@ export function AssessmentEvolution({ history }: AssessmentEvolutionProps) {
       )}
 
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.3 }}>
-        <SectionHeader icon={<Calendar className="h-3.5 w-3.5 text-emerald-500" />} title="Histórico de Avaliações" />
+        <SectionHeader
+          icon={<Calendar className="h-3.5 w-3.5 text-emerald-500" />}
+          title="Histórico de Avaliações"
+          subtitle="A linha do tempo destaca avaliação mais recente e o intervalo de comparação selecionado."
+        />
         <div className="relative pl-5">
           <div className="absolute left-2 top-2 bottom-2 w-0.5 bg-gradient-to-b from-purple-300 via-purple-200 to-transparent rounded-full" />
           <div className="space-y-3">
@@ -610,6 +711,14 @@ export function AssessmentEvolution({ history }: AssessmentEvolutionProps) {
               const isMostRecent = idx === 0;
               const isSelectedStart = comparisonStart?.id === assessment.id;
               const isSelectedEnd = comparisonEnd?.id === assessment.id;
+
+              const emphasisClass = isSelectedStart
+                ? "border-blue-300 bg-blue-50/40"
+                : isSelectedEnd
+                ? "border-emerald-300 bg-emerald-50/40"
+                : isMostRecent
+                ? "border-purple-200 bg-purple-50/50"
+                : "border-gray-100";
 
               return (
                 <motion.div
@@ -619,8 +728,12 @@ export function AssessmentEvolution({ history }: AssessmentEvolutionProps) {
                   transition={{ duration: 0.3, delay: idx * 0.05 }}
                   className="relative"
                 >
-                  <div className={`absolute -left-3.5 top-3.5 w-2.5 h-2.5 rounded-full border-2 border-white shadow-sm ${isMostRecent ? "bg-purple-600" : "bg-purple-200"}`} />
-                  <Card className={`border shadow-sm ml-1 ${isMostRecent ? "border-purple-200 bg-purple-50/50" : "border-gray-100"}`}>
+                  <div
+                    className={`absolute -left-3.5 top-3.5 w-2.5 h-2.5 rounded-full border-2 border-white shadow-sm ${
+                      isSelectedStart ? "bg-blue-500" : isSelectedEnd ? "bg-emerald-500" : isMostRecent ? "bg-purple-600" : "bg-purple-200"
+                    }`}
+                  />
+                  <Card className={`border shadow-sm ml-1 ${emphasisClass}`}>
                     <CardContent className="px-3.5 py-3">
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1 min-w-0">
@@ -634,10 +747,14 @@ export function AssessmentEvolution({ history }: AssessmentEvolutionProps) {
                             </Badge>
                           )}
                           {isSelectedStart && (
-                            <Badge variant="outline" className="text-[10px]">Inicial</Badge>
+                            <Badge variant="outline" className="text-[10px] border-blue-300 text-blue-700 bg-blue-50">
+                              Inicial
+                            </Badge>
                           )}
                           {isSelectedEnd && (
-                            <Badge variant="outline" className="text-[10px]">Final</Badge>
+                            <Badge variant="outline" className="text-[10px] border-emerald-300 text-emerald-700 bg-emerald-50">
+                              Final
+                            </Badge>
                           )}
                         </div>
                       </div>
@@ -666,12 +783,6 @@ export function AssessmentEvolution({ history }: AssessmentEvolutionProps) {
           </div>
         </div>
       </motion.div>
-
-      {previousForEnd && (
-        <p className="text-[11px] text-muted-foreground text-center">
-          Dica: os gráficos de barras usam os valores final vs. inicial da comparação selecionada.
-        </p>
-      )}
     </div>
   );
 }
