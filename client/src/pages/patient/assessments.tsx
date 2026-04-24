@@ -54,11 +54,10 @@ export default function AssessmentsPage() {
     retry: false,
   });
 
-  const { data: anthroHistory, isLoading: historyLoading } = useQuery<AnthropometricAssessment[]>({
+  const { data: anthroHistory, isLoading: historyLoading, isError: historyError } = useQuery<AnthropometricAssessment[]>({
     queryKey: ["/api/my-anthropometry/history"],
     queryFn: async () => {
       const res = await apiRequest("GET", "/api/my-anthropometry/history");
-      if (!res.ok) return [];
       return res.json();
     },
     retry: false,
@@ -308,6 +307,16 @@ export default function AssessmentsPage() {
                 <Skeleton className="h-48 w-full rounded-xl" />
                 <Skeleton className="h-48 w-full rounded-xl" />
               </div>
+            ) : historyError ? (
+              <Card className="border border-border/70">
+                <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+                  <Activity className="h-12 w-12 text-muted-foreground/50 mb-4" />
+                  <p className="text-muted-foreground font-medium">Não foi possível carregar a evolução</p>
+                  <p className="text-sm text-muted-foreground/70 mt-1">
+                    Tente novamente em alguns instantes.
+                  </p>
+                </CardContent>
+              </Card>
             ) : (
               <AssessmentEvolution history={anthroHistory ?? []} />
             )}
