@@ -30,6 +30,27 @@ import bcrypt from "bcrypt";
 import { del } from '@vercel/blob';
 
 const SALT_ROUNDS = 10;
+const BRAZILIAN_DATE_REGEX = /^(\d{2})\/(\d{2})\/(\d{4})$/;
+
+function normalizeDateString(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const raw = value.trim();
+  if (!raw) return undefined;
+
+  const brMatch = raw.match(BRAZILIAN_DATE_REGEX);
+  if (brMatch) {
+    const [, day, month, year] = brMatch;
+    return `${year}-${month}-${day}`;
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+    return raw;
+  }
+
+  const parsed = new Date(raw);
+  if (Number.isNaN(parsed.getTime())) return undefined;
+  return parsed.toISOString().slice(0, 10);
+}
 
 export interface IStorage {
   // User operations
@@ -298,6 +319,7 @@ export class DatabaseStorage implements IStorage {
     const patientWithId = {
       id: nanoid(),
       ...patient,
+      birthDate: normalizeDateString(patient.birthDate) ?? patient.birthDate,
     };
     try {
       const [newPatient] = await db.insert(patients).values(patientWithId).returning();
@@ -332,6 +354,7 @@ export class DatabaseStorage implements IStorage {
     });
     await this.createPatient({
       ...data,
+      birthDate: normalizeDateString(data.birthDate) ?? data.birthDate,
       ownerId: invitation.nutritionistId,
       userId: newUser.id,
     });
@@ -340,7 +363,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updatePatient(id: string, patient: Partial<InsertPatient>): Promise<Patient> {
-    const updateData = { ...patient, updatedAt: new Date() };
+    const updateData = {
+      ...patient,
+      birthDate: normalizeDateString(patient.birthDate) ?? patient.birthDate,
+      updatedAt: new Date(),
+    };
     try {
       const [updatedPatient] = await db.update(patients).set(updateData).where(eq(patients.id, id)).returning();
       return this.normalizePatientData(updatedPatient);

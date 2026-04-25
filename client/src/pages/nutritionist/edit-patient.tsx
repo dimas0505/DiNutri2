@@ -13,6 +13,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDes
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { formatDateForInput, normalizeDateBeforeSubmit } from "@/lib/date";
 import { updatePatientSchema, type UpdatePatient, type Patient } from "@shared/schema";
 import { DefaultMobileDrawer } from "@/components/layout/mobile-layout";
 import { ActivityLevelSelector } from "@/components/ui/activity-level-selector";
@@ -37,6 +38,7 @@ export default function EditPatientPage({ params }: { params: { id: string } }) 
     if (patient) {
       form.reset({
         ...patient,
+        birthDate: formatDateForInput(patient.birthDate),
         heightCm: patient.heightCm ?? undefined,
         weightKg: patient.weightKg ?? "",
         likedHealthyFoods: patient.likedHealthyFoods || [],
@@ -67,7 +69,10 @@ export default function EditPatientPage({ params }: { params: { id: string } }) 
   });
 
   const onSubmit = (data: FormData) => {
-    updatePatientMutation.mutate(data);
+    updatePatientMutation.mutate({
+      ...data,
+      birthDate: normalizeDateBeforeSubmit(data.birthDate),
+    });
   };
 
   if (isLoading) {

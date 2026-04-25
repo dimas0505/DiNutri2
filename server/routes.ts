@@ -588,6 +588,52 @@ export async function setupRoutes(app: Express): Promise<void> {
     }
   });
 
+  app.get('/api/public/patients/:id/follow-up-anamnesis/validate', async (req: any, res) => {
+    try {
+      const patientId = req.params.id;
+      const patient = await storage.getPatient(patientId);
+
+      if (!patient) {
+        return res.status(404).json({ message: "Paciente não encontrado." });
+      }
+
+      return res.json({ valid: true });
+    } catch (error) {
+      console.error("Erro ao validar link de anamnese de retorno:", error);
+      return res.status(500).json({ message: "Falha ao validar link." });
+    }
+  });
+
+  app.post('/api/public/patients/:id/follow-up-anamnesis', async (req: any, res) => {
+    try {
+      const patientId = req.params.id;
+      const patient = await storage.getPatient(patientId);
+
+      if (!patient) {
+        return res.status(404).json({ message: "Paciente não encontrado." });
+      }
+
+      const recordData = insertAnamnesisRecordSchema.parse({
+        ...req.body,
+        patientId,
+      });
+
+      const newRecord = await storage.createAnamnesisRecord(recordData);
+
+      if (recordData.weightKg) {
+        await storage.updatePatient(patientId, { weightKg: recordData.weightKg });
+      }
+
+      return res.status(201).json(newRecord);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Dados inválidos.", errors: error.flatten() });
+      }
+      console.error("Erro ao salvar anamnese de retorno pública:", error);
+      return res.status(500).json({ message: "Falha ao salvar anamnese de retorno." });
+    }
+  });
+
   app.post('/api/patients/:id/anamnesis-records', isAuthenticated, async (req: any, res) => {
     try {
         const patientId = req.params.id;
@@ -1232,7 +1278,7 @@ export async function setupRoutes(app: Express): Promise<void> {
         .limit(1);
 
       if (!subscription) {
-        return res.status(404).json({ error: "Nenhum plano encontrado." });
+        return res.json(null);
       }
 
       return res.json(subscription);
