@@ -33,6 +33,12 @@ export default function MealMenuScreen({
     setShowMoodModal(true);
   };
 
+  const formatAmount = (amount?: string) => {
+    if (typeof amount !== "string") return "";
+    const normalizedAmount = amount.trim();
+    return normalizedAmount.length > 0 ? normalizedAmount : "";
+  };
+
   return (
     <>
       <div className="min-h-screen bg-slate-50 p-4 font-sans">
@@ -78,11 +84,14 @@ export default function MealMenuScreen({
 
         {/* Lista de Alimentos em Cards */}
         <div className="space-y-3">
-          {meal.items.map((item, index) => (
-            <div
-              key={index}
-              className="bg-white rounded-xl shadow-md overflow-hidden transition-all duration-300 hover:shadow-xl hover:scale-[1.02]"
-            >
+          {meal.items.map((item, index) => {
+            const formattedAmount = formatAmount(item.amount);
+
+            return (
+              <div
+                key={index}
+                className="bg-white rounded-xl shadow-md overflow-hidden transition-all duration-300 hover:shadow-xl hover:scale-[1.02]"
+              >
               <div className="p-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-start flex-1 min-w-0">
@@ -91,7 +100,14 @@ export default function MealMenuScreen({
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-gray-800 leading-tight break-words">{item.description}</p>
-                      <p className="text-sm text-gray-500 mt-1">{item.amount}</p>
+                      {formattedAmount && (
+                        <div className="mt-2 inline-flex max-w-full flex-wrap items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1 text-sm text-slate-900">
+                          <span className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                            Quantidade:
+                          </span>
+                          <span className="font-semibold break-words">{formattedAmount}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -109,7 +125,8 @@ export default function MealMenuScreen({
                 </div>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* Observações da refeição */}
