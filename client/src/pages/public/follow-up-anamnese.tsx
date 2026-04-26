@@ -49,41 +49,31 @@ export default function FollowUpAnamnesePage() {
   const { isLoading: isValidatingLink, isError: hasInvalidLink } = useQuery({
     queryKey: ["/api/public/patients", patientId, "follow-up-anamnesis", "validate"],
     queryFn: async () => {
-      const response = await fetch(`/api/public/patients/${patientId}/follow-up-anamnesis/validate`);
-      if (!response.ok) throw new Error("Link inválido");
-      return response.json();
+      const response = await fetch(`/api/public/patients/${patientId}/follow-up-anamnesis/validate`, {
+        method: "GET",
+        cache: "no-store",
+        headers: {
+          Accept: "application/json",
+        },
+      });
+
+      if (response.status === 304) {
+        throw new Error("Não foi possível validar o link. Atualize a página e tente novamente.");
+      }
+
+      const contentType = response.headers.get("content-type") || "";
+      const data = contentType.includes("application/json") ? await response.json() : null;
+
+      if (!response.ok) {
+        throw new Error(data?.message || "Link inválido ou expirado.");
+      }
+
+      return data;
     },
     enabled: !!patientId,
     retry: false,
+    refetchOnWindowFocus: false,
   });
-
-  if (!patientId || hasInvalidLink) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardContent className="p-6">
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Link inválido</AlertTitle>
-              <AlertDescription>
-                Este link de anamnese de retorno não é válido ou expirou.
-              </AlertDescription>
-            </Alert>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  if (isValidatingLink) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardContent className="p-6 text-center text-muted-foreground">Validando link...</CardContent>
-        </Card>
-      </div>
-    );
-  }
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -129,6 +119,9 @@ export default function FollowUpAnamnesePage() {
 
   const submitAnamneseMutation = useMutation({
     mutationFn: (data: FormData) => {
+      if (!patientId) {
+        throw new Error("Link inválido ou expirado.");
+      }
       const {
         adherenceDaysPerWeek,
         mainDifficultyReason,
@@ -164,6 +157,34 @@ export default function FollowUpAnamnesePage() {
   const onSubmit = (data: FormData) => {
     submitAnamneseMutation.mutate(data);
   };
+
+  if (!patientId || hasInvalidLink) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardContent className="p-6">
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Link inválido</AlertTitle>
+              <AlertDescription>
+                Este link de anamnese de retorno não é válido ou expirou.
+              </AlertDescription>
+            </Alert>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (isValidatingLink) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardContent className="p-6 text-center text-muted-foreground">Validando link...</CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   const healthyFoodOptions = [
     "Verduras (alface, rúcula, espinafre)",

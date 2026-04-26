@@ -590,14 +590,27 @@ export async function setupRoutes(app: Express): Promise<void> {
 
   app.get('/api/public/patients/:id/follow-up-anamnesis/validate', async (req: any, res) => {
     try {
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+      res.setHeader('Surrogate-Control', 'no-store');
+
       const patientId = req.params.id;
       const patient = await storage.getPatient(patientId);
 
       if (!patient) {
-        return res.status(404).json({ message: "Paciente não encontrado." });
+        return res.status(404).json({
+          valid: false,
+          message: "Link inválido ou expirado.",
+        });
       }
 
-      return res.json({ valid: true });
+      return res.json({
+        valid: true,
+        patientId: patient.id,
+        patientName: patient.name,
+        status: "pending",
+      });
     } catch (error) {
       console.error("Erro ao validar link de anamnese de retorno:", error);
       return res.status(500).json({ message: "Falha ao validar link." });

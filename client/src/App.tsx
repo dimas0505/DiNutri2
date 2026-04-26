@@ -1,4 +1,4 @@
-import { Switch, Route, Redirect } from "wouter";
+import { Switch, Route, Redirect, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -59,8 +59,17 @@ function ComingSoonPage({ title }: { title: string }) {
 
 function Router() {
   const { isAuthenticated, isLoading, isAdmin, isNutritionist, isPatient, isFito } = useAuth();
+  const [location] = useLocation();
 
-  if (isLoading) {
+  const isPublicPath = (path: string) =>
+    path === "/" ||
+    path.startsWith("/login") ||
+    path.startsWith("/convite/") ||
+    path.startsWith("/cadastrar-personal/convite/") ||
+    path.startsWith("/anamnese/retorno") ||
+    path.startsWith("/anamnese");
+
+  if (isLoading && !isPublicPath(location)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
