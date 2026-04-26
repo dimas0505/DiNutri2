@@ -104,6 +104,10 @@ export default function PatientPrescriptionView() {
     queryKey: ["/api/patient/my-prescriptions"],
     enabled: !!user,
     retry: false,
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
   });
 
   // Buscar dados do paciente para obter patientId - corrigido

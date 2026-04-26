@@ -101,6 +101,20 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
     return selectedPatientPrescriptions?.find(p => p.id === selectedPrescriptionId);
   }, [selectedPatientPrescriptions, selectedPrescriptionId]);
 
+  const invalidatePrescriptionQueries = () => {
+    const patientId = prescription?.patientId;
+
+    queryClient.invalidateQueries({ queryKey: ["/api/prescriptions", params.id] });
+    queryClient.invalidateQueries({ queryKey: ["/api/prescriptions"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/patient/my-prescriptions"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/patients"] });
+
+    if (patientId) {
+      queryClient.invalidateQueries({ queryKey: ["/api/patients", patientId, "prescriptions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/patients", patientId] });
+    }
+  };
+
   const updatePrescriptionMutation = useMutation({
     mutationFn: async (data: { title: string; meals: MealData[]; generalNotes: string; expiresAt?: Date }) => {
       // Pass Date object directly - the backend validation will handle the conversion
@@ -115,7 +129,7 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
         title: "Sucesso",
         description: "Prescrição salva.",
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/prescriptions", params.id] });
+      invalidatePrescriptionQueries();
     },
     onError: () => {
       toast({
@@ -137,7 +151,7 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
         title: "Sucesso",
         description: "Prescrição publicada com sucesso!",
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/prescriptions", params.id] });
+      invalidatePrescriptionQueries();
       if (patient) {
         setLocation(`/patients/${patient.id}`);
       }
@@ -166,7 +180,7 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
         title: "Plano Ativado!",
         description: "O plano alimentar foi ativado e já está disponível para o paciente.",
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/prescriptions", params.id] });
+      invalidatePrescriptionQueries();
       if (patient) {
         setLocation(`/patients/${patient.id}`);
       }
@@ -189,7 +203,7 @@ export default function PrescriptionEditorPage({ params }: PrescriptionEditorPag
         title: "Plano Desativado",
         description: "O plano alimentar foi desativado. O paciente não terá mais acesso.",
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/prescriptions", params.id] });
+      invalidatePrescriptionQueries();
     },
     onError: () => {
       toast({

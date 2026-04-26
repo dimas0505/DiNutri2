@@ -207,6 +207,10 @@ export default function PatientDashboard() {
     },
     enabled: !!patientProfile?.id,
     retry: false,
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
   });
 
   // Planos em preparação (status = "preparing")

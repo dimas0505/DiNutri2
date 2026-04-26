@@ -336,6 +336,7 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
     onSuccess: () => {
       toast({ title: "Prescrição excluída", description: "A prescrição foi excluída com sucesso." });
       queryClient.invalidateQueries({ queryKey: ["/api/patients", params.id, "prescriptions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/patient/my-prescriptions"] });
       setPrescriptionToDelete(null);
     },
     onError: (error: any) => {
@@ -355,6 +356,7 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
     onSuccess: () => {
       toast({ title: "Plano Ativado!", description: "O plano alimentar foi ativado com sucesso." });
       queryClient.invalidateQueries({ queryKey: ["/api/patients", params.id, "prescriptions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/patient/my-prescriptions"] });
       setPrescriptionToActivate(null);
     },
     onError: () => {

@@ -12,11 +12,14 @@ export async function apiRequest(
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
+  const normalizedMethod = method.toUpperCase();
   const res = await fetch(url, {
-    method,
+    method: normalizedMethod,
     headers: data ? { "Content-Type": "application/json" } : {},
     body: data ? JSON.stringify(data) : undefined,
     credentials: "include",
+    // Evita servir respostas antigas de cache HTTP em endpoints dinâmicos.
+    cache: normalizedMethod === "GET" ? "no-store" : "no-cache",
   });
 
   await throwIfResNotOk(res);
@@ -31,6 +34,8 @@ export const getQueryFn: <T>(options: {
   async ({ queryKey }) => {
     const res = await fetch(queryKey.join("/") as string, {
       credentials: "include",
+      // Query data crítica (plano, perfil, etc.) deve sempre consultar a rede.
+      cache: "no-store",
     });
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {
