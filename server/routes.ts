@@ -118,6 +118,12 @@ const isAdmin = (req: any, res: any, next: any) => {
 };
 
 export async function setupRoutes(app: Express): Promise<void> {
+  const setNoStoreHeaders = (res: any) => {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.setHeader('Surrogate-Control', 'no-store');
+  };
   await setupAuth(app);
   
   // Middleware para parsear o corpo da requisição de upload
@@ -723,6 +729,7 @@ export async function setupRoutes(app: Express): Promise<void> {
 
   app.get('/api/patients/:patientId/prescriptions', isAuthenticated, async (req, res) => {
     try {
+      setNoStoreHeaders(res);
       const user = (req as any).user;
       const patientId = req.params.patientId;
       const patient = await storage.getPatient(patientId);
@@ -759,6 +766,7 @@ export async function setupRoutes(app: Express): Promise<void> {
   
   app.get('/api/prescriptions/:id', isAuthenticated, async (req: any, res) => {
     try {
+      setNoStoreHeaders(res);
       const user = req.user;
       const prescription = await storage.getPrescription(req.params.id);
       if (!prescription) {
@@ -969,10 +977,7 @@ export async function setupRoutes(app: Express): Promise<void> {
 
   app.get('/api/patient/my-prescriptions', isAuthenticated, async (req: any, res) => {
     try {
-      // Adiciona headers de cache-control para garantir que dados sempre frescos sejam buscados
-      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-      res.setHeader('Pragma', 'no-cache');
-      res.setHeader('Expires', '0');
+      setNoStoreHeaders(res);
       
       logActivity({ userId: req.user.id, activityType: 'view_my_prescriptions_list' });
 

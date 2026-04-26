@@ -81,7 +81,7 @@ self.addEventListener('fetch', (event) => {
   // ── API requests: Network-only (sem cache de respostas API) ──
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(
-      fetch(request).catch(async () => (await caches.match(request)) || offlineResponse())
+      fetch(request).catch(() => offlineResponse())
     );
     return;
   }
