@@ -101,12 +101,9 @@ export default function MealMenuScreen({
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-gray-800 leading-tight break-words">{item.description}</p>
                       {formattedAmount && (
-                        <div className="mt-2 inline-flex max-w-full flex-wrap items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1 text-sm text-slate-900">
-                          <span className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                            Quantidade:
-                          </span>
-                          <span className="font-semibold break-words">{formattedAmount}</span>
-                        </div>
+                        <p className="mt-1 text-sm font-semibold leading-snug text-gray-800 break-words">
+                          {formattedAmount}
+                        </p>
                       )}
                     </div>
                   </div>
