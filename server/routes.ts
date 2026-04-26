@@ -723,18 +723,67 @@ export async function setupRoutes(app: Express): Promise<void> {
 
   app.get('/api/patients/:patientId/prescriptions', isAuthenticated, async (req, res) => {
     try {
-      const prescriptions = await storage.getPrescriptionsByPatient(req.params.patientId);
-      res.json(prescriptions);
+      const user = (req as any).user;
+      const patientId = req.params.patientId;
+      const patient = await storage.getPatient(patientId);
+
+      if (!patient) {
+        return res.status(404).json({ message: "Paciente não encontrado." });
+      }
+
+      if (user.role === "nutritionist") {
+        if (patient.ownerId !== user.id) {
+          return res.status(403).json({ message: "Acesso negado." });
+        }
+        const prescriptionList = await storage.getPrescriptionsByPatient(patientId);
+        return res.json(prescriptionList);
+      }
+
+      if (user.role === "patient") {
+        if (patient.userId !== user.id) {
+          return res.status(403).json({ message: "Acesso negado." });
+        }
+
+        const prescriptionList = await storage.getPrescriptionsByPatient(patientId);
+        return res.json(
+          prescriptionList.filter((p) => p.isVisibleToPatient !== false)
+        );
+      }
+
+      return res.status(403).json({ message: "Acesso negado." });
     } catch (error) {
       console.error("Erro ao buscar prescrições:", error);
       res.status(500).json({ message: "Falha ao buscar prescrições." });
     }
   });
   
-  app.get('/api/prescriptions/:id', isAuthenticated, async (req, res) => {
+  app.get('/api/prescriptions/:id', isAuthenticated, async (req: any, res) => {
     try {
+      const user = req.user;
       const prescription = await storage.getPrescription(req.params.id);
-      res.json(prescription);
+      if (!prescription) {
+        return res.status(404).json({ message: "Prescrição não encontrada." });
+      }
+
+      if (user.role === "nutritionist") {
+        if (prescription.nutritionistId !== user.id) {
+          return res.status(403).json({ message: "Acesso negado." });
+        }
+        return res.json(prescription);
+      }
+
+      if (user.role === "patient") {
+        const patient = await storage.getPatientByUserId(user.id);
+        if (!patient || prescription.patientId !== patient.id) {
+          return res.status(403).json({ message: "Acesso negado." });
+        }
+        if (prescription.isVisibleToPatient === false) {
+          return res.status(404).json({ message: "Prescrição não encontrada." });
+        }
+        return res.json(prescription);
+      }
+
+      res.status(403).json({ message: "Acesso negado." });
     } catch (error) {
       console.error("Erro ao buscar prescrição:", error);
       res.status(500).json({ message: "Falha ao buscar prescrição." });
@@ -821,6 +870,53 @@ export async function setupRoutes(app: Express): Promise<void> {
     } catch (error: any) {
       console.error('Error deactivating prescription:', error);
       res.status(500).json({ message: 'Failed to deactivate prescription' });
+    }
+  });
+
+  app.patch('/api/patients/:patientId/prescriptions/:prescriptionId/visibility', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      if (!user || user.role !== "nutritionist") {
+        return res.status(403).json({ message: "Apenas nutricionistas podem alterar a visibilidade." });
+      }
+
+      const patientId = req.params.patientId;
+      const prescriptionId = req.params.prescriptionId;
+      const parsedPayload = z.object({ isVisibleToPatient: z.boolean() }).safeParse(req.body);
+      if (!parsedPayload.success) {
+        return res.status(400).json({ message: "Payload inválido. Envie { isVisibleToPatient: boolean }." });
+      }
+
+      const patient = await storage.getPatient(patientId);
+      if (!patient) {
+        return res.status(404).json({ message: "Paciente não encontrado." });
+      }
+      if (patient.ownerId !== user.id) {
+        return res.status(403).json({ message: "Acesso negado." });
+      }
+
+      const prescription = await storage.getPrescription(prescriptionId);
+      if (!prescription || prescription.patientId !== patientId) {
+        return res.status(404).json({ message: "Prescrição não encontrada para este paciente." });
+      }
+      if (prescription.nutritionistId !== user.id) {
+        return res.status(403).json({ message: "Acesso negado." });
+      }
+
+      const updatedPrescription = await storage.updatePrescription(prescriptionId, {
+        isVisibleToPatient: parsedPayload.data.isVisibleToPatient,
+      });
+
+      logActivity({
+        userId: user.id,
+        activityType: 'update_prescription_visibility',
+        details: `Visibilidade da prescrição "${updatedPrescription.title}" definida como ${updatedPrescription.isVisibleToPatient ? 'visível' : 'oculta'} para o paciente.`,
+      });
+
+      return res.json(updatedPrescription);
+    } catch (error) {
+      console.error("Erro ao alterar visibilidade da prescrição:", error);
+      res.status(500).json({ message: "Falha ao alterar visibilidade da prescrição." });
     }
   });
 

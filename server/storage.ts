@@ -469,6 +469,7 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(prescriptions.patientId, patient.id),
+          eq(prescriptions.isVisibleToPatient, true),
           or(
             eq(prescriptions.status, "active"),
             eq(prescriptions.status, "published"),
