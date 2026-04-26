@@ -14,6 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 
 import { apiRequest } from "@/lib/queryClient";
+import { normalizeDateBeforeSubmit } from "@/lib/date";
 import { insertPatientSchema, anamnesisSchema } from "@shared/schema";
 import { DiNutriLogo } from "@/components/ui/dinutri-logo";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -115,7 +116,11 @@ export default function AnamnesePage() {
   const onSubmit = (data: FormData) => {
     if (!token) return;
     const { confirmPassword, ...payload } = data;
-    registerPatientMutation.mutate({ ...payload, token });
+    registerPatientMutation.mutate({
+      ...payload,
+      birthDate: normalizeDateBeforeSubmit(payload.birthDate) || payload.birthDate,
+      token,
+    });
   };
 
   if (isValidationLoading) {

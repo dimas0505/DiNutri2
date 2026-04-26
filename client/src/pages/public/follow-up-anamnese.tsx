@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { useMutation } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useLocation, Link } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -29,6 +30,12 @@ const formSchema = insertAnamnesisRecordSchema.omit({ patientId: true }).extend(
   // New feedback fields
   protocolAdherence: z.enum(["total", "partial", "low"]).optional(),
   nextProtocolRequests: z.string().optional(),
+  adherenceDaysPerWeek: z.number().min(0).max(7).optional(),
+  mainDifficultyReason: z.enum(["rotina", "fome", "ansiedade", "custo", "preparo", "falta_tempo", "eventos_sociais", "preferencia", "outro"]).optional(),
+  symptomsReported: z.array(z.string()).default([]),
+  waterIntakeLiters: z.number().min(0).max(20).optional(),
+  sleepHours: z.number().min(0).max(24).optional(),
+  stressLevel: z.enum(["baixo", "moderado", "alto"]).optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -39,24 +46,34 @@ export default function FollowUpAnamnesePage() {
   
   // Extract patientId from URL
   const patientId = useMemo(() => new URLSearchParams(window.location.search).get("patientId"), [location]);
+  const { isLoading: isValidatingLink, isError: hasInvalidLink } = useQuery({
+    queryKey: ["/api/public/patients", patientId, "follow-up-anamnesis", "validate"],
+    queryFn: async () => {
+      const response = await fetch(`/api/public/patients/${patientId}/follow-up-anamnesis/validate`, {
+        method: "GET",
+        cache: "no-store",
+        headers: {
+          Accept: "application/json",
+        },
+      });
 
-  if (!patientId) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardContent className="p-6">
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Link inválido</AlertTitle>
-              <AlertDescription>
-                Este link de anamnese de retorno não é válido ou expirou.
-              </AlertDescription>
-            </Alert>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+      if (response.status === 304) {
+        throw new Error("Não foi possível validar o link. Atualize a página e tente novamente.");
+      }
+
+      const contentType = response.headers.get("content-type") || "";
+      const data = contentType.includes("application/json") ? await response.json() : null;
+
+      if (!response.ok) {
+        throw new Error(data?.message || "Link inválido ou expirado.");
+      }
+
+      return data;
+    },
+    enabled: !!patientId,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -79,12 +96,45 @@ export default function FollowUpAnamnesePage() {
       biotype: undefined,
       protocolAdherence: undefined,
       nextProtocolRequests: "",
+      adherenceDaysPerWeek: undefined,
+      mainDifficultyReason: undefined,
+      symptomsReported: [],
+      waterIntakeLiters: undefined,
+      sleepHours: undefined,
+      stressLevel: undefined,
     },
   });
 
+  const buildFollowUpNotes = (data: FormData) => {
+    const blocks: string[] = [];
+    if (data.adherenceDaysPerWeek !== undefined) blocks.push(`Dias de adesão na semana: ${data.adherenceDaysPerWeek}`);
+    if (data.mainDifficultyReason) blocks.push(`Principal dificuldade: ${data.mainDifficultyReason}`);
+    if (data.symptomsReported.length > 0) blocks.push(`Sintomas relatados: ${data.symptomsReported.join(", ")}`);
+    if (data.waterIntakeLiters !== undefined) blocks.push(`Água por dia (L): ${data.waterIntakeLiters}`);
+    if (data.sleepHours !== undefined) blocks.push(`Sono (horas): ${data.sleepHours}`);
+    if (data.stressLevel) blocks.push(`Estresse percebido: ${data.stressLevel}`);
+    const notes = [data.notes?.trim(), blocks.join("\n")].filter(Boolean).join("\n\n");
+    return notes || undefined;
+  };
+
   const submitAnamneseMutation = useMutation({
     mutationFn: (data: FormData) => {
-      return apiRequest("POST", `/api/patients/${patientId}/anamnesis-records`, data);
+      if (!patientId) {
+        throw new Error("Link inválido ou expirado.");
+      }
+      const {
+        adherenceDaysPerWeek,
+        mainDifficultyReason,
+        symptomsReported,
+        waterIntakeLiters,
+        sleepHours,
+        stressLevel,
+        ...apiData
+      } = data;
+      return apiRequest("POST", `/api/public/patients/${patientId}/follow-up-anamnesis`, {
+        ...apiData,
+        notes: buildFollowUpNotes(data),
+      });
     },
     onSuccess: () => {
       toast({
@@ -107,6 +157,34 @@ export default function FollowUpAnamnesePage() {
   const onSubmit = (data: FormData) => {
     submitAnamneseMutation.mutate(data);
   };
+
+  if (!patientId || hasInvalidLink) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardContent className="p-6">
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Link inválido</AlertTitle>
+              <AlertDescription>
+                Este link de anamnese de retorno não é válido ou expirou.
+              </AlertDescription>
+            </Alert>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (isValidatingLink) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardContent className="p-6 text-center text-muted-foreground">Validando link...</CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   const healthyFoodOptions = [
     "Verduras (alface, rúcula, espinafre)",
@@ -136,6 +214,17 @@ export default function FollowUpAnamnesePage() {
     "Amendoim",
     "Frutos do mar",
     "Nozes"
+  ];
+
+  const symptomOptions = [
+    "Fome excessiva",
+    "Vontade de doces",
+    "Estufamento",
+    "Constipação",
+    "Diarreia",
+    "Dor de cabeça",
+    "Cansaço",
+    "Inchaço",
   ];
 
   return (
@@ -449,9 +538,131 @@ export default function FollowUpAnamnesePage() {
                   />
                 </div>
 
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold">Acompanhamento de Rotina</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="adherenceDaysPerWeek"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Em quantos dias da semana conseguiu seguir o plano?</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              min={0}
+                              max={7}
+                              value={field.value ?? ""}
+                              onChange={(e) => field.onChange(e.target.value === "" ? undefined : Number(e.target.value))}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="mainDifficultyReason"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Principal motivo de dificuldade</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value || undefined}>
+                            <FormControl><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger></FormControl>
+                            <SelectContent>
+                              <SelectItem value="rotina">Rotina</SelectItem>
+                              <SelectItem value="fome">Fome</SelectItem>
+                              <SelectItem value="ansiedade">Ansiedade</SelectItem>
+                              <SelectItem value="custo">Custo</SelectItem>
+                              <SelectItem value="preparo">Preparo</SelectItem>
+                              <SelectItem value="falta_tempo">Falta de tempo</SelectItem>
+                              <SelectItem value="eventos_sociais">Eventos sociais</SelectItem>
+                              <SelectItem value="preferencia">Preferência alimentar</SelectItem>
+                              <SelectItem value="outro">Outro</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  <FormField
+                    control={form.control}
+                    name="symptomsReported"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Sintomas percebidos recentemente</FormLabel>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                          {symptomOptions.map((symptom) => (
+                            <div key={symptom} className="flex items-center gap-2">
+                              <Checkbox
+                                checked={field.value?.includes(symptom)}
+                                onCheckedChange={(checked) => {
+                                  const currentValue = field.value || [];
+                                  if (checked) {
+                                    field.onChange([...currentValue, symptom]);
+                                  } else {
+                                    field.onChange(currentValue.filter((value) => value !== symptom));
+                                  }
+                                }}
+                              />
+                              <label className="text-sm">{symptom}</label>
+                            </div>
+                          ))}
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
                 {/* Additional Notes */}
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold">Observações Adicionais</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="waterIntakeLiters"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Água por dia (litros)</FormLabel>
+                          <FormControl>
+                            <Input type="number" step="0.1" min={0} max={20} value={field.value ?? ""} onChange={(e) => field.onChange(e.target.value === "" ? undefined : Number(e.target.value))} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="sleepHours"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Horas de sono</FormLabel>
+                          <FormControl>
+                            <Input type="number" step="0.5" min={0} max={24} value={field.value ?? ""} onChange={(e) => field.onChange(e.target.value === "" ? undefined : Number(e.target.value))} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="stressLevel"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Nível de estresse</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value || undefined}>
+                            <FormControl><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger></FormControl>
+                            <SelectContent>
+                              <SelectItem value="baixo">Baixo</SelectItem>
+                              <SelectItem value="moderado">Moderado</SelectItem>
+                              <SelectItem value="alto">Alto</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
                   <FormField
                     control={form.control}
                     name="notes"

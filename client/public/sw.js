@@ -14,6 +14,13 @@ const STATIC_ASSETS = [
   '/nova_logo_dinutri.png'
 ];
 
+const offlineResponse = () =>
+  new Response("Offline", {
+    status: 503,
+    statusText: "Service Unavailable",
+    headers: { "Content-Type": "text/plain; charset=utf-8" },
+  });
+
 // ─── Install ───
 self.addEventListener('install', (event) => {
   console.log('[SW] Installing with cache:', CACHE_NAME);
@@ -74,7 +81,7 @@ self.addEventListener('fetch', (event) => {
   // ── API requests: Network-only (sem cache de respostas API) ──
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(
-      fetch(request).catch(() => caches.match(request))
+      fetch(request).catch(async () => (await caches.match(request)) || offlineResponse())
     );
     return;
   }
@@ -93,7 +100,11 @@ self.addEventListener('fetch', (event) => {
           return networkResponse;
         })
         .catch(() => {
-          return caches.match(request).then((cached) => cached || caches.match('/'));
+          return caches.match(request).then(async (cached) => {
+            if (cached) return cached;
+            const root = await caches.match('/');
+            return root || offlineResponse();
+          });
         })
     );
     return;
@@ -133,7 +144,7 @@ self.addEventListener('fetch', (event) => {
         }
         return networkResponse;
       })
-      .catch(() => caches.match(request))
+      .catch(async () => (await caches.match(request)) || offlineResponse())
   );
 });
 
