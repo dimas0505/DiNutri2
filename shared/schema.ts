@@ -78,6 +78,7 @@ export const prescriptions = pgTable("prescriptions", {
   patientId: varchar("patient_id").references(() => patients.id, { onDelete: 'cascade' }).notNull(),
   nutritionistId: varchar("nutritionist_id").references(() => users.id).notNull(),
   title: text("title").notNull(),
+  isVisibleToPatient: boolean("is_visible_to_patient").notNull().default(true),
   status: varchar("status", { enum: ["draft", "preparing", "active", "published"] }).notNull().default("draft"),
   meals: jsonb("meals").$type<MealData[]>().notNull().default([]),
   generalNotes: text("general_notes"),

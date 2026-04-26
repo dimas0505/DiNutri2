@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  CheckCircle, Eye, FileText, Plus, Users, XCircle,
+  CheckCircle, Eye, EyeOff, FileText, Plus, Users, XCircle,
   Copy, History, User, Calendar, Ruler, Weight, Target, Activity,
   Heart, Stethoscope, Pill, Camera, Image, Smile, Trash2, FileDown,
   CreditCard, Upload, Download, ClipboardList, Pencil,
@@ -360,6 +360,40 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
     onError: () => {
       toast({ title: "Erro", description: "Não foi possível ativar o plano alimentar. Tente novamente.", variant: "destructive" });
       setPrescriptionToActivate(null);
+    },
+  });
+
+  const togglePrescriptionVisibilityMutation = useMutation({
+    mutationFn: async ({
+      prescriptionId,
+      isVisibleToPatient,
+    }: {
+      prescriptionId: string;
+      isVisibleToPatient: boolean;
+    }) => {
+      const response = await apiRequest(
+        "PATCH",
+        `/api/patients/${params.id}/prescriptions/${prescriptionId}/visibility`,
+        { isVisibleToPatient },
+      );
+      return response.json();
+    },
+    onSuccess: (_data, variables) => {
+      toast({
+        title: "Visibilidade atualizada",
+        description: variables.isVisibleToPatient
+          ? "A prescrição está visível para o paciente."
+          : "A prescrição foi ocultada do paciente.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/patients", params.id, "prescriptions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/patient/my-prescriptions"] });
+    },
+    onError: () => {
+      toast({
+        title: "Erro",
+        description: "Não foi possível atualizar a visibilidade da prescrição.",
+        variant: "destructive",
+      });
     },
   });
 
@@ -1024,6 +1058,14 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
             <div className="space-y-4">
               {prescriptions.map((prescription) => (
                 <div key={prescription.id} className="rounded-xl border border-blue-100 bg-gradient-to-r from-blue-50 to-indigo-50 p-4 hover:shadow-md transition-shadow">
+                  {(() => {
+                    const isVisibleToPatient = prescription.isVisibleToPatient !== false;
+                    const isTogglingVisibility =
+                      togglePrescriptionVisibilityMutation.isPending &&
+                      togglePrescriptionVisibilityMutation.variables?.prescriptionId === prescription.id;
+
+                    return (
+                      <>
                   <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-3">
                     <div className="flex items-center gap-3 min-w-0 flex-1">
                       <div className="p-2 bg-blue-100 rounded-lg flex-shrink-0">
@@ -1056,6 +1098,19 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                         : "Rascunho"}
                     </Badge>
                   </div>
+                  <div className="mb-3">
+                    <Badge
+                      variant="outline"
+                      className={
+                        isVisibleToPatient
+                          ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                          : "bg-slate-100 text-slate-700 border-slate-300"
+                      }
+                      data-testid={`badge-prescription-visibility-${prescription.id}`}
+                    >
+                      {isVisibleToPatient ? "Visível para o paciente" : "Oculta do paciente"}
+                    </Badge>
+                  </div>
                   {prescription.generalNotes && (
                     <div className="mt-2 p-3 bg-white/70 rounded-lg">
                       <p className="text-sm text-gray-700">{prescription.generalNotes}</p>
@@ -1085,6 +1140,34 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                     <Button variant="ghost" size="sm" onClick={() => handleDownloadPrescription(prescription.id)} data-testid={`button-download-prescription-${prescription.id}`} className="bg-green-100 hover:bg-green-200 text-green-700 border border-green-200 rounded-lg">
                       <FileDown className="h-4 w-4 mr-1" />Baixar
                     </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() =>
+                        togglePrescriptionVisibilityMutation.mutate({
+                          prescriptionId: prescription.id,
+                          isVisibleToPatient: !isVisibleToPatient,
+                        })
+                      }
+                      disabled={isTogglingVisibility}
+                      data-testid={`button-toggle-prescription-visibility-${prescription.id}`}
+                      className={
+                        isVisibleToPatient
+                          ? "bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 rounded-lg"
+                          : "bg-emerald-100 hover:bg-emerald-200 text-emerald-700 border border-emerald-200 rounded-lg"
+                      }
+                    >
+                      {isVisibleToPatient ? (
+                        <EyeOff className="h-4 w-4 mr-1" />
+                      ) : (
+                        <Eye className="h-4 w-4 mr-1" />
+                      )}
+                      {isTogglingVisibility
+                        ? "Salvando..."
+                        : isVisibleToPatient
+                        ? "Ocultar do paciente"
+                        : "Exibir para paciente"}
+                    </Button>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <Button variant="ghost" size="sm" className="bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-lg" data-testid={`button-delete-prescription-${prescription.id}`}>
@@ -1105,6 +1188,9 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                       </AlertDialogContent>
                     </AlertDialog>
                   </div>
+                      </>
+                    );
+                  })()}
                 </div>
               ))}
             </div>
